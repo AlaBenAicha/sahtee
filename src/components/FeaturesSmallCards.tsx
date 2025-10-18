@@ -1,12 +1,4 @@
-import {
-  Bot,
-  HeartPulse,
-  LineChart,
-  Microscope,
-  PieChart,
-  RefreshCcw,
-  ShieldCheck,
-} from "lucide-react";
+import { HeartPulse, PieChart, RefreshCcw, ShieldCheck } from "lucide-react";
 
 type IconType = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
 
@@ -17,7 +9,7 @@ const FEATURES: Feature[] = [
     title: "360° Board",
     icon: PieChart,
     description:
-      "Pilotez votre santé et sécurité au travail en un seul regard.",
+      "Pilotez votre santé et sécurité au travail en un seul regard avec assistant intelligent.",
   },
   {
     title: "Conformity Room",
@@ -27,29 +19,13 @@ const FEATURES: Feature[] = [
   {
     title: "CAPA Room",
     icon: RefreshCcw,
-    description: "Agissez vite, suivez vos actions préventives et correctives.",
+    description:
+      "Gère les actions correctives et préventives. Plans hiérarchisés, suivi par cases cochées, et mesure de l'efficacité.",
   },
   {
     title: "Health Barometer",
     icon: HeartPulse,
     description: "Prenez le pouls du bien-être et de la santé au travail.",
-  },
-  {
-    title: "SafetyBot",
-    icon: Bot,
-    description:
-      "Votre assistant intelligent pour les risques chimiques et la sécurité.",
-  },
-  {
-    title: "ErgoLab",
-    icon: Microscope,
-    description:
-      "Analysez et optimisez les postures et environnements de travail.",
-  },
-  {
-    title: "Impact Calculator",
-    icon: LineChart,
-    description: "Mesurez vos gains, votre ROI et votre impact durable.",
   },
 ];
 
@@ -61,7 +37,7 @@ export function FeaturesSmallCards() {
           <h2 className="text-4xl mb-4 text-gray-900">
             Nos fonctionnalités clés
           </h2>
-          <p className="text-lg text-gray-600">Aperçu rapide des 7 modules</p>
+          <p className="text-lg text-gray-600">Aperçu rapide des 4 modules</p>
         </div>
 
         {/* Cards displayed in a single row with equal width and height */}

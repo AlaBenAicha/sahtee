@@ -16,8 +16,6 @@ import {
   Search,
   Settings,
   Shield,
-  Smartphone,
-  Store,
   Target,
   TrendingUp,
   Upload,
@@ -25,15 +23,18 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
-import { ActionPlans } from "./modules/ActionPlans";
 import { AdvancedAnalytics } from "./modules/AdvancedAnalytics";
 import { AuditRoom } from "./modules/AuditRoom";
 import { Calculator as CalculatorModule } from "./modules/Calculator";
+import { CAPARoom } from "./modules/CAPARoom";
 import { ChemicalChatbot } from "./modules/ChemicalChatbot";
-import { Marketplace } from "./modules/Marketplace";
-import { MobileApp } from "./modules/MobileApp";
+// ========================================
+// DISABLED FOR MVP - Re-enable for v2.0
+// ========================================
+// import { Marketplace } from "./modules/Marketplace";
+// import { MobileApp } from "./modules/MobileApp";
+// ========================================
 import { OccupationalHealth } from "./modules/OccupationalHealth";
-import { Training } from "./modules/Training";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -69,18 +70,16 @@ export function Dashboard() {
       title: "CAPA Room",
       color: "text-[var(--sahtee-blue-light)]",
     },
-    {
-      id: "formation",
-      icon: GraduationCap,
-      title: "Formation",
-      color: "text-[var(--sahtee-blue-secondary)]",
-    },
-    {
-      id: "mobile",
-      icon: Smartphone,
-      title: "Mobile App",
-      color: "text-[var(--sahtee-blue-primary)]",
-    },
+    // ========================================
+    // DISABLED FOR MVP - Re-enable for v2.0
+    // ========================================
+    // {
+    //   id: "mobile",
+    //   icon: Smartphone,
+    //   title: "Mobile App",
+    //   color: "text-[var(--sahtee-blue-primary)]",
+    // },
+    // ========================================
     {
       id: "maladies",
       icon: Heart,
@@ -93,12 +92,16 @@ export function Dashboard() {
       title: "SafetyBot",
       color: "text-[var(--sahtee-blue-secondary)]",
     },
-    {
-      id: "marketplace",
-      icon: Store,
-      title: "Marketplace",
-      color: "text-[var(--sahtee-blue-primary)]",
-    },
+    // ========================================
+    // DISABLED FOR MVP - Re-enable for v2.0
+    // ========================================
+    // {
+    //   id: "marketplace",
+    //   icon: Store,
+    //   title: "Marketplace",
+    //   color: "text-[var(--sahtee-blue-primary)]",
+    // },
+    // ========================================
     {
       id: "calcul",
       icon: Calculator,
@@ -166,17 +169,23 @@ export function Dashboard() {
       case "audit":
         return <AuditRoom />;
       case "actions":
-        return <ActionPlans />;
-      case "formation":
-        return <Training />;
-      case "mobile":
-        return <MobileApp />;
+        return <CAPARoom />;
+      // ========================================
+      // DISABLED FOR MVP - Re-enable for v2.0
+      // ========================================
+      // case "mobile":
+      //   return <MobileApp />;
+      // ========================================
       case "maladies":
         return <OccupationalHealth />;
       case "chatbot":
         return <ChemicalChatbot />;
-      case "marketplace":
-        return <Marketplace />;
+      // ========================================
+      // DISABLED FOR MVP - Re-enable for v2.0
+      // ========================================
+      // case "marketplace":
+      //   return <Marketplace />;
+      // ========================================
       case "calcul":
         return <CalculatorModule />;
       case "analyse":
@@ -428,23 +437,6 @@ export function Dashboard() {
 
               <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className="bg-red-100 rounded-full p-2">
-                    <AlertTriangle className="w-4 h-4 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">
-                      Incident déclaré via l'app mobile
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Glissade - Entrepôt Zone C
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-500">Il y a 4h</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
                   <div className="bg-green-100 rounded-full p-2">
                     <CheckCircle className="w-4 h-4 text-green-600" />
                   </div>
@@ -520,6 +512,11 @@ export function Dashboard() {
                   ? "bg-[var(--sahtee-neutral)] text-[var(--sahtee-blue-primary)] border-r-4 border-[var(--sahtee-blue-primary)]"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
+              title={
+                module.id === "actions"
+                  ? "Includes Actions, Training & Equipment"
+                  : module.title
+              }
             >
               <module.icon className={`w-5 h-5 ${module.color}`} />
               {isSidebarOpen && <span className="text-sm">{module.title}</span>}

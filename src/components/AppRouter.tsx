@@ -9,7 +9,6 @@ import { Hero } from "./Hero";
 import { Login } from "./Login";
 import { Navigation } from "./Navigation";
 import { OurPrinciples } from "./OurPrinciples";
-import { PlatformPreview } from "./PlatformPreview";
 import { Signup } from "./Signup";
 import { TargetSectors } from "./TargetSectors";
 import { WhySahtee } from "./WhySahtee";
@@ -81,10 +80,7 @@ export function AppRouter() {
         {/* Section 7 - CTA intermédiaire */}
         <CTAIntermediate />
 
-        {/* Section 8 - Aperçu plateforme */}
-        <PlatformPreview dashboardImage={dashboardImage} />
-
-        {/* Section 9 - CTA final */}
+        {/* Section 8 - CTA final */}
         <CTAFinal />
       </main>
 
