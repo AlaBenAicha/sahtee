@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   HeartPulse,
@@ -8,6 +7,7 @@ import {
   RefreshCcw,
   ShieldCheck,
 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type IconType = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
 
@@ -30,22 +30,19 @@ const FEATURES: Feature[] = [
   {
     id: "conformity",
     title: "Conformity Room",
-    description:
-      "Gardez le contrôle sur vos normes, audits et certifications.",
+    description: "Gardez le contrôle sur vos normes, audits et certifications.",
     icon: ShieldCheck,
   },
   {
     id: "capa",
     title: "CAPA Room",
-    description:
-      "Agissez vite, suivez vos actions préventives et correctives.",
+    description: "Agissez vite, suivez vos actions préventives et correctives.",
     icon: RefreshCcw,
   },
   {
-    id: "barometer",
-    title: "Health Barometer",
-    description:
-      "Prenez le pouls du bien-être et de la santé au travail.",
+    id: "meter",
+    title: "Health Meter",
+    description: "Prenez le pouls du bien-être et de la santé au travail.",
     icon: HeartPulse,
   },
   {
@@ -65,8 +62,7 @@ const FEATURES: Feature[] = [
   {
     id: "impact",
     title: "Impact Calculator",
-    description:
-      "Mesurez vos gains, votre ROI et votre impact durable.",
+    description: "Mesurez vos gains, votre ROI et votre impact durable.",
     icon: LineChart,
   },
 ];
@@ -85,11 +81,22 @@ export function FeaturesTabbed() {
     if (!el) return;
     const handler = (e: KeyboardEvent) => {
       const max = FEATURES.length - 1;
-      if (["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight", "Home", "End"].includes(e.key)) {
+      if (
+        [
+          "ArrowUp",
+          "ArrowLeft",
+          "ArrowDown",
+          "ArrowRight",
+          "Home",
+          "End",
+        ].includes(e.key)
+      ) {
         e.preventDefault();
       }
-      if (e.key === "ArrowUp" || e.key === "ArrowLeft") setSelected((i) => (i - 1 + FEATURES.length) % FEATURES.length);
-      if (e.key === "ArrowDown" || e.key === "ArrowRight") setSelected((i) => (i + 1) % FEATURES.length);
+      if (e.key === "ArrowUp" || e.key === "ArrowLeft")
+        setSelected((i) => (i - 1 + FEATURES.length) % FEATURES.length);
+      if (e.key === "ArrowDown" || e.key === "ArrowRight")
+        setSelected((i) => (i + 1) % FEATURES.length);
       if (e.key === "Home") setSelected(0);
       if (e.key === "End") setSelected(max);
     };
@@ -105,7 +112,8 @@ export function FeaturesTabbed() {
             Nos fonctionnalités clés
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Une suite complète d&apos;outils pour transformer votre approche de la sécurité au travail
+            Une suite complète d&apos;outils pour transformer votre approche de
+            la sécurité au travail
           </p>
         </div>
 
@@ -127,7 +135,9 @@ export function FeaturesTabbed() {
                   aria-controls={`preview-${f.id}`}
                   id={`tab-${f.id}`}
                   className={`flex items-center gap-3 px-4 py-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                    isActive ? "text-gray-900 dark:text-white font-semibold" : "text-gray-600 dark:text-gray-300"
+                    isActive
+                      ? "text-gray-900 dark:text-white font-semibold"
+                      : "text-gray-600 dark:text-gray-300"
                   }`}
                   onMouseEnter={() => setHovered(i)}
                   onMouseLeave={() => setHovered(null)}
@@ -220,4 +230,3 @@ export function FeaturesTabbed() {
     </section>
   );
 }
-

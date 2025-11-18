@@ -22,7 +22,8 @@ const FEATURE_DATA: FeatureCard[] = [
   {
     icon: PieChart,
     title: "360° Board",
-    description: "Pilotez votre santé et sécurité au travail en un seul regard.",
+    description:
+      "Pilotez votre santé et sécurité au travail en un seul regard.",
     accent: "from-blue-500 to-blue-700",
     layout: "xl:col-span-2",
   },
@@ -42,7 +43,7 @@ const FEATURE_DATA: FeatureCard[] = [
   },
   {
     icon: HeartPulse,
-    title: "Health Barometer",
+    title: "Health Meter",
     description: "Prenez le pouls du bien-être et de la santé au travail.",
     accent: "from-blue-500 via-indigo-500 to-blue-700",
     layout: "xl:col-span-4 xl:col-start-2",
@@ -51,14 +52,16 @@ const FEATURE_DATA: FeatureCard[] = [
   {
     icon: Bot,
     title: "SafetyBot",
-    description: "Votre assistant intelligent pour les risques chimiques et la sécurité.",
+    description:
+      "Votre assistant intelligent pour les risques chimiques et la sécurité.",
     accent: "from-blue-500 to-blue-700",
     layout: "xl:col-span-2",
   },
   {
     icon: Microscope,
     title: "ErgoLab",
-    description: "Analysez et optimisez les postures et environnements de travail.",
+    description:
+      "Analysez et optimisez les postures et environnements de travail.",
     accent: "from-sky-500 to-blue-600",
     layout: "xl:col-span-2",
   },
@@ -76,9 +79,12 @@ export function KeyFeatures() {
     <section className="py-20" style={{ backgroundColor: "#f0f4ff" }}>
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="text-4xl mb-6 text-gray-900">Nos fonctionnalités clés</h2>
+          <h2 className="text-4xl mb-6 text-gray-900">
+            Nos fonctionnalités clés
+          </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Une suite complète d&apos;outils pour transformer votre approche de la sécurité au travail
+            Une suite complète d&apos;outils pour transformer votre approche de
+            la sécurité au travail
           </p>
         </div>
 
@@ -94,7 +100,9 @@ export function KeyFeatures() {
                 <div
                   key={feature.title}
                   className={`${
-                    isLast ? "xl:col-span-2 xl:justify-self-center xl:max-w-2xl" : ""
+                    isLast
+                      ? "xl:col-span-2 xl:justify-self-center xl:max-w-2xl"
+                      : ""
                   } group`}
                 >
                   <div className="flex items-start gap-5">
@@ -106,7 +114,9 @@ export function KeyFeatures() {
                     </span>
 
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900">{feature.title}</h3>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {feature.title}
+                      </h3>
                       <p className="mt-2 text-sm leading-relaxed text-gray-600 max-w-md">
                         {feature.description}
                       </p>

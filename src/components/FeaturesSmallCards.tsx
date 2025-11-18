@@ -23,7 +23,7 @@ const FEATURES: Feature[] = [
       "Gère les actions correctives et préventives. Plans hiérarchisés, suivi par cases cochées, et mesure de l'efficacité.",
   },
   {
-    title: "Health Barometer",
+    title: "Health Meter",
     icon: HeartPulse,
     description: "Prenez le pouls du bien-être et de la santé au travail.",
   },

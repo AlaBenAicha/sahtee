@@ -184,7 +184,7 @@ After re-enabling the features, verify:
 2. Conformity Room (Audit Room)
 3. CAPA Room (Action Plans)
 4. Formation (Training)
-5. Health Barometer (Occupational Health)
+5. Health Meter (Occupational Health)
 6. SafetyBot (Chemical Chatbot)
 7. Impact Calculator
 8. Advanced Analytics

@@ -157,7 +157,7 @@ export function OccupationalHealth() {
       <header className="bg-white shadow-sm border-b p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl text-gray-900">Health Barometer</h1>
+            <h1 className="text-2xl text-gray-900">Health Meter</h1>
             <p className="text-gray-600">
               Surveillance de la santé collective et suivi des maladies
               professionnelles
