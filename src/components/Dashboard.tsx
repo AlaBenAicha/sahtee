@@ -5,15 +5,19 @@ import {
   BarChart3,
   Bell,
   Bot,
-  Calculator,
   CheckCircle,
+  Clock,
+  FileText,
   GraduationCap,
   Heart,
   Home,
+  Info,
   LineChart,
   Menu,
+  MessageCircle,
   PieChart,
   Search,
+  Send,
   Settings,
   Shield,
   Target,
@@ -23,14 +27,13 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
-import { AdvancedAnalytics } from "./modules/AdvancedAnalytics";
 import { AuditRoom } from "./modules/AuditRoom";
-import { Calculator as CalculatorModule } from "./modules/Calculator";
 import { CAPARoom } from "./modules/CAPARoom";
-import { ChemicalChatbot } from "./modules/ChemicalChatbot";
 // ========================================
 // DISABLED FOR MVP - Re-enable for v2.0
 // ========================================
+// import { AdvancedAnalytics } from "./modules/AdvancedAnalytics";
+// import { Calculator as CalculatorModule } from "./modules/Calculator";
 // import { Marketplace } from "./modules/Marketplace";
 // import { MobileApp } from "./modules/MobileApp";
 // ========================================
@@ -39,16 +42,64 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
-// Import du logo depuis Figma
-import sahteeLogoBlue from "figma:asset/2c9287bd076e1cc144dd8b599ad076a48185b78b.png";
+// Import du logo
+import sahteeLogoBlue from "../assets/2c9287bd076e1cc144dd8b599ad076a48185b78b.png";
 
 export function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeModule, setActiveModule] = useState("dashboard");
   const [chartType, setChartType] = useState<"bar" | "pie" | "line">("bar");
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState([
+    {
+      id: 1,
+      type: "bot",
+      message:
+        "Bonjour ! Je suis l'assistant SAHTEE pour la sécurité chimique. Comment puis-je vous aider aujourd'hui ?",
+      timestamp: "2024-01-20 09:00",
+    },
+  ]);
 
   const handleGoHome = () => {
     window.location.reload(); // Retour à la page d'accueil
+  };
+
+  const handleSendMessage = () => {
+    if (chatMessage.trim()) {
+      const newMessage = {
+        id: chatHistory.length + 1,
+        type: "user" as const,
+        message: chatMessage,
+        timestamp: new Date().toLocaleString("fr-FR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+
+      setChatHistory([...chatHistory, newMessage]);
+      setChatMessage("");
+
+      // Simulate bot response
+      setTimeout(() => {
+        const botResponse = {
+          id: chatHistory.length + 2,
+          type: "bot" as const,
+          message:
+            "Je traite votre demande concernant la sécurité chimique. Voici les informations pertinentes...",
+          timestamp: new Date().toLocaleString("fr-FR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+        setChatHistory((prev) => [...prev, botResponse]);
+      }, 1000);
+    }
   };
 
   const modules = [
@@ -83,14 +134,8 @@ export function Dashboard() {
     {
       id: "maladies",
       icon: Heart,
-      title: "Health Barometer",
+      title: "Health Meter",
       color: "text-[var(--sahtee-blue-light)]",
-    },
-    {
-      id: "chatbot",
-      icon: Bot,
-      title: "SafetyBot",
-      color: "text-[var(--sahtee-blue-secondary)]",
     },
     // ========================================
     // DISABLED FOR MVP - Re-enable for v2.0
@@ -102,18 +147,21 @@ export function Dashboard() {
     //   color: "text-[var(--sahtee-blue-primary)]",
     // },
     // ========================================
-    {
-      id: "calcul",
-      icon: Calculator,
-      title: "Impact Calculator",
-      color: "text-[var(--sahtee-blue-light)]",
-    },
-    {
-      id: "analyse",
-      icon: TrendingUp,
-      title: "Analyses Avancées",
-      color: "text-[var(--sahtee-blue-secondary)]",
-    },
+    // DISABLED FOR MVP - Re-enable for v2.0
+    // ========================================
+    // {
+    //   id: "calcul",
+    //   icon: Calculator,
+    //   title: "Impact Calculator",
+    //   color: "text-[var(--sahtee-blue-light)]",
+    // },
+    // {
+    //   id: "analyse",
+    //   icon: TrendingUp,
+    //   title: "Analyses Avancées",
+    //   color: "text-[var(--sahtee-blue-secondary)]",
+    // },
+    // ========================================
   ];
 
   const riskMetrics = [
@@ -178,18 +226,19 @@ export function Dashboard() {
       // ========================================
       case "maladies":
         return <OccupationalHealth />;
-      case "chatbot":
-        return <ChemicalChatbot />;
       // ========================================
       // DISABLED FOR MVP - Re-enable for v2.0
       // ========================================
       // case "marketplace":
       //   return <Marketplace />;
       // ========================================
-      case "calcul":
-        return <CalculatorModule />;
-      case "analyse":
-        return <AdvancedAnalytics />;
+      // DISABLED FOR MVP - Re-enable for v2.0
+      // ========================================
+      // case "calcul":
+      //   return <CalculatorModule />;
+      // case "analyse":
+      //   return <AdvancedAnalytics />;
+      // ========================================
       default:
         return renderDashboardContent();
     }
@@ -406,6 +455,181 @@ export function Dashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* SafetyBot Section */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+          {/* SafetyBot Chat Interface */}
+          <div className="lg:col-span-2">
+            <Card className="h-[500px] flex flex-col">
+              <CardHeader className="border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-[var(--sahtee-blue-primary)]" />
+                  SafetyBot - Assistant Sécurité Chimique
+                  <div className="ml-auto flex items-center gap-2 text-sm font-normal">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-600">En ligne</span>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="flex-1 p-0 overflow-hidden">
+                <div className="h-full flex flex-col">
+                  {/* Chat Messages */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {chatHistory.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          message.type === "user"
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-lg p-3 ${
+                            message.type === "user"
+                              ? "bg-[var(--sahtee-blue-primary)] text-white"
+                              : "bg-gray-100 text-gray-900"
+                          }`}
+                        >
+                          <div className="whitespace-pre-wrap text-sm">
+                            {message.message}
+                          </div>
+                          <div
+                            className={`text-xs mt-1 ${
+                              message.type === "user"
+                                ? "text-blue-200"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {message.timestamp}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Message Input */}
+                  <div className="border-t p-4">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" && handleSendMessage()
+                        }
+                        placeholder="Posez votre question sur la sécurité chimique..."
+                        className="flex-1 p-2 border rounded-lg text-sm"
+                      />
+                      <Button
+                        onClick={handleSendMessage}
+                        className="bg-[var(--sahtee-blue-primary)] hover:bg-[var(--sahtee-blue-secondary)]"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* SafetyBot Stats & Quick Actions */}
+          <div className="space-y-6">
+            {/* Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Statistiques SafetyBot
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-[var(--sahtee-blue-primary)]" />
+                    <span className="text-sm text-gray-600">
+                      Questions traitées
+                    </span>
+                  </div>
+                  <span className="font-bold text-[var(--sahtee-blue-primary)]">
+                    1,247
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-gray-600">
+                      Temps de réponse
+                    </span>
+                  </div>
+                  <span className="font-bold text-green-500">2.3s</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-[var(--sahtee-blue-secondary)]" />
+                    <span className="text-sm text-gray-600">Satisfaction</span>
+                  </div>
+                  <span className="font-bold text-[var(--sahtee-blue-secondary)]">
+                    94%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-purple-500" />
+                    <span className="text-sm text-gray-600">
+                      Substances référencées
+                    </span>
+                  </div>
+                  <span className="font-bold text-purple-500">2,856</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Actions rapides</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto p-3 flex flex-col gap-1"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="text-xs">Fiche de sécurité</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto p-3 flex flex-col gap-1"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-xs">Matrice compatibilité</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto p-3 flex flex-col gap-1"
+                  >
+                    <Info className="w-4 h-4" />
+                    <span className="text-xs">Procédure déversement</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto p-3 flex flex-col gap-1"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="text-xs">Contact urgence</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Recent Activity */}
