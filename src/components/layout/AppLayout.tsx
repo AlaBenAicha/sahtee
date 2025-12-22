@@ -1,0 +1,377 @@
+/**
+ * AppLayout - Main application layout with sidebar navigation
+ */
+
+import React, { useState } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  LayoutDashboard,
+  AlertTriangle,
+  FileWarning,
+  GraduationCap,
+  CheckCircle2,
+  HeartPulse,
+  BarChart3,
+  Users,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  User,
+  Bell,
+  Menu,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface NavItem {
+  label: string;
+  icon: React.ElementType;
+  path: string;
+  badge?: number;
+}
+
+const mainNavItems: NavItem[] = [
+  { label: "Tableau de bord", icon: LayoutDashboard, path: "/app/dashboard" },
+  { label: "Incidents", icon: AlertTriangle, path: "/app/incidents", badge: 3 },
+  { label: "CAPA", icon: FileWarning, path: "/app/capa", badge: 5 },
+  { label: "Formations", icon: GraduationCap, path: "/app/training" },
+  { label: "Conformité", icon: CheckCircle2, path: "/app/compliance" },
+  { label: "Santé", icon: HeartPulse, path: "/app/health" },
+  { label: "Analytiques", icon: BarChart3, path: "/app/analytics" },
+];
+
+const adminNavItems: NavItem[] = [
+  { label: "Administration", icon: Users, path: "/app/admin" },
+  { label: "Paramètres", icon: Settings, path: "/app/settings" },
+];
+
+export default function AppLayout() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, userProfile, signOut } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  const initials = userProfile
+    ? `${userProfile.firstName?.[0] || ""}${userProfile.lastName?.[0] || ""}`
+    : user?.email?.[0]?.toUpperCase() || "U";
+
+  const isActive = (path: string) => location.pathname === path;
+
+  const NavLink = ({ item }: { item: NavItem }) => (
+    <Link
+      to={item.path}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+        "hover:bg-slate-100 group",
+        isActive(item.path)
+          ? "bg-emerald-50 text-emerald-700 font-medium"
+          : "text-slate-600"
+      )}
+      onClick={() => setMobileMenuOpen(false)}
+    >
+      <item.icon
+        className={cn(
+          "h-5 w-5 flex-shrink-0",
+          isActive(item.path)
+            ? "text-emerald-600"
+            : "text-slate-400 group-hover:text-slate-600"
+        )}
+      />
+      {!collapsed && (
+        <>
+          <span className="flex-1">{item.label}</span>
+          {item.badge && (
+            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+              {item.badge}
+            </span>
+          )}
+        </>
+      )}
+      {collapsed && item.badge && (
+        <span className="absolute -right-1 -top-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+          {item.badge}
+        </span>
+      )}
+    </Link>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Mobile Header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-white font-bold text-sm">
+              S
+            </div>
+            <span className="font-bold text-slate-900">SAHTEE</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon">
+            <Bell className="h-5 w-5" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.photoURL || undefined} />
+                  <AvatarFallback className="bg-emerald-500 text-white text-sm">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span>{userProfile?.firstName} {userProfile?.lastName}</span>
+                  <span className="text-xs font-normal text-slate-500">{user?.email}</span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/app/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  Mon profil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/app/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Paramètres
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                Déconnexion
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 bottom-0 z-50 bg-white border-r border-slate-200 transition-all duration-300",
+          collapsed ? "w-[72px]" : "w-64",
+          "hidden lg:flex lg:flex-col",
+          mobileMenuOpen && "!flex"
+        )}
+      >
+        {/* Logo */}
+        <div className={cn(
+          "h-16 flex items-center border-b border-slate-200 px-4",
+          collapsed ? "justify-center" : "justify-between"
+        )}>
+          <Link to="/app/dashboard" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/30">
+              S
+            </div>
+            {!collapsed && (
+              <span className="font-bold text-xl text-slate-900">SAHTEE</span>
+            )}
+          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("hidden lg:flex", collapsed && "absolute -right-3 top-6 bg-white border shadow-sm rounded-full h-6 w-6")}
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <div className="space-y-1">
+            {!collapsed && (
+              <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Principal
+              </p>
+            )}
+            {mainNavItems.map((item) => (
+              <div key={item.path} className="relative">
+                <NavLink item={item} />
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 space-y-1">
+            {!collapsed && (
+              <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Configuration
+              </p>
+            )}
+            {adminNavItems.map((item) => (
+              <div key={item.path} className="relative">
+                <NavLink item={item} />
+              </div>
+            ))}
+          </div>
+        </nav>
+
+        {/* User Section */}
+        <div className={cn(
+          "border-t border-slate-200 p-4",
+          collapsed && "flex justify-center"
+        )}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-3",
+                  collapsed && "w-auto p-2"
+                )}
+              >
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={user?.photoURL || undefined} />
+                  <AvatarFallback className="bg-emerald-500 text-white">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && (
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-slate-900">
+                      {userProfile?.firstName} {userProfile?.lastName}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {user?.email}
+                    </p>
+                  </div>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="w-56">
+              <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/app/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  Mon profil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/app/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Paramètres
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                Déconnexion
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main
+        className={cn(
+          "transition-all duration-300 min-h-screen",
+          collapsed ? "lg:ml-[72px]" : "lg:ml-64",
+          "pt-16 lg:pt-0"
+        )}
+      >
+        {/* Desktop Header */}
+        <header className="hidden lg:flex h-16 bg-white border-b border-slate-200 items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              {/* Dynamic title based on current page */}
+            </h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={user?.photoURL || undefined} />
+                    <AvatarFallback className="bg-emerald-500 text-white">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span>{userProfile?.firstName} {userProfile?.lastName}</span>
+                    <span className="text-xs font-normal text-slate-500">{user?.email}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/app/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    Mon profil
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/app/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Paramètres
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Déconnexion
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="p-6">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+}
