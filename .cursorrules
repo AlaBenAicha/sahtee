@@ -1,0 +1,110 @@
+# SAHTEE Project Rules
+
+## Type Management
+
+### Single Source of Truth
+All shared and common types MUST be defined in the `/src/types/` directory. Types should NEVER be redefined locally if they are used in multiple places.
+
+**DO:**
+```typescript
+// In src/types/capa.ts
+export interface ActionPlan { ... }
+
+// In any component
+import type { ActionPlan } from "@/types/capa";
+```
+
+**DON'T:**
+```typescript
+// In a component file - FORBIDDEN
+interface ActionPlan { ... } // Never redefine types locally!
+```
+
+### Maintainability
+- All modifications to shared types MUST happen only in `/src/types/` to ensure updates propagate globally.
+- When adding a new property to a type, update it in the types directory—never create a local extension or override.
+- Use TypeScript's `type` imports (`import type { ... }`) to make dependencies explicit.
+
+### When to Create New Type Files
+- Create a new file in `/src/types/` when introducing a new domain (e.g., `user.ts`, `audit.ts`).
+- Group related types together in the same file.
+- Export all types that may be used outside the file.
+
+### Local Types
+Local types (used only within a single file) are acceptable but should be:
+- Clearly scoped to that file's functionality
+- Named distinctly to avoid confusion with shared types
+- Converted to shared types if they become used elsewhere
+
+---
+
+## Developer Workflow
+
+### Task Selection (Notion)
+```
+Sahtee Teamspace → Sahtee Tasks Tracker → Filter by "Not started" or "In Progress" → Choose a task → Note the Task ID (e.g., SAH-15)
+```
+
+### Branch Management
+```
+Check current branch (`git branch`) 
+    ↓
+┌─ Task is "Not started"? ─────────────────────────────────┐
+│   → Update task status to "In Progress" in Notion        │
+│   → git checkout develop                                  │
+│   → git pull origin develop                               │
+│   → git checkout -b feature/SAH-XX-short-description      │
+└──────────────────────────────────────────────────────────┘
+┌─ Task is "In Progress" with existing branch? ────────────┐
+│   → git checkout feature/SAH-XX-existing-branch           │
+│   → git pull origin develop                               │
+│   → git merge develop (resolve conflicts if any)          │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Development Cycle
+```
+Code changes → Stage files → Commit with Task ID prefix
+    ↓
+git add .
+git commit -m "SAH-XX: Brief description of change"
+    ↓
+Push to remote
+git push origin feature/SAH-XX-branch-name
+```
+
+### Pull Request
+```
+Open PR: feature/SAH-XX → develop
+    ↓
+PR Title: "SAH-XX: Feature description"
+PR Body: Include "Fixes SAH-XX" to auto-close task on merge
+    ↓
+Request review → Address feedback → Merge when approved
+    ↓
+Task automatically moves to "Done" in Notion
+```
+
+### Branch Naming Convention
+| Type | Format | Example |
+|------|--------|---------|
+| Feature | `feature/SAH-XX-description` | `feature/SAH-15-auth-context` |
+| Bugfix | `bugfix/SAH-XX-description` | `bugfix/SAH-23-login-crash` |
+| Hotfix | `hotfix/SAH-XX-description` | `hotfix/SAH-99-security-fix` |
+
+### Commit Message Format
+```
+SAH-XX: Brief imperative description (max 72 chars)
+
+Optional body explaining what and why (not how).
+```
+
+### Quick Reference
+```
+Start task    → git checkout -b feature/SAH-XX-name develop
+Fix dev bug   → git checkout -b bugfix/SAH-XX-name develop  
+Fix prod bug  → git checkout -b hotfix/SAH-XX-name main
+Link ticket   → "References SAH-XX" in PR description
+Close ticket  → "Fixes SAH-XX" in PR description
+```
+

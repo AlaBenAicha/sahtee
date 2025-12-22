@@ -3,7 +3,7 @@ import path from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/sahtee/",
+  base: "/",
   plugins: [react()],
   resolve: {
     extensions: [".js", ".jsx", ".ts", ".tsx", ".json"],

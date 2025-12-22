@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude --update)",
+      "Bash(claude update:*)",
+      "Bash(claude doctor)",
+      "Bash(claude install:*)",
+      "Bash(unalias:*)",
+      "Read(//Users/macos/**)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
