@@ -2,12 +2,14 @@
  * Application Routes Configuration
  */
 
-import React from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 // Layout
 import AppLayout from "@/components/layout/AppLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+
+// Public Pages
+import LandingPage from "@/pages/LandingPage";
 
 // Auth Pages
 import LoginPage from "@/pages/auth/LoginPage";
@@ -35,6 +37,10 @@ import NotFoundPage from "@/pages/errors/NotFoundPage";
 
 export const router = createBrowserRouter([
   // Public routes
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
   {
     path: "/login",
     element: <LoginPage />,
@@ -119,12 +125,6 @@ export const router = createBrowserRouter([
         element: <OnboardingPage />,
       },
     ],
-  },
-
-  // Redirects
-  {
-    path: "/",
-    element: <Navigate to="/app/dashboard" replace />,
   },
 
   // 404
