@@ -22,33 +22,14 @@ import {
 } from "lucide-react";
 
 interface OnboardingData {
-  // Step 1: Organization
-  organizationName: string;
-  industry: string;
-  size: string;
-  // Step 2: User Profile
-  firstName: string;
-  lastName: string;
+  // Step 1: User Profile (job title and department - name already collected during signup)
   jobTitle: string;
   department: string;
-  phone: string;
-  // Step 3: Preferences
+  // Step 2: Preferences
   safetyModules: string[];
   language: string;
   notifications: boolean;
 }
-
-const industries = [
-  { value: "manufacturing", label: "Industrie manufacturière" },
-  { value: "construction", label: "Construction / BTP" },
-  { value: "oil_gas", label: "Pétrole & Gaz" },
-  { value: "mining", label: "Mines & Carrières" },
-  { value: "chemicals", label: "Chimie & Pétrochimie" },
-  { value: "food", label: "Agroalimentaire" },
-  { value: "pharma", label: "Pharmaceutique" },
-  { value: "logistics", label: "Logistique & Transport" },
-  { value: "other", label: "Autre" },
-];
 
 const safetyModules = [
   { id: "incidents", label: "Gestion des incidents", description: "Déclaration et suivi des incidents" },
@@ -60,7 +41,7 @@ const safetyModules = [
 ];
 
 const steps = [
-  { id: 1, title: "Profil", icon: Users },
+  { id: 1, title: "Compléter le profil", icon: Users },
   { id: 2, title: "Préférences", icon: Shield },
   { id: 3, title: "Terminé", icon: CheckCircle2 },
 ];
@@ -69,14 +50,8 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<OnboardingData>({
-    organizationName: "",
-    industry: "",
-    size: "",
-    firstName: "",
-    lastName: "",
     jobTitle: "",
     department: "",
-    phone: "",
     safetyModules: ["incidents", "capa", "training"],
     language: "fr",
     notifications: true,
@@ -85,21 +60,13 @@ export default function OnboardingPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
 
-  // Pre-fill user data and organization data from signup
+  // Pre-fill user data from signup
   React.useEffect(() => {
     if (userProfile) {
-      const pendingOrg = (userProfile as unknown as { pendingOrganization?: { name: string; industry: string; size: string } }).pendingOrganization;
       setData(prev => ({
         ...prev,
-        firstName: userProfile.firstName || "",
-        lastName: userProfile.lastName || "",
         jobTitle: userProfile.jobTitle || "",
         department: userProfile.department || "",
-        phone: userProfile.phone || "",
-        // Pre-fill organization data from signup
-        organizationName: pendingOrg?.name || "",
-        industry: pendingOrg?.industry || "",
-        size: pendingOrg?.size || "",
       }));
     }
   }, [userProfile]);
@@ -154,39 +121,20 @@ export default function OnboardingPage() {
               <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
                 <Users className="h-8 w-8 text-emerald-600" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900">Votre profil</h2>
-              <p className="text-slate-500 mt-2">Quelques informations sur vous</p>
+              <h2 className="text-2xl font-bold text-slate-900">
+                Bienvenue, {userProfile?.firstName || ""}! 👋
+              </h2>
+              <p className="text-slate-500 mt-2">
+                Complétez votre profil pour personnaliser votre expérience
+              </p>
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">Prénom *</Label>
-                  <Input
-                    id="firstName"
-                    placeholder="Ahmed"
-                    value={data.firstName}
-                    onChange={(e) => updateData("firstName", e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Nom *</Label>
-                  <Input
-                    id="lastName"
-                    placeholder="Ben Ali"
-                    value={data.lastName}
-                    onChange={(e) => updateData("lastName", e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-
               <div>
-                <Label htmlFor="jobTitle">Fonction</Label>
+                <Label htmlFor="jobTitle">Fonction *</Label>
                 <Input
                   id="jobTitle"
-                  placeholder="Ex: Responsable HSE"
+                  placeholder="Ex: Responsable HSE, Directeur Qualité"
                   value={data.jobTitle}
                   onChange={(e) => updateData("jobTitle", e.target.value)}
                   className="mt-2"
@@ -200,18 +148,6 @@ export default function OnboardingPage() {
                   placeholder="Ex: Hygiène, Sécurité, Environnement"
                   value={data.department}
                   onChange={(e) => updateData("department", e.target.value)}
-                  className="mt-2"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phone">Téléphone</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+213 xxx xxx xxx"
-                  value={data.phone}
-                  onChange={(e) => updateData("phone", e.target.value)}
                   className="mt-2"
                 />
               </div>
@@ -289,8 +225,8 @@ export default function OnboardingPage() {
             <div className="bg-slate-50 rounded-lg p-6 text-left max-w-md mx-auto">
               <h3 className="font-semibold text-slate-900 mb-3">Résumé :</h3>
               <ul className="space-y-2 text-sm text-slate-600">
-                <li><span className="text-slate-400">Organisation :</span> {data.organizationName}</li>
-                <li><span className="text-slate-400">Secteur :</span> {industries.find(i => i.value === data.industry)?.label}</li>
+                <li><span className="text-slate-400">Utilisateur :</span> {userProfile?.firstName} {userProfile?.lastName}</li>
+                <li><span className="text-slate-400">Fonction :</span> {data.jobTitle || "Non spécifiée"}</li>
                 <li><span className="text-slate-400">Modules actifs :</span> {data.safetyModules.length}</li>
               </ul>
             </div>
@@ -369,7 +305,7 @@ export default function OnboardingPage() {
             onClick={currentStep < steps.length ? handleNext : handleComplete}
             className="!bg-emerald-500 hover:!bg-emerald-600 !text-white"
             disabled={
-              (currentStep === 1 && (!data.firstName || !data.lastName)) ||
+              (currentStep === 1 && !data.jobTitle) ||
               (currentStep === steps.length && isLoading)
             }
           >

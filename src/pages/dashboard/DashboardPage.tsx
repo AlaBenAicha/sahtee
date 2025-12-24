@@ -112,7 +112,7 @@ export default function DashboardPage() {
             Voici l'aperçu de la sécurité de votre organisation
           </p>
         </div>
-        <Button className="bg-emerald-500 hover:bg-emerald-600">
+        <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
           <ClipboardList className="mr-2 h-4 w-4" />
           Déclarer un incident
         </Button>

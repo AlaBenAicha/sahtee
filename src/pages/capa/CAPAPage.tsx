@@ -15,7 +15,7 @@ export default function CAPAPage() {
           <h1 className="text-3xl font-bold text-slate-900">CAPA</h1>
           <p className="text-slate-600 mt-1">Actions Correctives et Préventives</p>
         </div>
-        <Button className="bg-emerald-500 hover:bg-emerald-600">
+        <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
           <Plus className="mr-2 h-4 w-4" />
           Nouvelle action
         </Button>

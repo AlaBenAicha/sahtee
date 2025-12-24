@@ -57,7 +57,7 @@ export default function AdminPage() {
         </div>
         {canManageUsers && (
           <Link to="/app/admin/users">
-            <Button className="bg-emerald-500 hover:bg-emerald-600">
+            <Button variant="outline" size="sm">
               <Plus className="mr-2 h-4 w-4" />
               Inviter un utilisateur
             </Button>

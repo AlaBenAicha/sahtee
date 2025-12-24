@@ -103,7 +103,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <Button className="bg-emerald-500 hover:bg-emerald-600">
+          <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
             Sauvegarder les modifications
           </Button>
         </CardContent>
@@ -144,7 +144,7 @@ export default function ProfilePage() {
             />
           </div>
 
-          <Button className="bg-emerald-500 hover:bg-emerald-600">
+          <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
             Sauvegarder les modifications
           </Button>
         </CardContent>

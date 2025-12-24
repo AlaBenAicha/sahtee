@@ -295,7 +295,7 @@ export async function createInvitation(
     email: email.toLowerCase(),
     organizationId,
     roleId,
-    departmentId,
+    ...(departmentId && { departmentId }), // Only include if defined
     invitedBy,
     expiresAt,
     status: "pending",

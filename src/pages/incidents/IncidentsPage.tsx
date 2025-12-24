@@ -15,7 +15,7 @@ export default function IncidentsPage() {
           <h1 className="text-3xl font-bold text-slate-900">Incidents</h1>
           <p className="text-slate-600 mt-1">Gérez et suivez les incidents de sécurité</p>
         </div>
-        <Button className="bg-emerald-500 hover:bg-emerald-600">
+        <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
           <Plus className="mr-2 h-4 w-4" />
           Déclarer un incident
         </Button>

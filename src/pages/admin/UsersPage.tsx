@@ -100,7 +100,7 @@ import { getRolesByOrganization } from "@/services/roleService";
 
 // Status badge configuration
 const STATUS_CONFIG: Record<UserStatus, { label: string; color: string }> = {
-  active: { label: "Actif", color: "bg-emerald-100 text-emerald-700" },
+  active: { label: "Actif", color: "bg-green-100 text-green-700" },
   deactivated: { label: "Désactivé", color: "bg-slate-100 text-slate-600" },
   suspended: { label: "Suspendu", color: "bg-red-100 text-red-700" },
   pending: { label: "En attente", color: "bg-amber-100 text-amber-700" },
@@ -109,7 +109,7 @@ const STATUS_CONFIG: Record<UserStatus, { label: string; color: string }> = {
 // Invitation status configuration
 const INVITATION_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending: { label: "En attente", color: "bg-amber-100 text-amber-700", icon: Clock },
-  accepted: { label: "Acceptée", color: "bg-emerald-100 text-emerald-700", icon: UserCheck },
+  accepted: { label: "Acceptée", color: "bg-green-100 text-green-700", icon: UserCheck },
   expired: { label: "Expirée", color: "bg-slate-100 text-slate-600", icon: XCircle },
   cancelled: { label: "Annulée", color: "bg-red-100 text-red-700", icon: XCircle },
 };
@@ -143,13 +143,14 @@ export default function UsersPage() {
     
     setLoading(true);
     try {
-      const [orgUsers, orgInvitations, orgRoles] = await Promise.all([
+      const [usersResponse, orgInvitations, orgRoles] = await Promise.all([
         getUsersByOrganization(userProfile.organizationId),
         getInvitationsByOrganization(userProfile.organizationId),
         getRolesByOrganization(userProfile.organizationId),
       ]);
       
-      setUsers(orgUsers);
+      // getUsersByOrganization returns PaginatedResponse, extract items array
+      setUsers(usersResponse.items || []);
       setInvitations(orgInvitations);
       setRoles(orgRoles);
       
@@ -328,7 +329,7 @@ export default function UsersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
       </div>
     );
   }
@@ -360,7 +361,7 @@ export default function UsersPage() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="bg-emerald-500 hover:bg-emerald-600">
+              <Button variant="outline" size="sm">
                 <Plus className="mr-2 h-4 w-4" />
                 Inviter un utilisateur
               </Button>
@@ -406,10 +407,10 @@ export default function UsersPage() {
                 </div>
                 
                 {generatedLink && (
-                  <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                     <div className="flex items-center gap-2 mb-2">
-                      <Link2 className="h-4 w-4 text-emerald-600" />
-                      <span className="text-sm font-medium text-emerald-700">
+                      <Link2 className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-700">
                         Lien d'invitation généré
                       </span>
                     </div>
@@ -427,7 +428,7 @@ export default function UsersPage() {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-xs text-emerald-600 mt-2">
+                    <p className="text-xs text-green-600 mt-2">
                       Partagez ce lien avec l'utilisateur pour qu'il puisse rejoindre votre organisation.
                     </p>
                   </div>
@@ -441,7 +442,6 @@ export default function UsersPage() {
                 <Button 
                   onClick={handleSendInvitation} 
                   disabled={saving || !inviteEmail.trim() || !inviteRoleId}
-                  className="bg-emerald-500 hover:bg-emerald-600"
                 >
                   {saving ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -494,7 +494,7 @@ export default function UsersPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Link to="/app/admin/roles" className="text-xs text-emerald-600 hover:underline">
+            <Link to="/app/admin/roles" className="text-xs text-green-600 hover:underline">
               Gérer les rôles →
             </Link>
           </CardContent>
@@ -546,7 +546,7 @@ export default function UsersPage() {
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
                             <AvatarImage src={user.photoURL} />
-                            <AvatarFallback className="bg-emerald-100 text-emerald-600 text-sm">
+                            <AvatarFallback className="bg-green-100 text-green-600 text-sm">
                               {getInitials(user)}
                             </AvatarFallback>
                           </Avatar>
@@ -745,7 +745,6 @@ export default function UsersPage() {
             <Button 
               onClick={handleRoleChange} 
               disabled={saving || !selectedRoleId}
-              className="bg-emerald-500 hover:bg-emerald-600"
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirmer

@@ -33,35 +33,55 @@ import {
   Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { FeatureModule } from "@/types/organization";
 
 interface NavItem {
   label: string;
   icon: React.ElementType;
   path: string;
+  /** Feature module for permission checking. If undefined, item is always visible */
+  feature?: FeatureModule;
   badge?: number;
 }
 
 const mainNavItems: NavItem[] = [
-  { label: "Tableau de bord", icon: LayoutDashboard, path: "/app/dashboard" },
-  { label: "Incidents", icon: AlertTriangle, path: "/app/incidents", badge: 3 },
-  { label: "CAPA", icon: FileWarning, path: "/app/capa", badge: 5 },
-  { label: "Formations", icon: GraduationCap, path: "/app/training" },
-  { label: "Conformité", icon: CheckCircle2, path: "/app/compliance" },
-  { label: "Santé", icon: HeartPulse, path: "/app/health" },
-  { label: "Analytiques", icon: BarChart3, path: "/app/analytics" },
+  { label: "Tableau de bord", icon: LayoutDashboard, path: "/app/dashboard", feature: "dashboard" },
+  { label: "Incidents", icon: AlertTriangle, path: "/app/incidents", feature: "incidents", badge: 3 },
+  { label: "CAPA", icon: FileWarning, path: "/app/capa", feature: "capa", badge: 5 },
+  { label: "Formations", icon: GraduationCap, path: "/app/training", feature: "training" },
+  { label: "Conformité", icon: CheckCircle2, path: "/app/compliance", feature: "compliance" },
+  { label: "Santé", icon: HeartPulse, path: "/app/health", feature: "health" },
+  { label: "Analytiques", icon: BarChart3, path: "/app/analytics", feature: "analytics" },
 ];
 
 const adminNavItems: NavItem[] = [
-  { label: "Administration", icon: Users, path: "/app/admin" },
-  { label: "Paramètres", icon: Settings, path: "/app/settings" },
+  { label: "Administration", icon: Users, path: "/app/admin", feature: "users" },
+  { label: "Paramètres", icon: Settings, path: "/app/settings", feature: "settings" },
 ];
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, userProfile, signOut } = useAuth();
+  const [isDesktop, setIsDesktop] = useState(false);
+  const { user, userProfile, signOut, canAccessFeature } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Filter nav items based on user permissions
+  const visibleMainNavItems = mainNavItems.filter(
+    (item) => !item.feature || canAccessFeature(item.feature)
+  );
+  const visibleAdminNavItems = adminNavItems.filter(
+    (item) => !item.feature || canAccessFeature(item.feature)
+  );
+
+  // Track desktop breakpoint for sidebar margin
+  React.useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -78,13 +98,15 @@ export default function AppLayout() {
     <Link
       to={item.path}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 relative",
         "hover:bg-slate-100 group",
+        collapsed && "justify-center",
         isActive(item.path)
           ? "bg-emerald-50 text-emerald-700 font-medium"
           : "text-slate-600"
       )}
       onClick={() => setMobileMenuOpen(false)}
+      title={collapsed ? item.label : undefined}
     >
       <item.icon
         className={cn(
@@ -96,16 +118,16 @@ export default function AppLayout() {
       />
       {!collapsed && (
         <>
-          <span className="flex-1">{item.label}</span>
+          <span className="flex-1 truncate">{item.label}</span>
           {item.badge && (
-            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
               {item.badge}
             </span>
           )}
         </>
       )}
       {collapsed && item.badge && (
-        <span className="absolute -right-1 -top-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full text-[10px]">
           {item.badge}
         </span>
       )}
@@ -187,19 +209,19 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 bottom-0 z-50 bg-white border-r border-slate-200 transition-all duration-300",
-          collapsed ? "w-[72px]" : "w-64",
-          "hidden lg:flex lg:flex-col",
+          "fixed left-0 top-0 bottom-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 flex flex-col",
+          collapsed ? "w-20" : "w-64",
+          "hidden lg:flex",
           mobileMenuOpen && "!flex"
         )}
       >
         {/* Logo */}
         <div className={cn(
-          "h-16 flex items-center border-b border-slate-200 px-4",
+          "h-16 flex items-center border-b border-slate-200 px-4 relative",
           collapsed ? "justify-center" : "justify-between"
         )}>
           <Link to="/app/dashboard" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/30 flex-shrink-0">
               S
             </div>
             {!collapsed && (
@@ -209,11 +231,16 @@ export default function AppLayout() {
           <Button
             variant="ghost"
             size="icon"
-            className={cn("hidden lg:flex", collapsed && "absolute -right-3 top-6 bg-white border shadow-sm rounded-full h-6 w-6")}
+            className={cn(
+              "hidden lg:flex transition-all",
+              collapsed
+                ? "absolute -right-3 top-1/2 -translate-y-1/2 bg-white border shadow-sm rounded-full h-6 w-6 hover:bg-slate-50"
+                : ""
+            )}
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3 w-3" />
             ) : (
               <ChevronLeft className="h-4 w-4" />
             )}
@@ -221,37 +248,39 @@ export default function AppLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <div className="space-y-1">
-            {!collapsed && (
-              <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Principal
-              </p>
-            )}
-            {mainNavItems.map((item) => (
-              <div key={item.path} className="relative">
-                <NavLink item={item} />
-              </div>
-            ))}
-          </div>
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
+          {visibleMainNavItems.length > 0 && (
+            <div className="space-y-1">
+              {!collapsed && (
+                <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Principal
+                </p>
+              )}
+              {collapsed && <div className="h-2" />}
+              {visibleMainNavItems.map((item) => (
+                <NavLink key={item.path} item={item} />
+              ))}
+            </div>
+          )}
 
-          <div className="pt-6 space-y-1">
-            {!collapsed && (
-              <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Configuration
-              </p>
-            )}
-            {adminNavItems.map((item) => (
-              <div key={item.path} className="relative">
-                <NavLink item={item} />
-              </div>
-            ))}
-          </div>
+          {visibleAdminNavItems.length > 0 && (
+            <div className="pt-4 space-y-1">
+              {!collapsed && (
+                <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Configuration
+                </p>
+              )}
+              {collapsed && <div className="h-2 border-t border-slate-100 my-2" />}
+              {visibleAdminNavItems.map((item) => (
+                <NavLink key={item.path} item={item} />
+              ))}
+            </div>
+          )}
         </nav>
 
         {/* User Section */}
         <div className={cn(
-          "border-t border-slate-200 p-4",
+          "border-t border-slate-200 p-3",
           collapsed && "flex justify-center"
         )}>
           <DropdownMenu>
@@ -259,19 +288,19 @@ export default function AppLayout() {
               <Button
                 variant="ghost"
                 className={cn(
-                  "w-full justify-start gap-3",
-                  collapsed && "w-auto p-2"
+                  "w-full justify-start gap-3 h-auto py-2",
+                  collapsed && "w-auto p-2 justify-center"
                 )}
               >
-                <Avatar className="h-9 w-9">
+                <Avatar className={cn("flex-shrink-0", collapsed ? "h-8 w-8" : "h-9 w-9")}>
                   <AvatarImage src={user?.photoURL || undefined} />
-                  <AvatarFallback className="bg-emerald-500 text-white">
+                  <AvatarFallback className="bg-emerald-500 text-white text-sm">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
                 {!collapsed && (
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-slate-900">
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">
                       {userProfile?.firstName} {userProfile?.lastName}
                     </p>
                     <p className="text-xs text-slate-500 truncate">
@@ -306,13 +335,10 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content - offset by sidebar width on desktop */}
       <main
-        className={cn(
-          "transition-all duration-300 min-h-screen",
-          collapsed ? "lg:ml-[72px]" : "lg:ml-64",
-          "pt-16 lg:pt-0"
-        )}
+        className="min-h-screen pt-16 lg:pt-0 transition-all duration-300"
+        style={{ marginLeft: isDesktop ? (collapsed ? 80 : 256) : 0 }}
       >
         {/* Desktop Header */}
         <header className="hidden lg:flex h-16 bg-white border-b border-slate-200 items-center justify-between px-6">

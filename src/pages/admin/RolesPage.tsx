@@ -132,7 +132,7 @@ const FEATURE_CONFIGS: FeatureConfig[] = [
     label: "Conformité", 
     icon: CheckCircle2, 
     description: "Audits et conformité réglementaire",
-    color: "text-emerald-600" 
+    color: "text-green-600" 
   },
   { 
     key: "health", 
@@ -327,6 +327,25 @@ export default function RolesPage() {
     setShowEditDialog(true);
   };
 
+  // Handle create dialog open/close
+  const handleCreateDialogChange = (open: boolean) => {
+    setShowCreateDialog(open);
+    if (open) {
+      // Reset form when opening create dialog
+      setFormData(EMPTY_ROLE);
+    }
+  };
+
+  // Handle edit dialog open/close
+  const handleEditDialogChange = (open: boolean) => {
+    setShowEditDialog(open);
+    if (!open) {
+      // Reset form when closing edit dialog
+      setFormData(EMPTY_ROLE);
+      setEditingRole(null);
+    }
+  };
+
   // Open delete dialog
   const openDeleteDialog = async (role: CustomRole) => {
     try {
@@ -381,9 +400,11 @@ export default function RolesPage() {
     return perms.create || perms.read || perms.update || perms.delete;
   };
 
-  // Count total permissions for a role
+  // Count total permissions for a role (only for features in FEATURE_CONFIGS)
   const countPermissions = (permissions: FeaturePermissions): number => {
-    return Object.values(permissions).reduce((count, crud) => {
+    return FEATURE_CONFIGS.reduce((count, config) => {
+      const crud = permissions[config.key];
+      if (!crud) return count;
       return count + Object.values(crud).filter(Boolean).length;
     }, 0);
   };
@@ -402,34 +423,34 @@ export default function RolesPage() {
                   <CardDescription className="text-xs">{config.description}</CardDescription>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Accès complet</span>
-                <Switch
-                  checked={hasFullAccess(config.key)}
-                  onCheckedChange={(checked) => toggleAllFeaturePermissions(config.key, checked)}
-                />
-              </div>
+              <button
+                onClick={() => toggleAllFeaturePermissions(config.key, !hasFullAccess(config.key))}
+                className={cn(
+                  "text-xs font-medium px-3 py-1.5 rounded-md border transition-colors cursor-pointer",
+                  hasFullAccess(config.key)
+                    ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                    : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                )}
+              >
+                Accès complet
+              </button>
             </div>
           </CardHeader>
           <CardContent className="py-3">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="flex flex-wrap gap-2">
               {CRUD_LABELS.map((crud) => (
-                <div 
+                <button 
                   key={crud.key} 
+                  onClick={() => togglePermission(config.key, crud.key)}
                   className={cn(
-                    "flex items-center justify-between p-2 rounded-lg border transition-colors",
+                    "px-4 py-1.5 rounded-md border transition-colors cursor-pointer hover:shadow-sm text-sm",
                     formData.permissions[config.key][crud.key] 
-                      ? "bg-emerald-50 border-emerald-200" 
-                      : "bg-slate-50 border-slate-200"
+                      ? "bg-green-50 border-green-200 hover:bg-green-100 text-green-700 font-medium" 
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600"
                   )}
                 >
-                  <span className="text-sm font-medium">{crud.label}</span>
-                  <Switch
-                    checked={formData.permissions[config.key][crud.key]}
-                    onCheckedChange={() => togglePermission(config.key, crud.key)}
-                    className="scale-90"
-                  />
-                </div>
+                  {crud.label}
+                </button>
               ))}
             </div>
           </CardContent>
@@ -441,7 +462,7 @@ export default function RolesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
       </div>
     );
   }
@@ -465,9 +486,9 @@ export default function RolesPage() {
         </div>
         
         {canManageRoles && (
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <Dialog open={showCreateDialog} onOpenChange={handleCreateDialogChange}>
             <DialogTrigger asChild>
-              <Button className="bg-emerald-500 hover:bg-emerald-600">
+              <Button variant="outline" size="sm">
                 <Plus className="mr-2 h-4 w-4" />
                 Nouveau rôle
               </Button>
@@ -521,7 +542,6 @@ export default function RolesPage() {
                 <Button 
                   onClick={handleCreateRole} 
                   disabled={saving}
-                  className="bg-emerald-500 hover:bg-emerald-600"
                 >
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Créer le rôle
@@ -539,8 +559,8 @@ export default function RolesPage() {
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                    <Shield className="h-5 w-5 text-emerald-600" />
+                  <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">{role.name}</CardTitle>
@@ -581,7 +601,7 @@ export default function RolesPage() {
               
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-500">Permissions actives</span>
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                   {countPermissions(role.permissions)} / {FEATURE_CONFIGS.length * 4}
                 </Badge>
               </div>
@@ -627,7 +647,7 @@ export default function RolesPage() {
       )}
 
       {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+      <Dialog open={showEditDialog} onOpenChange={handleEditDialogChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Modifier le rôle</DialogTitle>
@@ -675,7 +695,6 @@ export default function RolesPage() {
             <Button 
               onClick={handleUpdateRole} 
               disabled={saving}
-              className="bg-emerald-500 hover:bg-emerald-600"
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Enregistrer

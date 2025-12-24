@@ -7,6 +7,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 // Layout
 import AppLayout from "@/components/layout/AppLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import FeatureGuard from "@/components/auth/FeatureGuard";
 
 // Public Pages
 import LandingPage from "@/pages/LandingPage";
@@ -37,6 +38,7 @@ import OnboardingPage from "@/pages/onboarding/OnboardingPage";
 
 // Error Pages
 import NotFoundPage from "@/pages/errors/NotFoundPage";
+import AccessDeniedPage from "@/pages/errors/AccessDeniedPage";
 
 export const router = createBrowserRouter([
   // Public routes
@@ -79,51 +81,101 @@ export const router = createBrowserRouter([
           },
           {
             path: "dashboard",
-            element: <DashboardPage />,
+            element: (
+              <FeatureGuard feature="dashboard">
+                <DashboardPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "incidents",
-            element: <IncidentsPage />,
+            element: (
+              <FeatureGuard feature="incidents">
+                <IncidentsPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "capa",
-            element: <CAPAPage />,
+            element: (
+              <FeatureGuard feature="capa">
+                <CAPAPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "training",
-            element: <TrainingPage />,
+            element: (
+              <FeatureGuard feature="training">
+                <TrainingPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "compliance",
-            element: <CompliancePage />,
+            element: (
+              <FeatureGuard feature="compliance">
+                <CompliancePage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "health",
-            element: <HealthPage />,
+            element: (
+              <FeatureGuard feature="health">
+                <HealthPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "analytics",
-            element: <AnalyticsPage />,
+            element: (
+              <FeatureGuard feature="analytics">
+                <AnalyticsPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "admin",
-            element: <AdminPage />,
+            element: (
+              <FeatureGuard feature="users">
+                <AdminPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "admin/roles",
-            element: <RolesPage />,
+            element: (
+              <FeatureGuard feature="roles">
+                <RolesPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "admin/users",
-            element: <UsersPage />,
+            element: (
+              <FeatureGuard feature="users">
+                <UsersPage />
+              </FeatureGuard>
+            ),
           },
           {
             path: "settings",
-            element: <SettingsPage />,
+            element: (
+              <FeatureGuard feature="settings">
+                <SettingsPage />
+              </FeatureGuard>
+            ),
           },
           {
+            // Profile is always accessible to authenticated users
             path: "profile",
             element: <ProfilePage />,
+          },
+          {
+            // Access denied page route
+            path: "access-denied",
+            element: <AccessDeniedPage />,
           },
         ],
       },

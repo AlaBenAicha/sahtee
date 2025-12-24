@@ -25,9 +25,11 @@ import type {
   CustomRole, 
   FeaturePermissions, 
   CRUDPermissions, 
+  FeatureModule,
   IndustrySector, 
   CompanySize 
 } from "@/types/organization";
+import { EMPTY_CRUD_PERMISSIONS } from "@/types/organization";
 import { 
   featurePermissionsToLegacy, 
   SUPER_ADMIN_PERMISSIONS, 
@@ -55,10 +57,15 @@ interface AuthContextValue extends AuthState {
   sendVerificationEmail: () => Promise<void>;
   updateUserProfile: (data: Partial<User>) => Promise<void>;
   
-  // Permission checks
+  // Permission checks (legacy)
   hasPermission: (permission: Permission) => boolean;
   hasAnyPermission: (permissions: Permission[]) => boolean;
   hasAllPermissions: (permissions: Permission[]) => boolean;
+  
+  // Feature-based permission checks
+  canAccessFeature: (feature: FeatureModule) => boolean;
+  canPerformAction: (feature: FeatureModule, action: keyof CRUDPermissions) => boolean;
+  getFeaturePermissions: (feature: FeatureModule) => CRUDPermissions;
   
   // Helpers
   isAuthenticated: boolean;
@@ -537,6 +544,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return permissions.every(p => state.session!.permissions.includes(p));
   }, [state.session]);
 
+  // Feature-based permission checks
+  const canAccessFeature = useCallback((feature: FeatureModule): boolean => {
+    if (!state.session) return false;
+    return state.session.featurePermissions[feature]?.read ?? false;
+  }, [state.session]);
+
+  const canPerformAction = useCallback((feature: FeatureModule, action: keyof CRUDPermissions): boolean => {
+    if (!state.session) return false;
+    return state.session.featurePermissions[feature]?.[action] ?? false;
+  }, [state.session]);
+
+  const getFeaturePermissions = useCallback((feature: FeatureModule): CRUDPermissions => {
+    if (!state.session) return EMPTY_CRUD_PERMISSIONS;
+    return state.session.featurePermissions[feature] ?? EMPTY_CRUD_PERMISSIONS;
+  }, [state.session]);
+
   // Clear error
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }));
@@ -558,6 +581,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
+    canAccessFeature,
+    canPerformAction,
+    getFeaturePermissions,
     isAuthenticated,
     isEmailVerified,
     isOnboarded,

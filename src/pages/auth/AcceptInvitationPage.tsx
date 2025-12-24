@@ -212,7 +212,7 @@ export default function AcceptInvitationPage() {
         role: "user", // Legacy role field
         roleId: invitation.roleId,
         isOrgAdmin: false,
-        departmentId: invitation.departmentId,
+        ...(invitation.departmentId && { departmentId: invitation.departmentId }), // Only include if defined
         status: "active",
         emailVerified: false,
         onboardingCompleted: false,
@@ -297,7 +297,7 @@ export default function AcceptInvitationPage() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mb-4" />
+              <Loader2 className="h-12 w-12 animate-spin text-[var(--sahtee-blue-primary)] mb-4" />
               <p className="text-slate-600">Validation de l'invitation...</p>
             </div>
           </CardContent>
@@ -369,7 +369,7 @@ export default function AcceptInvitationPage() {
                 Vous avez déjà accepté cette invitation. Connectez-vous pour accéder à votre compte.
               </p>
               <Link to="/login">
-                <Button className="bg-emerald-500 hover:bg-emerald-600">
+                <Button className="bg-[var(--sahtee-blue-primary)] hover:bg-[var(--sahtee-blue-secondary)] text-white">
                   Se connecter
                 </Button>
               </Link>
@@ -442,7 +442,7 @@ export default function AcceptInvitationPage() {
               <p className="text-slate-600 mb-6">
                 Votre compte a été créé avec succès. Vous allez être redirigé vers le tableau de bord...
               </p>
-              <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--sahtee-blue-primary)]" />
             </div>
           </CardContent>
         </Card>
@@ -454,7 +454,7 @@ export default function AcceptInvitationPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-16 w-16 rounded-2xl bg-emerald-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-emerald-500/30">
+            <div className="h-16 w-16 rounded-2xl bg-[var(--sahtee-blue-primary)] flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-500/30">
               S
             </div>
           </div>
@@ -580,7 +580,7 @@ export default function AcceptInvitationPage() {
             
             <Button 
               type="submit" 
-              className="w-full bg-emerald-500 hover:bg-emerald-600"
+              className="w-full bg-[var(--sahtee-blue-primary)] hover:bg-[var(--sahtee-blue-secondary)] text-white"
               disabled={loading}
             >
               {loading ? (
@@ -595,7 +595,7 @@ export default function AcceptInvitationPage() {
           <div className="text-center">
             <p className="text-sm text-slate-500">
               Vous avez déjà un compte ?{" "}
-              <Link to="/login" className="text-emerald-600 hover:underline font-medium">
+              <Link to="/login" className="text-[var(--sahtee-blue-primary)] hover:underline font-medium">
                 Connectez-vous
               </Link>
             </p>

@@ -6,8 +6,17 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Plus } from "lucide-react";
+import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function CompliancePage() {
+  const { canCreate } = useFeaturePermissions("compliance");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -15,10 +24,26 @@ export default function CompliancePage() {
           <h1 className="text-3xl font-bold text-slate-900">Conformité</h1>
           <p className="text-slate-600 mt-1">Gérez les audits et vérifications de conformité</p>
         </div>
-        <Button className="bg-emerald-500 hover:bg-emerald-600">
-          <Plus className="mr-2 h-4 w-4" />
-          Nouvel audit
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button 
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!canCreate}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nouvel audit
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canCreate && (
+              <TooltipContent>
+                <p>Vous n'avez pas la permission de créer des audits</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       <Card>

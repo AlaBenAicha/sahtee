@@ -13,25 +13,37 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
     
+    // Helper function to get user data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
     // Helper function to check if user belongs to an organization
     function belongsToOrg(orgId) {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+        getUserData().organizationId == orgId;
     }
     
     // Helper function to check user role
     function hasRole(role) {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+        getUserData().role == role;
     }
     
-    // Helper function to check if user is admin or owner
-    function isAdminOrOwner() {
+    // Helper function to check if user is org_admin or super_admin
+    function isOrgAdminOrSuperAdmin() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'owner'];
+        (getUserData().role in ['org_admin', 'super_admin'] || getUserData().isOrgAdmin == true);
+    }
+    
+    // Helper function to check if user is super_admin
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserData().role == 'super_admin';
     }
 
     // Users collection
@@ -45,33 +57,96 @@ service cloud.firestore {
       // Users can update their own profile
       allow update: if isOwner(userId);
       
-      // Only admins can delete users
-      allow delete: if isAdminOrOwner();
+      // Only org_admin or super_admin can delete users
+      allow delete: if isOrgAdminOrSuperAdmin();
       
-      // Admins can read all users in their organization
-      allow read: if isAdminOrOwner() && 
-        resource.data.organizationId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId;
+      // Org admins can read all users in their organization
+      allow read: if isOrgAdminOrSuperAdmin() && 
+        resource.data.organizationId == getUserData().organizationId;
+      
+      // Org admins can update users in their organization (for role changes)
+      allow update: if isOrgAdminOrSuperAdmin() && 
+        resource.data.organizationId == getUserData().organizationId;
     }
 
     // Organizations collection
     match /organizations/{orgId} {
-      // Members can read their organization
-      allow read: if belongsToOrg(orgId);
+      // Allow anyone to get org by ID (needed for invitation acceptance)
+      // but restrict listing to members only
+      allow get: if true;
+      allow list: if isAuthenticated() && belongsToOrg(orgId);
       
-      // Authenticated users can create organizations (during onboarding)
+      // Authenticated users can create organizations (during signup/onboarding)
       allow create: if isAuthenticated();
       
-      // Only admins/owners can update organization
-      allow update: if belongsToOrg(orgId) && isAdminOrOwner();
+      // Only org_admin/super_admin can update organization
+      allow update: if belongsToOrg(orgId) && isOrgAdminOrSuperAdmin();
       
-      // Only owners can delete organization
-      allow delete: if belongsToOrg(orgId) && hasRole('owner');
+      // Only super_admin can delete organization
+      allow delete: if isSuperAdmin();
+    }
+
+    // Roles collection (custom roles per organization)
+    match /roles/{roleId} {
+      // Allow anyone to get role by ID (needed for invitation acceptance)
+      // but restrict listing to organization members
+      allow get: if true;
+      allow list: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      
+      // Authenticated users can create roles (during signup - template roles)
+      allow create: if isAuthenticated();
+      
+      // Only org_admin can update roles in their organization
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
+      
+      // Only org_admin can delete roles in their organization
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
+    }
+
+    // Invitations collection
+    match /invitations/{invitationId} {
+      // Anyone can read invitations by token (for accepting)
+      // This is needed for the invitation acceptance flow
+      // Split into get and list for explicit permissions
+      allow get: if true;
+      allow list: if true;
+      
+      // Org admins can create invitations for their organization
+      allow create: if isAuthenticated() && 
+        isOrgAdminOrSuperAdmin();
+      
+      // Allow updates for invitation acceptance during signup
+      // The invitation status is updated when a user accepts and creates their account
+      allow update: if true;
+      
+      // Org admins can delete/cancel invitations in their organization
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
     }
 
     // Sites collection (sub-collection of organizations)
     match /organizations/{orgId}/sites/{siteId} {
       allow read: if belongsToOrg(orgId);
-      allow write: if belongsToOrg(orgId) && isAdminOrOwner();
+      allow write: if belongsToOrg(orgId) && isOrgAdminOrSuperAdmin();
+    }
+    
+    // Departments collection
+    match /departments/{departmentId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated() && isOrgAdminOrSuperAdmin();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
     }
 
     // Incidents collection
@@ -81,7 +156,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
-      allow delete: if belongsToOrg(resource.data.organizationId) && isAdminOrOwner();
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
     // Action Plans collection
@@ -91,7 +166,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
-      allow delete: if belongsToOrg(resource.data.organizationId) && isAdminOrOwner();
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
     // Training Plans collection
@@ -101,7 +176,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
-      allow delete: if belongsToOrg(resource.data.organizationId) && isAdminOrOwner();
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
     // Conformity Checks collection
@@ -111,7 +186,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
-      allow delete: if belongsToOrg(resource.data.organizationId) && isAdminOrOwner();
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
     // Audits collection
@@ -121,7 +196,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
-      allow delete: if belongsToOrg(resource.data.organizationId) && isAdminOrOwner();
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
     // Health Records collection
@@ -131,7 +206,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
-      allow delete: if belongsToOrg(resource.data.organizationId) && isAdminOrOwner();
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
     // Safety Inspections collection
@@ -141,8 +216,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
-      allow delete: if belongsToOrg(resource.data.organizationId) && isAdminOrOwner();
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
   }
 }
-
