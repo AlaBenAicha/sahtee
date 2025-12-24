@@ -127,7 +127,8 @@ export async function getUsersByDepartment(
 }
 
 /**
- * Get users by role
+ * Get users by legacy role
+ * @deprecated Use getUsersByRoleId instead
  */
 export async function getUsersByRole(
   organizationId: string,
@@ -137,6 +138,45 @@ export async function getUsersByRole(
     collection(db, USERS_COLLECTION),
     where("organizationId", "==", organizationId),
     where("role", "==", role),
+    orderBy("displayName", "asc")
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as User[];
+}
+
+/**
+ * Get users by custom role ID
+ */
+export async function getUsersByRoleId(
+  organizationId: string,
+  roleId: string
+): Promise<User[]> {
+  const q = query(
+    collection(db, USERS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("roleId", "==", roleId),
+    orderBy("displayName", "asc")
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as User[];
+}
+
+/**
+ * Get organization admins
+ */
+export async function getOrganizationAdmins(organizationId: string): Promise<User[]> {
+  const q = query(
+    collection(db, USERS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("isOrgAdmin", "==", true),
     orderBy("displayName", "asc")
   );
   
@@ -177,7 +217,8 @@ export async function updateUserStatus(
 }
 
 /**
- * Update user role
+ * Update user legacy role
+ * @deprecated Use updateUserRoleId instead
  */
 export async function updateUserRole(
   userId: string,
@@ -185,6 +226,28 @@ export async function updateUserRole(
   updatedBy: string
 ): Promise<void> {
   await updateUser(userId, { role }, updatedBy);
+}
+
+/**
+ * Update user's custom role ID
+ */
+export async function updateUserRoleId(
+  userId: string,
+  roleId: string,
+  updatedBy: string
+): Promise<void> {
+  await updateUser(userId, { roleId }, updatedBy);
+}
+
+/**
+ * Update user's org_admin status
+ */
+export async function updateUserOrgAdminStatus(
+  userId: string,
+  isOrgAdmin: boolean,
+  updatedBy: string
+): Promise<void> {
+  await updateUser(userId, { isOrgAdmin }, updatedBy);
 }
 
 /**
@@ -210,12 +273,12 @@ export async function deleteUser(userId: string): Promise<void> {
 // =============================================================================
 
 /**
- * Create a user invitation
+ * Create a user invitation with custom role
  */
 export async function createInvitation(
   email: string,
   organizationId: string,
-  role: UserRole,
+  roleId: string,
   invitedBy: string,
   departmentId?: string
 ): Promise<UserInvitation> {
@@ -231,7 +294,7 @@ export async function createInvitation(
   const invitation: Omit<UserInvitation, "id"> = {
     email: email.toLowerCase(),
     organizationId,
-    role,
+    roleId,
     departmentId,
     invitedBy,
     expiresAt,
@@ -245,6 +308,41 @@ export async function createInvitation(
   await setDoc(docRef, invitation);
   
   return { id: docRef.id, ...invitation };
+}
+
+/**
+ * Generate a shareable invitation link
+ */
+export function generateInvitationLink(token: string, baseUrl: string = window.location.origin): string {
+  return `${baseUrl}/join?token=${token}`;
+}
+
+/**
+ * Check if an invitation is valid (not expired and pending)
+ */
+export async function isInvitationValid(token: string): Promise<{
+  valid: boolean;
+  invitation: UserInvitation | null;
+  error?: string;
+}> {
+  const invitation = await getInvitationByToken(token);
+  
+  if (!invitation) {
+    return { valid: false, invitation: null, error: "Invitation non trouvée" };
+  }
+  
+  if (invitation.status !== "pending") {
+    return { valid: false, invitation, error: "Cette invitation a déjà été utilisée ou annulée" };
+  }
+  
+  const now = new Date();
+  const expiresAt = invitation.expiresAt.toDate();
+  
+  if (now > expiresAt) {
+    return { valid: false, invitation, error: "Cette invitation a expiré" };
+  }
+  
+  return { valid: true, invitation };
 }
 
 /**

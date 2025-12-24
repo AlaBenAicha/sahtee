@@ -233,3 +233,72 @@ export interface Site extends FirestoreDocument {
   audit: AuditInfo;
 }
 
+// =============================================================================
+// Custom Role-Based Access Control (RBAC)
+// =============================================================================
+
+/** Feature modules available in the platform */
+export type FeatureModule =
+  | "dashboard"
+  | "incidents"
+  | "capa"
+  | "training"
+  | "compliance"
+  | "health"
+  | "analytics"
+  | "settings"
+  | "users";
+
+/** CRUD permissions for a single feature */
+export interface CRUDPermissions {
+  create: boolean;
+  read: boolean;
+  update: boolean;
+  delete: boolean;
+}
+
+/** Permissions for all feature modules */
+export interface FeaturePermissions {
+  dashboard: CRUDPermissions;
+  incidents: CRUDPermissions;
+  capa: CRUDPermissions;
+  training: CRUDPermissions;
+  compliance: CRUDPermissions;
+  health: CRUDPermissions;
+  analytics: CRUDPermissions;
+  settings: CRUDPermissions;
+  users: CRUDPermissions;
+}
+
+/** Custom role created by org_admin */
+export interface CustomRole extends FirestoreDocument {
+  organizationId: string;
+  name: string;
+  description?: string;
+  /** true = auto-generated template role, can be edited/deleted by org_admin */
+  isTemplate: boolean;
+  permissions: FeaturePermissions;
+  audit: AuditInfo;
+}
+
+/** Default empty CRUD permissions */
+export const EMPTY_CRUD_PERMISSIONS: CRUDPermissions = {
+  create: false,
+  read: false,
+  update: false,
+  delete: false,
+};
+
+/** Default empty feature permissions */
+export const EMPTY_FEATURE_PERMISSIONS: FeaturePermissions = {
+  dashboard: { ...EMPTY_CRUD_PERMISSIONS },
+  incidents: { ...EMPTY_CRUD_PERMISSIONS },
+  capa: { ...EMPTY_CRUD_PERMISSIONS },
+  training: { ...EMPTY_CRUD_PERMISSIONS },
+  compliance: { ...EMPTY_CRUD_PERMISSIONS },
+  health: { ...EMPTY_CRUD_PERMISSIONS },
+  analytics: { ...EMPTY_CRUD_PERMISSIONS },
+  settings: { ...EMPTY_CRUD_PERMISSIONS },
+  users: { ...EMPTY_CRUD_PERMISSIONS },
+};
+

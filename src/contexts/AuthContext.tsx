@@ -17,9 +17,24 @@ import {
   updateProfile,
   UserCredential,
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp, writeBatch, collection } from "firebase/firestore";
 import { auth, db } from "@/config/firebase";
-import type { User, UserSession, UserRole, Permission, ROLE_PERMISSIONS } from "@/types/user";
+import type { User, UserSession, UserRole, Permission } from "@/types/user";
+import type { 
+  Organization, 
+  CustomRole, 
+  FeaturePermissions, 
+  CRUDPermissions, 
+  IndustrySector, 
+  CompanySize 
+} from "@/types/organization";
+import { 
+  featurePermissionsToLegacy, 
+  SUPER_ADMIN_PERMISSIONS, 
+  ORG_ADMIN_PERMISSIONS 
+} from "@/types/user";
+import { TEMPLATE_ROLES, getRoleById } from "@/services/roleService";
+import { getDefaultOnboardingData } from "@/services/organizationService";
 
 /** Authentication state */
 interface AuthState {
@@ -57,13 +72,15 @@ interface SignUpData {
   firstName: string;
   lastName: string;
   phone?: string;
-  organizationId: string;
-  role?: UserRole;
-  /** Organization data collected during signup to skip onboarding step 1 */
-  pendingOrganization?: {
+  /** 
+   * Organization data for creating new org during signup.
+   * When provided, creates a new organization and makes this user the org_admin.
+   */
+  organization: {
     name: string;
-    industry: string;
-    size: string;
+    sector: IndustrySector;
+    size: CompanySize;
+    employeeCount: number;
   };
 }
 
@@ -104,10 +121,86 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  // Build session from user profile
-  const buildSession = useCallback((profile: User): UserSession => {
-    // Import ROLE_PERMISSIONS dynamically to avoid circular dependency
-    const rolePermissions = getRolePermissions(profile.role);
+  // Build session from user profile and role
+  const buildSession = useCallback(async (
+    profile: User, 
+    role: CustomRole | null
+  ): Promise<UserSession> => {
+    // Determine feature permissions based on role hierarchy
+    let featurePermissions: FeaturePermissions;
+    let roleName = "Utilisateur";
+    
+    if (profile.role === "super_admin") {
+      // Platform super admin has full access
+      featurePermissions = SUPER_ADMIN_PERMISSIONS;
+      roleName = "Super Admin";
+    } else if (profile.isOrgAdmin) {
+      // Org admin has full access within their organization
+      featurePermissions = ORG_ADMIN_PERMISSIONS;
+      roleName = "Administrateur";
+    } else if (role) {
+      // Regular user - use permissions from their assigned role
+      featurePermissions = role.permissions;
+      roleName = role.name;
+    } else {
+      // Fallback - use legacy role permissions
+      const legacyPermissions = getRolePermissions(profile.role);
+      // Convert legacy permissions to empty feature permissions
+      featurePermissions = {
+        dashboard: { create: false, read: true, update: false, delete: false },
+        incidents: { 
+          create: legacyPermissions.includes("incidents:create"), 
+          read: legacyPermissions.includes("incidents:read"), 
+          update: legacyPermissions.includes("incidents:update"), 
+          delete: legacyPermissions.includes("incidents:delete") 
+        },
+        capa: { 
+          create: legacyPermissions.includes("capa:create"), 
+          read: legacyPermissions.includes("capa:read"), 
+          update: legacyPermissions.includes("capa:update"), 
+          delete: legacyPermissions.includes("capa:delete") 
+        },
+        training: { 
+          create: legacyPermissions.includes("training:create"), 
+          read: legacyPermissions.includes("training:read"), 
+          update: legacyPermissions.includes("training:update"), 
+          delete: legacyPermissions.includes("training:delete") 
+        },
+        compliance: { 
+          create: legacyPermissions.includes("compliance:create"), 
+          read: legacyPermissions.includes("compliance:read"), 
+          update: legacyPermissions.includes("compliance:update"), 
+          delete: legacyPermissions.includes("compliance:delete") 
+        },
+        health: { 
+          create: legacyPermissions.includes("health:create"), 
+          read: legacyPermissions.includes("health:read"), 
+          update: legacyPermissions.includes("health:update"), 
+          delete: legacyPermissions.includes("health:delete") 
+        },
+        analytics: { 
+          create: false, 
+          read: legacyPermissions.includes("analytics:read"), 
+          update: false, 
+          delete: false 
+        },
+        settings: { 
+          create: false, 
+          read: legacyPermissions.includes("settings:read"), 
+          update: legacyPermissions.includes("settings:update"), 
+          delete: false 
+        },
+        users: { 
+          create: legacyPermissions.includes("users:create"), 
+          read: legacyPermissions.includes("users:read"), 
+          update: legacyPermissions.includes("users:update"), 
+          delete: legacyPermissions.includes("users:delete") 
+        },
+      };
+    }
+    
+    // Convert to legacy permissions for backwards compatibility
+    const legacyPermissions = featurePermissionsToLegacy(featurePermissions);
     
     return {
       uid: profile.uid,
@@ -116,7 +209,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       photoURL: profile.photoURL,
       organizationId: profile.organizationId,
       role: profile.role,
-      permissions: rolePermissions,
+      roleId: profile.roleId,
+      roleName,
+      isOrgAdmin: profile.isOrgAdmin,
+      featurePermissions,
+      permissions: legacyPermissions,
     };
   }, []);
 
@@ -126,7 +223,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (firebaseUser) {
         // User is signed in
         const profile = await loadUserProfile(firebaseUser);
-        const session = profile ? buildSession(profile) : null;
+        
+        let session: UserSession | null = null;
+        if (profile) {
+          // Load role if user has a roleId
+          const role = profile.roleId ? await getRoleById(profile.roleId) : null;
+          session = await buildSession(profile, role);
+        }
         
         setState({
           user: firebaseUser,
@@ -174,6 +277,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   // Sign up with email and password
+  // Creates: Organization → Template Roles → User (as org_admin)
   const signUp = useCallback(async (
     email: string,
     password: string,
@@ -189,20 +293,121 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const displayName = `${userData.firstName} ${userData.lastName}`;
       await updateProfile(firebaseUser, { displayName });
 
-      // Create user profile in Firestore
       const now = Timestamp.now();
+      const batch = writeBatch(db);
+
+      // 1. Create Organization document
+      const orgRef = doc(collection(db, "organizations"));
+      const orgId = orgRef.id;
+      
+      const organization: Omit<Organization, "id"> = {
+        name: userData.organization.name,
+        legalName: userData.organization.name,
+        registrationNumber: "",
+        address: {
+          street: "",
+          city: "",
+          governorate: "",
+          postalCode: "",
+          country: "Tunisie",
+        },
+        contact: {
+          email: firebaseUser.email!,
+        },
+        sector: userData.organization.sector,
+        size: userData.organization.size,
+        employeeCount: userData.organization.employeeCount,
+        plan: "starter",
+        status: "trial",
+        trialEndsAt: Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)), // 14 days trial
+        features: {
+          capa: true,
+          incidents: true,
+          training: false,
+          compliance: false,
+          health: false,
+          analytics: false,
+          aiAssistant: false,
+          mobileApp: false,
+          apiAccess: false,
+          customBranding: false,
+        },
+        limits: {
+          maxUsers: 10,
+          maxDepartments: 3,
+          maxStorageGB: 5,
+          maxMonthlyReports: 10,
+          maxAIQueries: 0,
+        },
+        onboarding: getDefaultOnboardingData(),
+        settings: {
+          language: "fr",
+          timezone: "Africa/Tunis",
+          dateFormat: "DD/MM/YYYY",
+          currency: "TND",
+          requireIncidentPhotos: false,
+          requireWitnesses: false,
+          autoGenerateCapa: false,
+          adminNotifications: true,
+          weeklyDigest: true,
+        },
+        audit: {
+          createdBy: firebaseUser.uid,
+          createdAt: now,
+          updatedBy: firebaseUser.uid,
+          updatedAt: now,
+        },
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      batch.set(orgRef, organization);
+
+      // 2. Create Template Roles for the organization
+      let qhseRoleId = "";
+      
+      for (const templateRole of TEMPLATE_ROLES) {
+        const roleRef = doc(collection(db, "roles"));
+        
+        const role: Omit<CustomRole, "id"> = {
+          ...templateRole,
+          organizationId: orgId,
+          createdAt: now,
+          updatedAt: now,
+          audit: {
+            createdBy: firebaseUser.uid,
+            createdAt: now,
+            updatedBy: firebaseUser.uid,
+            updatedAt: now,
+          },
+        };
+        
+        batch.set(roleRef, role);
+        
+        // Keep track of the QHSE role ID to assign to org_admin
+        if (templateRole.name === "QHSE") {
+          qhseRoleId = roleRef.id;
+        }
+      }
+
+      // 3. Create User profile as org_admin
+      const userRef = doc(db, "users", firebaseUser.uid);
+      
       const userProfile: Omit<User, "id"> = {
         uid: firebaseUser.uid,
         email: firebaseUser.email!,
         displayName,
         firstName: userData.firstName,
         lastName: userData.lastName,
-        organizationId: userData.organizationId,
-        role: userData.role || "user",
+        phone: userData.phone,
+        organizationId: orgId,
+        role: "org_admin", // Legacy role field
+        roleId: qhseRoleId, // Assigned QHSE role by default
+        isOrgAdmin: true, // This user is the organization administrator
         status: "active",
         emailVerified: false,
         onboardingCompleted: false,
-        onboardingStep: 0,
+        onboardingStep: 1, // Skip org setup step since we already have the data
         preferences: {
           language: "fr",
           theme: "system",
@@ -235,7 +440,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         updatedAt: now,
       };
 
-      await setDoc(doc(db, "users", firebaseUser.uid), userProfile);
+      batch.set(userRef, userProfile);
+
+      // Commit all documents atomically
+      await batch.commit();
 
       // Send verification email
       await sendEmailVerification(firebaseUser);
@@ -290,13 +498,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         updatedAt: serverTimestamp(),
       }, { merge: true });
 
-      // Reload profile
+      // Reload profile and role
       const updatedProfile = await loadUserProfile(state.user);
       if (updatedProfile) {
+        const role = updatedProfile.roleId ? await getRoleById(updatedProfile.roleId) : null;
+        const session = await buildSession(updatedProfile, role);
         setState(prev => ({
           ...prev,
           userProfile: updatedProfile,
-          session: buildSession(updatedProfile),
+          session,
         }));
       }
     } catch (error: unknown) {

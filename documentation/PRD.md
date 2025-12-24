@@ -860,40 +860,109 @@ service cloud.firestore {
 
 ## 5. Authentication & Authorization
 
-### User Roles & Permissions Matrix
+### Role-Based Access Control (RBAC)
 
-| Permission | Admin (QHSE) | HR Manager | Dept Head | Physician | Employee |
-|------------|:------------:|:----------:|:---------:|:---------:|:--------:|
-| dashboard:read | ✅ | ✅ | ✅ | ✅ | ❌ |
-| conformity:read | ✅ | ✅ | ❌ | ✅ | ❌ |
-| conformity:write | ✅ | ❌ | ❌ | ❌ | ❌ |
-| capa:read | ✅ | ✅ | ✅* | ✅ | ❌ |
-| capa:write | ✅ | ❌ | ✅* | ✅ | ❌ |
-| health:read | ✅ | ❌ | ❌ | ✅ | ❌ |
-| health:write | ❌ | ❌ | ❌ | ✅ | ❌ |
-| health:medical | ❌ | ❌ | ❌ | ✅ | ❌ |
-| incidents:report | ✅ | ✅ | ✅ | ✅ | ✅ |
-| incidents:manage | ✅ | ❌ | ✅* | ❌ | ❌ |
-| audits:read | ✅ | ✅ | ❌ | ✅ | ❌ |
-| audits:write | ✅ | ❌ | ❌ | ❌ | ❌ |
-| users:manage | ✅ | ❌ | ❌ | ❌ | ❌ |
-| settings:manage | ✅ | ❌ | ❌ | ❌ | ❌ |
+SAHTEE implements a **flexible RBAC system** where organization administrators can create custom roles with granular CRUD permissions per feature module.
 
-*\* Limited to their department scope*
+#### System Roles
+
+| Role | Scope | Description |
+|------|-------|-------------|
+| `super_admin` | Platform | SAHTEE team only. Full access to all organizations. |
+| `org_admin` | Organization | First user who creates the organization. Can manage roles, invite users, and configure settings. |
+| Regular users | Organization | Permissions defined by their assigned `CustomRole`. |
+
+#### Custom Roles (Template Defaults)
+
+When a new organization is created, these template roles are auto-generated. The `org_admin` can edit, delete, or create new roles.
+
+| Role | Description | Default Access |
+|------|-------------|----------------|
+| **QHSE** | Responsable Qualité Hygiène Sécurité Environnement | Full CRUD on all modules except health:delete |
+| **RH** | Responsable Ressources Humaines | Training CRUD, read-only on others |
+| **Chef de département** | Department/Workshop Manager | Incidents & CAPA CRUD, read on training |
+| **Médecin du travail** | Occupational Physician | Full health access including medical records |
+| **Employé** | Basic Employee | Incident reporting, training read-only |
+
+#### Permission Structure
+
+Each `CustomRole` has granular permissions per feature module:
+
+```typescript
+interface FeaturePermissions {
+  dashboard: CRUDPermissions;
+  incidents: CRUDPermissions;
+  capa: CRUDPermissions;
+  training: CRUDPermissions;
+  compliance: CRUDPermissions;
+  health: CRUDPermissions;
+  analytics: CRUDPermissions;
+  settings: CRUDPermissions;
+  users: CRUDPermissions;
+}
+
+interface CRUDPermissions {
+  create: boolean;
+  read: boolean;
+  update: boolean;
+  delete: boolean;
+}
+```
 
 ### Authentication Flow
 
 ```typescript
-// src/hooks/useAuth.ts
-interface AuthContext {
-  user: User | null;
+// src/contexts/AuthContext.tsx
+interface AuthContextValue {
+  user: FirebaseUser | null;
+  userProfile: User | null;
+  session: UserSession | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  
+  // Auth methods
+  signIn: (email: string, password: string) => Promise<UserCredential>;
+  signUp: (email: string, password: string, userData: SignUpData) => Promise<UserCredential>;
   signOut: () => Promise<void>;
+  
+  // Permission checks
   hasPermission: (permission: Permission) => boolean;
-  hasRole: (role: UserRole) => boolean;
+  
+  // Helpers
+  isAuthenticated: boolean;
+  isEmailVerified: boolean;
+  isOnboarded: boolean;
+}
+
+interface UserSession {
+  uid: string;
+  organizationId: string;
+  roleId: string;
+  roleName: string;
+  isOrgAdmin: boolean;
+  featurePermissions: FeaturePermissions;
 }
 ```
+
+### Signup Flow (Atomic Creation)
+
+When a user signs up with company information:
+
+1. **Create Organization** document in `/organizations/{orgId}`
+2. **Create Template Roles** (5 roles) in `/roles/{roleId}` with `organizationId`
+3. **Create User** in `/users/{userId}` with:
+   - `organizationId`: the new org ID
+   - `roleId`: QHSE role ID
+   - `isOrgAdmin: true`
+   - `role: "org_admin"` (legacy field)
+
+All three operations are performed atomically using Firestore `writeBatch`.
+
+### User Invitation Flow
+
+1. `org_admin` creates invitation via `createInvitation(email, orgId, roleId)`
+2. System sends email with invitation link or provides shareable link
+3. Invited user clicks `/join?token=xxx`
+4. System validates token and creates user with specified `roleId`
 
 ---
 
@@ -1240,12 +1309,36 @@ exports.generateReport = functions.https.onCall(async (data, context) => {
 ## 11. Development Phases
 
 ### Phase 1: Foundation (Weeks 1-4)
-- [ ] Firebase project setup (Auth, Firestore, Storage, Hosting)
-- [ ] Authentication system with role-based access
-- [ ] User management (CRUD, role assignment)
-- [ ] Organization setup and onboarding form
-- [ ] Basic navigation and layout
-- [ ] Type definitions in `/src/types/`
+- [x] Firebase project setup (Auth, Firestore, Storage, Hosting)
+- [x] Type definitions in `/src/types/` (single source of truth)
+- [x] Basic navigation and layout
+- [x] Authentication system with Firebase Auth
+- [x] **Atomic Organization + User creation during signup**
+  - When user signs up with company info, create Organization → Template Roles → User atomically
+  - First user becomes `org_admin` with full organization permissions
+- [x] **Custom role system with CRUD permissions per feature module**
+  - `CustomRole` type with granular permissions: `{ dashboard, incidents, capa, training, compliance, health, analytics, settings, users }`
+  - Each feature has CRUD permissions: `{ create, read, update, delete }`
+- [x] **Pre-configured template roles (auto-created for new organizations)**
+  - QHSE: Full access to all modules except medical records
+  - RH: Training management, read access to incidents/CAPA
+  - Chef de département: CAPA/incidents for their department
+  - Médecin du travail: Full health/medical access
+  - Employé: Incident reporting and training read-only
+- [ ] **Role management UI for org_admin**
+  - View/edit/delete template roles
+  - Create custom roles with granular permissions
+  - Visual permission matrix editor
+- [x] User management (CRUD, role assignment via roleId)
+- [x] **User invitation system (email + shareable link)**
+  - `createInvitation(email, orgId, roleId)` - send email invite
+  - `generateInvitationLink(token)` - shareable link for org_admin
+  - `isInvitationValid(token)` - validate before accepting
+- [ ] **Invitation acceptance flow**
+  - `/join?token=xxx` page to accept invitations
+  - Auto-assign role from invitation
+  - Create user with correct organizationId and roleId
+- [ ] Organization setup and extended onboarding form
 
 ### Phase 2: 360° Board (Weeks 5-6)
 - [ ] KPI calculation Cloud Functions

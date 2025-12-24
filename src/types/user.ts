@@ -4,9 +4,19 @@
 
 import type { Timestamp } from "firebase/firestore";
 import type { FirestoreDocument, AuditInfo } from "./common";
+import type { FeaturePermissions } from "./organization";
 
-/** User roles within an organization */
-export type UserRole = 
+/** 
+ * System-level user role (platform-wide, not organization-specific)
+ * Regular organization users get their permissions from CustomRole via roleId
+ */
+export type SystemRole = "super_admin" | "regular";
+
+/**
+ * @deprecated Use roleId with CustomRole instead for organization-level roles
+ * Kept for backwards compatibility during migration
+ */
+export type UserRole =
   | "super_admin"    // Platform administrator (SAHTEE team)
   | "org_admin"      // Organization administrator
   | "manager"        // Department/team manager  
@@ -20,35 +30,49 @@ export type UserStatus = "active" | "pending" | "suspended" | "deactivated";
 export interface User extends FirestoreDocument {
   // Firebase Auth UID (same as document ID)
   uid: string;
-  
+
   // Basic info
   email: string;
   displayName: string;
   firstName: string;
   lastName: string;
   photoURL?: string;
-  
+
   // Organization membership
   organizationId: string;
+  /**
+   * @deprecated Use roleId + isOrgAdmin instead. Kept for super_admin check only.
+   */
   role: UserRole;
+  /**
+   * Reference to CustomRole document in /roles collection.
+   * Determines feature-level CRUD permissions for non-super_admin users.
+   * Empty string for super_admin users (they have full access via systemRole).
+   */
+  roleId: string;
+  /**
+   * Whether this user is the organization administrator.
+   * org_admin can manage roles, invite users, and configure organization settings.
+   */
+  isOrgAdmin: boolean;
   departmentId?: string;
-  
+
   // Contact
   phone?: string;
   mobile?: string;
-  
+
   // Account status
   status: UserStatus;
   lastLoginAt?: Timestamp;
   emailVerified: boolean;
-  
+
   // Preferences
   preferences: UserPreferences;
-  
+
   // Onboarding
   onboardingCompleted: boolean;
   onboardingStep?: number;
-  
+
   // Audit
   audit: AuditInfo;
 }
@@ -87,7 +111,15 @@ export interface DashboardPreferences {
 export interface UserInvitation extends FirestoreDocument {
   email: string;
   organizationId: string;
-  role: UserRole;
+  /**
+   * Reference to CustomRole document in /roles collection.
+   * The invited user will be assigned this role upon accepting.
+   */
+  roleId: string;
+  /**
+   * @deprecated Use roleId instead. Kept for backwards compatibility.
+   */
+  role?: UserRole;
   departmentId?: string;
   invitedBy: string;
   expiresAt: Timestamp;
@@ -102,7 +134,26 @@ export interface UserSession {
   displayName: string;
   photoURL?: string;
   organizationId: string;
+  /**
+   * @deprecated Use roleId + isOrgAdmin + featurePermissions instead.
+   * Kept for backwards compatibility and super_admin checks.
+   */
   role: UserRole;
+  /** Reference to CustomRole document */
+  roleId: string;
+  /** Role name for display purposes */
+  roleName: string;
+  /** Whether this user is the organization administrator */
+  isOrgAdmin: boolean;
+  /** 
+   * Feature-level CRUD permissions loaded from CustomRole.
+   * For super_admin, this is full access to all features.
+   */
+  featurePermissions: FeaturePermissions;
+  /**
+   * @deprecated Use featurePermissions instead for granular access control.
+   * Kept for backwards compatibility during migration.
+   */
   permissions: Permission[];
 }
 
@@ -153,7 +204,11 @@ export type Permission =
   | "settings:read"
   | "settings:update";
 
-/** Role to permissions mapping */
+/** 
+ * @deprecated Use CustomRole.permissions (FeaturePermissions) instead.
+ * Kept for backwards compatibility during migration.
+ * Role to permissions mapping 
+ */
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   super_admin: [
     "org:read", "org:update", "org:delete",
@@ -205,4 +260,101 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "health:read",
   ],
 };
+
+// =============================================================================
+// Full Access Permissions (for super_admin and org_admin)
+// =============================================================================
+
+import type { CRUDPermissions } from "./organization";
+
+/** Full CRUD permissions (all true) */
+export const FULL_CRUD_PERMISSIONS: CRUDPermissions = {
+  create: true,
+  read: true,
+  update: true,
+  delete: true,
+};
+
+/** Full feature permissions for super_admin */
+export const SUPER_ADMIN_PERMISSIONS: FeaturePermissions = {
+  dashboard: { ...FULL_CRUD_PERMISSIONS },
+  incidents: { ...FULL_CRUD_PERMISSIONS },
+  capa: { ...FULL_CRUD_PERMISSIONS },
+  training: { ...FULL_CRUD_PERMISSIONS },
+  compliance: { ...FULL_CRUD_PERMISSIONS },
+  health: { ...FULL_CRUD_PERMISSIONS },
+  analytics: { ...FULL_CRUD_PERMISSIONS },
+  settings: { ...FULL_CRUD_PERMISSIONS },
+  users: { ...FULL_CRUD_PERMISSIONS },
+};
+
+/** Full feature permissions for org_admin (same as super_admin within their org) */
+export const ORG_ADMIN_PERMISSIONS: FeaturePermissions = {
+  dashboard: { ...FULL_CRUD_PERMISSIONS },
+  incidents: { ...FULL_CRUD_PERMISSIONS },
+  capa: { ...FULL_CRUD_PERMISSIONS },
+  training: { ...FULL_CRUD_PERMISSIONS },
+  compliance: { ...FULL_CRUD_PERMISSIONS },
+  health: { ...FULL_CRUD_PERMISSIONS },
+  analytics: { ...FULL_CRUD_PERMISSIONS },
+  settings: { ...FULL_CRUD_PERMISSIONS },
+  users: { ...FULL_CRUD_PERMISSIONS },
+};
+
+/**
+ * Convert FeaturePermissions to legacy Permission[] format.
+ * Used for backwards compatibility during migration.
+ */
+export function featurePermissionsToLegacy(fp: FeaturePermissions): Permission[] {
+  const permissions: Permission[] = [];
+
+  // Dashboard doesn't have legacy permissions, but org:read covers it
+  if (fp.dashboard.read) permissions.push("org:read");
+
+  // Incidents
+  if (fp.incidents.read) permissions.push("incidents:read");
+  if (fp.incidents.create) permissions.push("incidents:create");
+  if (fp.incidents.update) permissions.push("incidents:update", "incidents:assign");
+  if (fp.incidents.delete) permissions.push("incidents:delete");
+
+  // CAPA
+  if (fp.capa.read) permissions.push("capa:read");
+  if (fp.capa.create) permissions.push("capa:create");
+  if (fp.capa.update) permissions.push("capa:update", "capa:approve");
+  if (fp.capa.delete) permissions.push("capa:delete");
+
+  // Training
+  if (fp.training.read) permissions.push("training:read");
+  if (fp.training.create) permissions.push("training:create");
+  if (fp.training.update) permissions.push("training:update", "training:assign");
+  if (fp.training.delete) permissions.push("training:delete");
+
+  // Compliance
+  if (fp.compliance.read) permissions.push("compliance:read");
+  if (fp.compliance.create) permissions.push("compliance:create");
+  if (fp.compliance.update) permissions.push("compliance:update");
+  if (fp.compliance.delete) permissions.push("compliance:delete");
+
+  // Health
+  if (fp.health.read) permissions.push("health:read");
+  if (fp.health.create) permissions.push("health:create");
+  if (fp.health.update) permissions.push("health:update");
+  if (fp.health.delete) permissions.push("health:delete");
+
+  // Analytics
+  if (fp.analytics.read) permissions.push("analytics:read", "analytics:export");
+
+  // Settings
+  if (fp.settings.read) permissions.push("settings:read");
+  if (fp.settings.update) permissions.push("settings:update", "org:update");
+  if (fp.settings.delete) permissions.push("org:delete");
+
+  // Users
+  if (fp.users.read) permissions.push("users:read");
+  if (fp.users.create) permissions.push("users:create", "users:invite");
+  if (fp.users.update) permissions.push("users:update");
+  if (fp.users.delete) permissions.push("users:delete");
+
+  return [...new Set(permissions)]; // Remove duplicates
+}
 
