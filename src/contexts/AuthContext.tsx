@@ -196,6 +196,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           update: legacyPermissions.includes("users:update"), 
           delete: legacyPermissions.includes("users:delete") 
         },
+        roles: { 
+          create: false, 
+          read: false, 
+          update: false, 
+          delete: false 
+        },
       };
     }
     
@@ -364,7 +370,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       batch.set(orgRef, organization);
 
       // 2. Create Template Roles for the organization
-      let qhseRoleId = "";
+      let orgAdminRoleId = "";
       
       for (const templateRole of TEMPLATE_ROLES) {
         const roleRef = doc(collection(db, "roles"));
@@ -384,9 +390,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         batch.set(roleRef, role);
         
-        // Keep track of the QHSE role ID to assign to org_admin
-        if (templateRole.name === "QHSE") {
-          qhseRoleId = roleRef.id;
+        // Keep track of the Org Admin role ID to assign to the first user
+        if (templateRole.name === "Org Admin") {
+          orgAdminRoleId = roleRef.id;
         }
       }
 
@@ -402,7 +408,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         phone: userData.phone,
         organizationId: orgId,
         role: "org_admin", // Legacy role field
-        roleId: qhseRoleId, // Assigned QHSE role by default
+        roleId: orgAdminRoleId, // Assigned Org Admin role for the organization creator
         isOrgAdmin: true, // This user is the organization administrator
         status: "active",
         emailVerified: false,

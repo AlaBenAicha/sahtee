@@ -26,8 +26,11 @@ import CompliancePage from "@/pages/compliance/CompliancePage";
 import HealthPage from "@/pages/health/HealthPage";
 import AnalyticsPage from "@/pages/analytics/AnalyticsPage";
 import AdminPage from "@/pages/admin/AdminPage";
+import RolesPage from "@/pages/admin/RolesPage";
+import UsersPage from "@/pages/admin/UsersPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import ProfilePage from "@/pages/profile/ProfilePage";
+import AcceptInvitationPage from "@/pages/auth/AcceptInvitationPage";
 
 // Onboarding
 import OnboardingPage from "@/pages/onboarding/OnboardingPage";
@@ -56,6 +59,10 @@ export const router = createBrowserRouter([
   {
     path: "/verify-email",
     element: <VerifyEmailPage />,
+  },
+  {
+    path: "/accept-invitation",
+    element: <AcceptInvitationPage />,
   },
 
   // Protected routes
@@ -101,6 +108,14 @@ export const router = createBrowserRouter([
           {
             path: "admin",
             element: <AdminPage />,
+          },
+          {
+            path: "admin/roles",
+            element: <RolesPage />,
+          },
+          {
+            path: "admin/users",
+            element: <UsersPage />,
           },
           {
             path: "settings",

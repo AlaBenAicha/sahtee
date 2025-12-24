@@ -43,6 +43,23 @@ const USERS_COLLECTION = "users";
  */
 export const TEMPLATE_ROLES: Omit<CustomRole, "id" | "organizationId" | "createdAt" | "updatedAt" | "audit">[] = [
   {
+    name: "Org Admin",
+    description: "Administrateur de l'organisation avec accès complet",
+    isTemplate: true,
+    permissions: {
+      dashboard: { create: true, read: true, update: true, delete: true },
+      incidents: { create: true, read: true, update: true, delete: true },
+      capa: { create: true, read: true, update: true, delete: true },
+      training: { create: true, read: true, update: true, delete: true },
+      compliance: { create: true, read: true, update: true, delete: true },
+      health: { create: true, read: true, update: true, delete: true },
+      analytics: { create: true, read: true, update: true, delete: true },
+      settings: { create: true, read: true, update: true, delete: true },
+      users: { create: true, read: true, update: true, delete: true },
+      roles: { create: true, read: true, update: true, delete: true },
+    },
+  },
+  {
     name: "QHSE",
     description: "Responsable Qualité Hygiène Sécurité Environnement",
     isTemplate: true,
@@ -56,6 +73,7 @@ export const TEMPLATE_ROLES: Omit<CustomRole, "id" | "organizationId" | "created
       analytics: { create: false, read: true, update: false, delete: false },
       settings: { create: false, read: true, update: true, delete: false },
       users: { create: false, read: true, update: false, delete: false },
+      roles: { create: false, read: true, update: false, delete: false },
     },
   },
   {
@@ -72,6 +90,7 @@ export const TEMPLATE_ROLES: Omit<CustomRole, "id" | "organizationId" | "created
       analytics: { create: false, read: true, update: false, delete: false },
       settings: { create: false, read: true, update: false, delete: false },
       users: { create: false, read: true, update: false, delete: false },
+      roles: { create: false, read: false, update: false, delete: false },
     },
   },
   {
@@ -88,6 +107,7 @@ export const TEMPLATE_ROLES: Omit<CustomRole, "id" | "organizationId" | "created
       analytics: { create: false, read: true, update: false, delete: false },
       settings: { create: false, read: false, update: false, delete: false },
       users: { create: false, read: false, update: false, delete: false },
+      roles: { create: false, read: false, update: false, delete: false },
     },
   },
   {
@@ -104,6 +124,7 @@ export const TEMPLATE_ROLES: Omit<CustomRole, "id" | "organizationId" | "created
       analytics: { create: false, read: true, update: false, delete: false },
       settings: { create: false, read: false, update: false, delete: false },
       users: { create: false, read: false, update: false, delete: false },
+      roles: { create: false, read: false, update: false, delete: false },
     },
   },
   {
@@ -120,6 +141,7 @@ export const TEMPLATE_ROLES: Omit<CustomRole, "id" | "organizationId" | "created
       analytics: { create: false, read: false, update: false, delete: false },
       settings: { create: false, read: false, update: false, delete: false },
       users: { create: false, read: false, update: false, delete: false },
+      roles: { create: false, read: false, update: false, delete: false },
     },
   },
 ];
@@ -383,6 +405,7 @@ export function createEmptyFeaturePermissions(): FeaturePermissions {
     analytics: createEmptyCRUDPermissions(),
     settings: createEmptyCRUDPermissions(),
     users: createEmptyCRUDPermissions(),
+    roles: createEmptyCRUDPermissions(),
   };
 }
 
@@ -400,6 +423,7 @@ export function createFullFeaturePermissions(): FeaturePermissions {
     analytics: createFullCRUDPermissions(),
     settings: createFullCRUDPermissions(),
     users: createFullCRUDPermissions(),
+    roles: createFullCRUDPermissions(),
   };
 }
 

@@ -247,7 +247,8 @@ export type FeatureModule =
   | "health"
   | "analytics"
   | "settings"
-  | "users";
+  | "users"
+  | "roles";
 
 /** CRUD permissions for a single feature */
 export interface CRUDPermissions {
@@ -268,6 +269,7 @@ export interface FeaturePermissions {
   analytics: CRUDPermissions;
   settings: CRUDPermissions;
   users: CRUDPermissions;
+  roles: CRUDPermissions;
 }
 
 /** Custom role created by org_admin */
@@ -300,5 +302,6 @@ export const EMPTY_FEATURE_PERMISSIONS: FeaturePermissions = {
   analytics: { ...EMPTY_CRUD_PERMISSIONS },
   settings: { ...EMPTY_CRUD_PERMISSIONS },
   users: { ...EMPTY_CRUD_PERMISSIONS },
+  roles: { ...EMPTY_CRUD_PERMISSIONS },
 };
 

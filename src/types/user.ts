@@ -286,6 +286,7 @@ export const SUPER_ADMIN_PERMISSIONS: FeaturePermissions = {
   analytics: { ...FULL_CRUD_PERMISSIONS },
   settings: { ...FULL_CRUD_PERMISSIONS },
   users: { ...FULL_CRUD_PERMISSIONS },
+  roles: { ...FULL_CRUD_PERMISSIONS },
 };
 
 /** Full feature permissions for org_admin (same as super_admin within their org) */
@@ -299,6 +300,7 @@ export const ORG_ADMIN_PERMISSIONS: FeaturePermissions = {
   analytics: { ...FULL_CRUD_PERMISSIONS },
   settings: { ...FULL_CRUD_PERMISSIONS },
   users: { ...FULL_CRUD_PERMISSIONS },
+  roles: { ...FULL_CRUD_PERMISSIONS },
 };
 
 /**

@@ -13,6 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import sahteeLogoMain from "figma:asset/da3a2e0089c3ad8d081375417ace1d5ec5c73acd.png";
+import type { IndustrySector, CompanySize } from "@/types/organization";
+
+// Map CompanySize to employee count midpoint
+const EMPLOYEE_COUNT_MAP: Record<CompanySize, number> = {
+    "1-10": 5,
+    "11-50": 30,
+    "51-200": 125,
+    "201-500": 350,
+    "501-1000": 750,
+    "1000+": 1500,
+};
 
 export default function SignupPage() {
     const [formData, setFormData] = useState({
@@ -65,16 +76,20 @@ export default function SignupPage() {
             const firstName = nameParts[0] || "";
             const lastName = nameParts.slice(1).join(" ") || "";
 
+            // Map form values to proper types
+            const sector = formData.sector as IndustrySector;
+            const size = formData.employeeCount as CompanySize;
+            const employeeCount = EMPLOYEE_COUNT_MAP[size] || 10;
+
             await signUp(formData.email, formData.password, {
                 firstName,
                 lastName,
                 phone: formData.phone,
-                organizationId: "", // Will be created during onboarding
-                // Store signup organization data to skip onboarding step 1
-                pendingOrganization: {
+                organization: {
                     name: formData.companyName,
-                    industry: formData.sector,
-                    size: formData.employeeCount,
+                    sector,
+                    size,
+                    employeeCount,
                 },
             });
 
@@ -219,14 +234,17 @@ export default function SignupPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="manufacturing">Industrie manufacturière</SelectItem>
-                                        <SelectItem value="food">Agroalimentaire</SelectItem>
+                                        <SelectItem value="food_processing">Agroalimentaire</SelectItem>
                                         <SelectItem value="healthcare">Santé</SelectItem>
                                         <SelectItem value="construction">Construction / BTP</SelectItem>
                                         <SelectItem value="logistics">Logistique</SelectItem>
-                                        <SelectItem value="oil_gas">Pétrole & Gaz</SelectItem>
+                                        <SelectItem value="energy">Pétrole & Gaz / Énergie</SelectItem>
                                         <SelectItem value="mining">Mines & Carrières</SelectItem>
-                                        <SelectItem value="chemicals">Chimie & Pétrochimie</SelectItem>
-                                        <SelectItem value="services">Services</SelectItem>
+                                        <SelectItem value="chemical">Chimie & Pétrochimie</SelectItem>
+                                        <SelectItem value="pharmaceutical">Pharmaceutique</SelectItem>
+                                        <SelectItem value="textile">Textile</SelectItem>
+                                        <SelectItem value="automotive">Automobile</SelectItem>
+                                        <SelectItem value="agriculture">Agriculture</SelectItem>
                                         <SelectItem value="other">Autre</SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -247,7 +265,8 @@ export default function SignupPage() {
                                         <SelectItem value="11-50">11-50 employés</SelectItem>
                                         <SelectItem value="51-200">51-200 employés</SelectItem>
                                         <SelectItem value="201-500">201-500 employés</SelectItem>
-                                        <SelectItem value="500+">500+ employés</SelectItem>
+                                        <SelectItem value="501-1000">501-1000 employés</SelectItem>
+                                        <SelectItem value="1000+">1000+ employés</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

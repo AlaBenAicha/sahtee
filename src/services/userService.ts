@@ -384,6 +384,23 @@ export async function getPendingInvitations(organizationId: string): Promise<Use
 }
 
 /**
+ * Get all invitations for an organization (all statuses)
+ */
+export async function getInvitationsByOrganization(organizationId: string): Promise<UserInvitation[]> {
+  const q = query(
+    collection(db, INVITATIONS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("createdAt", "desc")
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as UserInvitation[];
+}
+
+/**
  * Accept an invitation
  */
 export async function acceptInvitation(invitationId: string): Promise<void> {

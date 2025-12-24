@@ -41,7 +41,7 @@ export function Signup({ onNavigate }: SignupProps) {
       <Card className="w-full max-w-2xl shadow-2xl">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <img 
+            <img
               src={sahteeLogoMain}
               alt="SAHTEE"
               className="h-16"
@@ -52,7 +52,7 @@ export function Signup({ onNavigate }: SignupProps) {
             Commencez votre transformation digitale en santé et sécurité au travail
           </CardDescription>
         </CardHeader>
-        
+
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -68,7 +68,7 @@ export function Signup({ onNavigate }: SignupProps) {
                   className="border-gray-300 focus:border-[var(--sahtee-blue-primary)] focus:ring-[var(--sahtee-blue-primary)]"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="fullName">Nom complet *</Label>
                 <Input
@@ -82,7 +82,7 @@ export function Signup({ onNavigate }: SignupProps) {
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Adresse e-mail professionnelle *</Label>
@@ -96,7 +96,7 @@ export function Signup({ onNavigate }: SignupProps) {
                   className="border-gray-300 focus:border-[var(--sahtee-blue-primary)] focus:ring-[var(--sahtee-blue-primary)]"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="phone">Téléphone</Label>
                 <Input
@@ -109,11 +109,11 @@ export function Signup({ onNavigate }: SignupProps) {
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="sector">Secteur d'activité *</Label>
-                <Select value={formData.sector} onValueChange={(value) => handleChange('sector', value)} required>
+                <Select value={formData.sector} onValueChange={(value: string) => handleChange('sector', value)} required>
                   <SelectTrigger className="border-gray-300 focus:border-[var(--sahtee-blue-primary)] focus:ring-[var(--sahtee-blue-primary)]">
                     <SelectValue placeholder="Sélectionnez un secteur" />
                   </SelectTrigger>
@@ -128,10 +128,10 @@ export function Signup({ onNavigate }: SignupProps) {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="employeeCount">Nombre d'employés *</Label>
-                <Select value={formData.employeeCount} onValueChange={(value) => handleChange('employeeCount', value)} required>
+                <Select value={formData.employeeCount} onValueChange={(value: string) => handleChange('employeeCount', value)} required>
                   <SelectTrigger className="border-gray-300 focus:border-[var(--sahtee-blue-primary)] focus:ring-[var(--sahtee-blue-primary)]">
                     <SelectValue placeholder="Sélectionnez une tranche" />
                   </SelectTrigger>
@@ -145,7 +145,7 @@ export function Signup({ onNavigate }: SignupProps) {
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="password">Mot de passe *</Label>
@@ -160,7 +160,7 @@ export function Signup({ onNavigate }: SignupProps) {
                   className="border-gray-300 focus:border-[var(--sahtee-blue-primary)] focus:ring-[var(--sahtee-blue-primary)]"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirmer le mot de passe *</Label>
                 <Input
@@ -175,7 +175,7 @@ export function Signup({ onNavigate }: SignupProps) {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-2 pt-2">
               <input
                 type="checkbox"
@@ -188,15 +188,15 @@ export function Signup({ onNavigate }: SignupProps) {
               </Label>
             </div>
           </CardContent>
-          
+
           <CardFooter className="flex flex-col space-y-4">
-            <Button 
+            <Button
               type="submit"
               className="w-full bg-[var(--sahtee-blue-primary)] hover:bg-[var(--sahtee-blue-secondary)] text-white"
             >
               Créer mon compte
             </Button>
-            
+
             <div className="text-center text-sm">
               <span className="text-gray-600">Vous avez déjà un compte ? </span>
               <button
@@ -207,7 +207,7 @@ export function Signup({ onNavigate }: SignupProps) {
                 Se connecter
               </button>
             </div>
-            
+
             <button
               type="button"
               onClick={() => onNavigate?.('homepage')}
