@@ -1,9 +1,144 @@
 /**
  * Dashboard Types - Analytics and AI-related types
+ * Includes 360° Board KPIs, Risk Map, Alerts, and Trend data
  */
 
 import type { Timestamp } from "firebase/firestore";
 import type { Priority } from "./common";
+import type { HazardCategory } from "./health";
+
+// =============================================================================
+// 360° Board - Risk Map Types
+// =============================================================================
+
+/** Risk reference for the risk map cells */
+export interface RiskReference {
+  id: string;
+  title: string;
+  category: HazardCategory;
+  departmentId?: string;
+  departmentName?: string;
+}
+
+/** Risk map cell representing a position on the 5x5 matrix */
+export interface RiskMapCell {
+  likelihood: 1 | 2 | 3 | 4 | 5;
+  severity: 1 | 2 | 3 | 4 | 5;
+  count: number;
+  risks: RiskReference[];
+}
+
+/** Risk map view mode */
+export type RiskMapViewMode = "initial" | "residual";
+
+// =============================================================================
+// 360° Board - Extended KPI Types
+// =============================================================================
+
+/** Trend data for KPI changes over time */
+export interface TrendData {
+  direction: "up" | "down" | "stable";
+  percentage: number;
+  period: "day" | "week" | "month";
+}
+
+/** Historical trend point for charts */
+export interface TrendPoint {
+  date: Timestamp;
+  value: number;
+  label?: string;
+}
+
+/** KPI category for dashboard grouping */
+export type KPICategory = "lead" | "lag";
+
+/** Extended dashboard KPI with sparklines and thresholds */
+export interface DashboardKPI {
+  id: string;
+  category: KPICategory;
+  name: string;
+  shortName?: string;
+  description?: string;
+  value: number;
+  unit: string;
+  format?: "number" | "percentage" | "days" | "rate";
+  target?: number;
+  threshold: {
+    warning: number;
+    critical: number;
+  };
+  trend: TrendData;
+  sparklineData: number[];
+  status: "good" | "warning" | "critical";
+  lastUpdated: Timestamp;
+  icon?: string;
+}
+
+// =============================================================================
+// 360° Board - Alert Feed Types
+// =============================================================================
+
+/** Alert type categories */
+export type DashboardAlertType =
+  | "incident"
+  | "capa"
+  | "compliance"
+  | "training"
+  | "health"
+  | "system";
+
+/** Alert priority levels */
+export type DashboardAlertPriority = "low" | "medium" | "high" | "critical";
+
+/** Dashboard alert for the alert feed */
+export interface DashboardAlert {
+  id: string;
+  type: DashboardAlertType;
+  priority: DashboardAlertPriority;
+  title: string;
+  description: string;
+  actionRequired: boolean;
+  actionUrl?: string;
+  actionLabel?: string;
+  entityId?: string;
+  entityType?: EntityType;
+  createdAt: Timestamp;
+  readBy: string[];
+  dismissedBy: string[];
+}
+
+// =============================================================================
+// 360° Board - Aggregated Metrics
+// =============================================================================
+
+/** Aggregated dashboard metrics for the 360° Board */
+export interface DashboardMetrics {
+  organizationId: string;
+  calculatedAt: Timestamp;
+  kpis: DashboardKPI[];
+  riskMatrix: RiskMapCell[][];
+  alertsSummary: {
+    total: number;
+    unread: number;
+    critical: number;
+    actionRequired: number;
+  };
+  lastIncidentDate?: Timestamp;
+  daysSinceLastIncident: number;
+}
+
+/** Options for fetching alerts */
+export interface AlertFetchOptions {
+  types?: DashboardAlertType[];
+  priorities?: DashboardAlertPriority[];
+  includeRead?: boolean;
+  includeDismissed?: boolean;
+  limit?: number;
+}
+
+// =============================================================================
+// Original Dashboard Types (preserved)
+// =============================================================================
 
 /** Dashboard widget types */
 export type WidgetType =

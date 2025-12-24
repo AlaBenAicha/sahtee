@@ -218,5 +218,38 @@ service cloud.firestore {
         belongsToOrg(resource.data.organizationId);
       allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
+
+    // ==========================================================================
+    // 360° Board Dashboard Collections
+    // ==========================================================================
+
+    // Dashboard Metrics collection (aggregated KPIs)
+    // Written by Cloud Functions, read by authenticated org members
+    match /dashboardMetrics/{orgId} {
+      allow read: if isAuthenticated() && belongsToOrg(orgId);
+      // Only Cloud Functions can write (enforced by service account)
+      allow write: if false;
+    }
+
+    // Alerts collection
+    match /alerts/{alertId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated() && isOrgAdminOrSuperAdmin();
+      // Users can only update readBy and dismissedBy fields
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['readBy', 'dismissedBy']);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // KPI History collection (for trend data)
+    match /kpiHistory/{historyId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Only Cloud Functions can write
+      allow write: if false;
+    }
   }
 }
