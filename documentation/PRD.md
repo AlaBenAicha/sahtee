@@ -1,7 +1,7 @@
 # SAHTEE — Technical Product Requirements Document (PRD)
 
-**Version:** 1.0  
-**Last Updated:** December 22, 2025  
+**Version:** 1.1  
+**Last Updated:** December 24, 2025  
 **Author:** Development Team  
 **Source:** Cahier-des-charges.md (Functional Specification)
 
@@ -924,8 +924,15 @@ interface AuthContextValue {
   signUp: (email: string, password: string, userData: SignUpData) => Promise<UserCredential>;
   signOut: () => Promise<void>;
   
-  // Permission checks
+  // Legacy permission check
   hasPermission: (permission: Permission) => boolean;
+  
+  // Feature-level access control
+  canAccessFeature: (feature: FeatureModule) => boolean;  // Checks read permission
+  
+  // Granular CRUD permission checks
+  canPerformAction: (feature: FeatureModule, action: keyof CRUDPermissions) => boolean;
+  getFeaturePermissions: (feature: FeatureModule) => CRUDPermissions;
   
   // Helpers
   isAuthenticated: boolean;
@@ -941,6 +948,27 @@ interface UserSession {
   isOrgAdmin: boolean;
   featurePermissions: FeaturePermissions;
 }
+```
+
+### Permission Guards & Hooks
+
+```typescript
+// Route-level feature access guard
+// src/components/auth/FeatureGuard.tsx
+<FeatureGuard feature="compliance">
+  <CompliancePage />
+</FeatureGuard>
+
+// CRUD-level action guard (for pages like edit/create)
+// src/components/auth/CRUDGuard.tsx
+<CRUDGuard feature="capa" action="update">
+  <EditCAPAPage />
+</CRUDGuard>
+
+// Hook for granular CRUD checks in components
+// src/hooks/useFeaturePermissions.ts
+const { canCreate, canRead, canUpdate, canDelete } = useFeaturePermissions("compliance");
+<Button disabled={!canCreate}>Nouvel audit</Button>
 ```
 
 ### Signup Flow (Atomic Creation)
@@ -1325,7 +1353,17 @@ exports.generateReport = functions.https.onCall(async (data, context) => {
   - Chef de département: CAPA/incidents for their department
   - Médecin du travail: Full health/medical access
   - Employé: Incident reporting and training read-only
-- [ ] **Role management UI for org_admin**
+- [x] **Feature-level access control (UI + routing)**
+  - Sidebar navigation filtered based on user's `read` permission per feature
+  - `FeatureGuard` component for route-level protection
+  - `AccessDeniedPage` for unauthorized access attempts
+  - `canAccessFeature()` helper in AuthContext
+- [x] **CRUD permission enforcement in components**
+  - `useFeaturePermissions(feature)` hook for granular CRUD checks
+  - `CRUDGuard` component for protecting CRUD-specific pages/actions
+  - `canPerformAction()` and `getFeaturePermissions()` helpers in AuthContext
+  - UI elements (buttons, forms) disabled based on user's CRUD permissions
+- [x] **Role management UI for org_admin**
   - View/edit/delete template roles
   - Create custom roles with granular permissions
   - Visual permission matrix editor
@@ -1334,11 +1372,11 @@ exports.generateReport = functions.https.onCall(async (data, context) => {
   - `createInvitation(email, orgId, roleId)` - send email invite
   - `generateInvitationLink(token)` - shareable link for org_admin
   - `isInvitationValid(token)` - validate before accepting
-- [ ] **Invitation acceptance flow**
+- [x] **Invitation acceptance flow**
   - `/join?token=xxx` page to accept invitations
   - Auto-assign role from invitation
   - Create user with correct organizationId and roleId
-- [ ] Organization setup and extended onboarding form
+- [x] Organization setup and extended onboarding form
 
 ### Phase 2: 360° Board (Weeks 5-6)
 - [ ] KPI calculation Cloud Functions
@@ -1419,6 +1457,10 @@ VITE_ENABLE_AI_RECOMMENDATIONS=true
 ```
 src/
 ├── components/
+│   ├── auth/            # Auth guards & permission components
+│   │   ├── FeatureGuard.tsx    # Route-level feature access
+│   │   ├── CRUDGuard.tsx       # CRUD action protection
+│   │   └── ProtectedRoute.tsx  # Authentication guard
 │   ├── common/           # Shared components
 │   ├── dashboard/        # 360° Board components
 │   ├── conformity/       # Conformity Room components
@@ -1427,8 +1469,13 @@ src/
 │   ├── safetybot/       # SafetyBot components
 │   ├── onboarding/      # First visit form
 │   └── ui/              # shadcn/ui components
+├── pages/
+│   ├── errors/          # Error pages
+│   │   └── AccessDeniedPage.tsx  # 403 Forbidden page
+│   └── ...
 ├── hooks/
 │   ├── useAuth.ts
+│   ├── useFeaturePermissions.ts  # CRUD permission hook
 │   ├── useFirestore.ts
 │   ├── useAI.ts
 │   └── ...
