@@ -68,7 +68,14 @@ export default function SignupPage() {
             await signUp(formData.email, formData.password, {
                 firstName,
                 lastName,
+                phone: formData.phone,
                 organizationId: "", // Will be created during onboarding
+                // Store signup organization data to skip onboarding step 1
+                pendingOrganization: {
+                    name: formData.companyName,
+                    industry: formData.sector,
+                    size: formData.employeeCount,
+                },
             });
 
             setSuccess(true);
@@ -204,7 +211,7 @@ export default function SignupPage() {
                                 <Label htmlFor="sector">Secteur d'activité *</Label>
                                 <Select
                                     value={formData.sector}
-                                    onValueChange={(value) => handleChange('sector', value)}
+                                    onValueChange={(value: string) => handleChange('sector', value)}
                                     disabled={isLoading}
                                 >
                                     <SelectTrigger className="border-gray-300 focus:border-[var(--sahtee-blue-primary)] focus:ring-[var(--sahtee-blue-primary)]">
@@ -229,7 +236,7 @@ export default function SignupPage() {
                                 <Label htmlFor="employeeCount">Nombre d'employés *</Label>
                                 <Select
                                     value={formData.employeeCount}
-                                    onValueChange={(value) => handleChange('employeeCount', value)}
+                                    onValueChange={(value: string) => handleChange('employeeCount', value)}
                                     disabled={isLoading}
                                 >
                                     <SelectTrigger className="border-gray-300 focus:border-[var(--sahtee-blue-primary)] focus:ring-[var(--sahtee-blue-primary)]">

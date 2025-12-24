@@ -71,7 +71,7 @@ export interface ActionPlan extends FirestoreDocument {
   sourceIncidentId?: string;
   sourceAuditId?: string;
   sourceFindingId?: string;
-  
+
   // Linked items
   linkedTrainingIds: string[];
   linkedEquipmentIds: string[];

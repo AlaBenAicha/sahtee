@@ -56,8 +56,15 @@ interface AuthContextValue extends AuthState {
 interface SignUpData {
   firstName: string;
   lastName: string;
+  phone?: string;
   organizationId: string;
   role?: UserRole;
+  /** Organization data collected during signup to skip onboarding step 1 */
+  pendingOrganization?: {
+    name: string;
+    industry: string;
+    size: string;
+  };
 }
 
 // Create context with undefined default

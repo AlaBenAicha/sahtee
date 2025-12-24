@@ -8,18 +8,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Building2,
   Users,
   Shield,
   CheckCircle2,
@@ -58,14 +50,6 @@ const industries = [
   { value: "other", label: "Autre" },
 ];
 
-const companySizes = [
-  { value: "1-10", label: "1-10 employés" },
-  { value: "11-50", label: "11-50 employés" },
-  { value: "51-200", label: "51-200 employés" },
-  { value: "201-500", label: "201-500 employés" },
-  { value: "500+", label: "500+ employés" },
-];
-
 const safetyModules = [
   { id: "incidents", label: "Gestion des incidents", description: "Déclaration et suivi des incidents" },
   { id: "capa", label: "CAPA", description: "Actions correctives et préventives" },
@@ -76,10 +60,9 @@ const safetyModules = [
 ];
 
 const steps = [
-  { id: 1, title: "Organisation", icon: Building2 },
-  { id: 2, title: "Profil", icon: Users },
-  { id: 3, title: "Préférences", icon: Shield },
-  { id: 4, title: "Terminé", icon: CheckCircle2 },
+  { id: 1, title: "Profil", icon: Users },
+  { id: 2, title: "Préférences", icon: Shield },
+  { id: 3, title: "Terminé", icon: CheckCircle2 },
 ];
 
 export default function OnboardingPage() {
@@ -102,9 +85,10 @@ export default function OnboardingPage() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
 
-  // Pre-fill user data if available
+  // Pre-fill user data and organization data from signup
   React.useEffect(() => {
     if (userProfile) {
+      const pendingOrg = (userProfile as unknown as { pendingOrganization?: { name: string; industry: string; size: string } }).pendingOrganization;
       setData(prev => ({
         ...prev,
         firstName: userProfile.firstName || "",
@@ -112,6 +96,10 @@ export default function OnboardingPage() {
         jobTitle: userProfile.jobTitle || "",
         department: userProfile.department || "",
         phone: userProfile.phone || "",
+        // Pre-fill organization data from signup
+        organizationName: pendingOrg?.name || "",
+        industry: pendingOrg?.industry || "",
+        size: pendingOrg?.size || "",
       }));
     }
   }, [userProfile]);
@@ -160,64 +148,6 @@ export default function OnboardingPage() {
   const renderStep = () => {
     switch (currentStep) {
       case 1:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                <Building2 className="h-8 w-8 text-emerald-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900">Votre organisation</h2>
-              <p className="text-slate-500 mt-2">Commençons par configurer votre entreprise</p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="organizationName">Nom de l'entreprise *</Label>
-                <Input
-                  id="organizationName"
-                  placeholder="Ex: Algérie Industries SARL"
-                  value={data.organizationName}
-                  onChange={(e) => updateData("organizationName", e.target.value)}
-                  className="mt-2"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="industry">Secteur d'activité *</Label>
-                <Select value={data.industry} onValueChange={(v) => updateData("industry", v)}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Sélectionnez votre secteur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {industries.map((industry) => (
-                      <SelectItem key={industry.value} value={industry.value}>
-                        {industry.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="size">Taille de l'entreprise *</Label>
-                <Select value={data.size} onValueChange={(v) => updateData("size", v)}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Nombre d'employés" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companySizes.map((size) => (
-                      <SelectItem key={size.value} value={size.value}>
-                        {size.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 2:
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
@@ -289,7 +219,7 @@ export default function OnboardingPage() {
           </div>
         );
 
-      case 3:
+      case 2:
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
@@ -344,7 +274,7 @@ export default function OnboardingPage() {
           </div>
         );
 
-      case 4:
+      case 3:
         return (
           <div className="space-y-6 text-center">
             <div className="mx-auto w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
@@ -374,8 +304,8 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl shadow-xl">
-        <CardHeader className="border-b">
+      <Card className="w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]">
+        <CardHeader className="border-b flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white font-bold">
@@ -419,12 +349,12 @@ export default function OnboardingPage() {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-8 pb-6">
+        <CardContent className="pt-8 pb-6 flex-1 overflow-y-auto">
           {renderStep()}
         </CardContent>
 
         {/* Navigation Buttons */}
-        <div className="border-t px-6 py-4 flex justify-between">
+        <CardFooter className="border-t flex justify-between flex-shrink-0">
           <Button
             variant="ghost"
             onClick={handleBack}
@@ -435,38 +365,32 @@ export default function OnboardingPage() {
             Retour
           </Button>
 
-          {currentStep < steps.length ? (
-            <Button
-              onClick={handleNext}
-              className="bg-emerald-500 hover:bg-emerald-600"
-              disabled={
-                (currentStep === 1 && (!data.organizationName || !data.industry || !data.size)) ||
-                (currentStep === 2 && (!data.firstName || !data.lastName))
-              }
-            >
-              Continuer
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleComplete}
-              className="bg-emerald-500 hover:bg-emerald-600"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Finalisation...
-                </>
-              ) : (
-                <>
-                  Accéder au tableau de bord
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          )}
-        </div>
+          <Button
+            onClick={currentStep < steps.length ? handleNext : handleComplete}
+            className="!bg-emerald-500 hover:!bg-emerald-600 !text-white"
+            disabled={
+              (currentStep === 1 && (!data.firstName || !data.lastName)) ||
+              (currentStep === steps.length && isLoading)
+            }
+          >
+            {currentStep < steps.length ? (
+              <>
+                Continuer
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            ) : isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Finalisation...
+              </>
+            ) : (
+              <>
+                Accéder au tableau de bord
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );
