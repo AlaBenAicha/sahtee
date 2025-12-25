@@ -199,14 +199,83 @@ service cloud.firestore {
       allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
-    // Health Records collection
+    // ==========================================================================
+    // Healthmeter Module Collections
+    // ==========================================================================
+
+    // Health Records collection (PHI - Physician Only for write, restricted read)
+    // Medical records contain Protected Health Information (PHI)
     match /healthRecords/{recordId} {
+      // Physicians and QHSE can read medical records (QHSE sees aggregate only in app)
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Only physicians can create/update/delete medical records
+      allow create: if isAuthenticated() && 
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isSuperAdmin());
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) &&
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isSuperAdmin());
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) &&
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isSuperAdmin());
+    }
+
+    // Medical Visits collection
+    match /medicalVisits/{visitId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Physicians can create/update/delete visits
+      allow create: if isAuthenticated() && 
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isOrgAdminOrSuperAdmin());
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) &&
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isOrgAdminOrSuperAdmin());
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) &&
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isOrgAdminOrSuperAdmin());
+    }
+
+    // Exposures collection (organization-level exposure monitoring)
+    match /exposures/{exposureId} {
       allow read: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
       allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Health Alerts collection
+    match /healthAlerts/{alertId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Health Stats collection (aggregate, non-PHI data for dashboard)
+    match /healthStats/{statsId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Stats can be created/updated by authenticated org members
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if false; // Stats should not be deleted
     }
 
     // Safety Inspections collection
