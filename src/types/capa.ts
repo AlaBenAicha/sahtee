@@ -20,7 +20,7 @@ import type { FirestoreDocument, AuditInfo, FileMetadata, Priority } from "./com
 export type ActionPriority = "critique" | "haute" | "moyenne" | "basse";
 
 /** Action plan status */
-export type ActionStatus = 
+export type ActionStatus =
   | "draft"
   | "pending_approval"
   | "approved"
@@ -36,36 +36,36 @@ export type ActionCategory = "correctif" | "preventif";
 /** Action Plan document in Firestore */
 export interface ActionPlan extends FirestoreDocument {
   organizationId: string;
-  
+
   // Basic info
   reference: string;
   title: string;
   description: string;
-  
+
   // Classification
   category: ActionCategory;
   priority: ActionPriority;
   status: ActionStatus;
-  
+
   // Risk info
   riskId?: string;
   riskDescription?: string;
-  
+
   // Assignment
   assigneeId: string;
   assigneeName: string;
   departmentId?: string;
   reviewerId?: string;
-  
+
   // Timeline
   dueDate: Timestamp;
   completedAt?: Timestamp;
   verifiedAt?: Timestamp;
-  
+
   // Progress
   progress: number; // 0-100
   checklistItems: ChecklistItem[];
-  
+
   // Source
   sourceType: "incident" | "audit" | "risk_assessment" | "observation" | "ai_suggestion" | "manual";
   sourceIncidentId?: string;
@@ -76,19 +76,19 @@ export interface ActionPlan extends FirestoreDocument {
   linkedTrainingIds: string[];
   linkedEquipmentIds: string[];
   linkedDocumentIds: string[];
-  
+
   // AI integration
   aiGenerated: boolean;
   aiConfidence: number; // 0-100
   aiSuggestions?: string[];
-  
+
   // Completion
   completionProof?: CompletionProof;
   effectivenessReview?: EffectivenessReview;
-  
+
   // Comments
   comments: ActionComment[];
-  
+
   // Audit
   audit: AuditInfo;
 }
@@ -145,34 +145,35 @@ export type TrainingSource = "manual" | "ai_recommendation" | "incident_derived"
 /** Training plan document */
 export interface TrainingPlan extends FirestoreDocument {
   organizationId: string;
-  
+
   // Course info
   courseId: string;
   courseName: string;
   description: string;
   category: string;
   duration: number; // in minutes
-  
+  contentUrl?: string; // Optional URL to training content
+
   // Assignment
   assignedEmployees: string[];
   departmentIds: string[];
-  
+
   // Timeline
   dueDate: Timestamp;
   availableFrom: Timestamp;
-  
+
   // Priority & Source
   priority: TrainingPriority;
   source: TrainingSource;
   mandatory: boolean;
-  
+
   // Links
   linkedActionPlanId?: string;
   linkedIncidentId?: string;
-  
+
   // Progress
   completionStatus: TrainingCompletionStatus;
-  
+
   // Audit
   audit: AuditInfo;
 }
@@ -191,20 +192,20 @@ export interface TrainingRecord extends FirestoreDocument {
   organizationId: string;
   trainingPlanId: string;
   employeeId: string;
-  
+
   // Status
   status: "not_started" | "in_progress" | "completed" | "failed";
-  
+
   // Progress
   startedAt?: Timestamp;
   completedAt?: Timestamp;
   progress: number; // 0-100
   score?: number;
-  
+
   // Certification
   certificateUrl?: string;
   expiresAt?: Timestamp;
-  
+
   // Audit
   audit: AuditInfo;
 }
@@ -225,44 +226,44 @@ export type EquipmentStatus = "pending" | "ordered" | "received" | "deployed" | 
 /** Equipment recommendation document */
 export interface EquipmentRecommendation extends FirestoreDocument {
   organizationId: string;
-  
+
   // Equipment details
   name: string;
   category: EquipmentCategory;
   description: string;
   manufacturer?: string;
   model?: string;
-  
+
   // Specifications
   certifications: string[];
   features: string[];
   specifications?: Record<string, string>;
-  
+
   // AI reasoning
   aiReason: string;
   aiConfidence: number; // 0-100
-  
+
   // Links
   linkedActionPlanId?: string;
   linkedIncidentId?: string;
   linkedRiskAssessmentId?: string;
-  
+
   // Priority & Status
   priority: EquipmentPriority;
   status: EquipmentStatus;
-  
+
   // Quantity
   quantityRecommended: number;
   quantityOrdered?: number;
   quantityReceived?: number;
-  
+
   // Cost
   estimatedCost?: number;
   actualCost?: number;
-  
+
   // Images
   images: FileMetadata[];
-  
+
   // Audit
   audit: AuditInfo;
 }
@@ -275,7 +276,7 @@ export interface EquipmentRecommendation extends FirestoreDocument {
 export type IncidentSeverity = "minor" | "moderate" | "severe" | "critical";
 
 /** Incident status */
-export type IncidentStatus = 
+export type IncidentStatus =
   | "reported"
   | "acknowledged"
   | "investigating"
@@ -286,15 +287,17 @@ export type IncidentStatus =
 /** Incident document in Firestore */
 export interface Incident extends FirestoreDocument {
   organizationId: string;
-  
+
   // Reference
   reference: string;
-  
+
   // Reporter
   reportedBy: string;
   reporterName: string;
+  reporterEmail?: string;
   reportedAt: Timestamp;
-  
+  isAnonymous: boolean;
+
   // Location
   siteId?: string;
   departmentId?: string;
@@ -304,25 +307,25 @@ export interface Incident extends FirestoreDocument {
     latitude: number;
     longitude: number;
   };
-  
+
   // Classification
   category: string;
   subcategory?: string;
   severity: IncidentSeverity;
   type: "accident" | "near_miss" | "unsafe_condition" | "unsafe_act";
-  
+
   // Description
   description: string;
   immediateActions: string;
-  
+
   // People involved
   witnesses: WitnessInfo[];
   affectedPersons: AffectedPerson[];
-  
+
   // Evidence
   photos: FileMetadata[];
   documents: FileMetadata[];
-  
+
   // Investigation
   status: IncidentStatus;
   investigatorId?: string;
@@ -330,19 +333,19 @@ export interface Incident extends FirestoreDocument {
   investigationCompletedAt?: Timestamp;
   rootCause?: string;
   contributingFactors?: string[];
-  
+
   // AI Analysis
   aiAnalysis?: AIIncidentAnalysis;
-  
+
   // Linked items
   linkedActionPlanId?: string;
   linkedCapaIds: string[];
-  
+
   // Regulatory
   reportableToAuthorities: boolean;
   reportedToAuthorities: boolean;
   reportedToAuthoritiesAt?: Timestamp;
-  
+
   // Audit
   audit: AuditInfo;
 }
@@ -372,20 +375,20 @@ export interface AffectedPerson {
 export interface AIIncidentAnalysis {
   analyzedAt: Timestamp;
   confidence: number; // 0-100
-  
+
   // Root cause analysis
   rootCause: string;
   rootCauseCategory: string;
   contributingFactors: string[];
-  
+
   // Recommendations
   recommendedActions: AIRecommendedAction[];
-  
+
   // Pattern matching
   similarIncidents: SimilarIncident[];
   patternIdentified: boolean;
   patternDescription?: string;
-  
+
   // Prevention
   preventiveMeasures: string[];
   trainingRecommendations: string[];
@@ -415,29 +418,30 @@ export interface SimilarIncident {
 // QR Code Types
 // =============================================================================
 
-/** QR Code configuration */
+/** QR Code configuration for incident reporting */
 export interface QRCodeConfig extends FirestoreDocument {
   organizationId: string;
-  
+
   // Code info
-  code: string;
-  label: string;
-  
+  shortCode: string; // Unique short identifier (e.g., "ABCD1234")
+
   // Location
-  siteId?: string;
-  location: string;
+  siteId: string;
+  departmentId?: string;
+  locationName: string;
+  locationDescription: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
   equipmentId?: string;
-  
-  // Link
-  deepLink: string;
-  actionType: "report_incident" | "view_procedures" | "check_equipment" | "other";
-  
+
   // Usage
   active: boolean;
-  scannedCount: number;
+  scanCount: number;
   lastScannedAt?: Timestamp;
   lastScannedBy?: string;
-  
+
   // Audit
   audit: AuditInfo;
 }
@@ -462,15 +466,15 @@ export interface CAPARoomState {
   activeTab: CAPATabView;
   viewMode: ViewMode;
   filters: CAPAFilters;
-  
+
   // Modals
   showIncidentModal: boolean;
   showActionModal: boolean;
-  
+
   // Selection
   selectedActionId: string | null;
   selectedIncidentId: string | null;
-  
+
   // AI
   aiRecommendations: AIRecommendedAction[];
   showAIPanel: boolean;

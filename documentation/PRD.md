@@ -1379,19 +1379,19 @@ exports.generateReport = functions.https.onCall(async (data, context) => {
 - [x] Organization setup and extended onboarding form
 
 ### Phase 2: 360° Board (Weeks 5-6)
-- [ ] KPI calculation Cloud Functions
-- [ ] Dashboard layout with KPI banner
-- [ ] Risk map component
-- [ ] Trend charts (lead/lag indicators)
-- [ ] Alert feed with real-time updates
+- [x] KPI calculation Cloud Functions
+- [x] Dashboard layout with KPI banner
+- [x] Risk map component
+- [x] Trend charts (lead/lag indicators)
+- [x] Alert feed with real-time updates
 
 ### Phase 3: CAPA Room (Weeks 7-10)
-- [ ] CAPA CRUD operations
-- [ ] Kanban board with drag-and-drop
-- [ ] Incident reporting (web form)
-- [ ] QR code generation for incidents
-- [ ] Training catalog and enrollment
-- [ ] Equipment catalog
+- [x] CAPA CRUD operations
+- [x] Kanban board with drag-and-drop
+- [x] Incident reporting (web form)
+- [x] QR code generation for incidents
+- [x] Training catalog and enrollment
+- [x] Equipment catalog
 - [ ] CAPA-AI integration (prioritization, suggestions)
 
 ### Phase 4: Conformity Room (Weeks 11-13)

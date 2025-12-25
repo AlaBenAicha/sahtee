@@ -11,6 +11,7 @@ import FeatureGuard from "@/components/auth/FeatureGuard";
 
 // Public Pages
 import LandingPage from "@/pages/LandingPage";
+import ReportPage from "@/pages/public/ReportPage";
 
 // Auth Pages
 import LoginPage from "@/pages/auth/LoginPage";
@@ -23,6 +24,7 @@ import DashboardPage from "@/pages/dashboard/DashboardPage";
 import IncidentsPage from "@/pages/incidents/IncidentsPage";
 import CAPAPage from "@/pages/capa/CAPAPage";
 import TrainingPage from "@/pages/training/TrainingPage";
+import EquipmentPage from "@/pages/equipment/EquipmentPage";
 import CompliancePage from "@/pages/compliance/CompliancePage";
 import HealthPage from "@/pages/health/HealthPage";
 import AnalyticsPage from "@/pages/analytics/AnalyticsPage";
@@ -67,6 +69,16 @@ export const router = createBrowserRouter([
     element: <AcceptInvitationPage />,
   },
 
+  // Public reporting route (for QR code scans)
+  {
+    path: "/report",
+    element: <ReportPage />,
+  },
+  {
+    path: "/report/:code",
+    element: <ReportPage />,
+  },
+
   // Protected routes
   {
     path: "/app",
@@ -108,6 +120,14 @@ export const router = createBrowserRouter([
             element: (
               <FeatureGuard feature="training">
                 <TrainingPage />
+              </FeatureGuard>
+            ),
+          },
+          {
+            path: "equipment",
+            element: (
+              <FeatureGuard feature="equipment">
+                <EquipmentPage />
               </FeatureGuard>
             ),
           },
