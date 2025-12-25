@@ -11,6 +11,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, RefreshCw } from "lucide-react";
+import { ExportButton } from "@/components/common";
+import { generateMonthlyReport, downloadBlob } from "@/utils/pdfGenerator";
+import { exportDashboardData } from "@/utils/excelGenerator";
 
 // Dashboard Components
 import {
@@ -100,6 +103,57 @@ export default function DashboardPage() {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
+  // Export handlers
+  const handleExportPDF = async () => {
+    const now = new Date();
+    const period = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    
+    const blob = await generateMonthlyReport({
+      organizationName: "Organisation",
+      period,
+      kpis: {
+        complianceRate: 85,
+        accidentFrequency: 2.5,
+        lostDays: 12,
+        capaCompletionRate: 78,
+      },
+      incidents: [],
+      capas: [],
+      trainings: { completed: 45, inProgress: 12, planned: 8 },
+    });
+    
+    downloadBlob(blob, `rapport-sst-${now.toISOString().slice(0, 7)}.pdf`);
+  };
+
+  const handleExportExcel = () => {
+    exportDashboardData({
+      kpis: {
+        "Taux de conformité": "85%",
+        "Taux de fréquence AT": "2.5",
+        "Jours perdus": 12,
+        "CAPA clôturées": "78%",
+      },
+      incidents: [],
+      capas: [],
+      trainings: [],
+    });
+  };
+
+  const exportOptions = [
+    {
+      label: "Rapport mensuel",
+      format: "pdf" as const,
+      onClick: handleExportPDF,
+      description: "Synthèse SST du mois",
+    },
+    {
+      label: "Données brutes",
+      format: "excel" as const,
+      onClick: handleExportExcel,
+      description: "Export Excel complet",
+    },
+  ];
+
   return (
     <DashboardContainer>
       {/* Header */}
@@ -108,6 +162,7 @@ export default function DashboardPage() {
         subtitle="Voici l'aperçu de la sécurité de votre organisation"
         actions={
           <>
+            <ExportButton options={exportOptions} />
             <Button
               variant="outline"
               size="sm"
