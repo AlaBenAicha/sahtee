@@ -147,20 +147,27 @@ export default function DashboardPage() {
       {/* Main Grid: Charts + Sidebar */}
       <DashboardGrid>
         <MainContent>
-          {/* Risk Map */}
-          <RiskMap
-            data={riskMap || []}
-            viewMode={riskMapViewMode}
-            onViewModeChange={setRiskMapViewMode}
-            onCellClick={handleRiskCellClick}
-            loading={isLoading}
-          />
-
           {/* Trend Charts */}
           {kpis && kpis.length > 0 && (
             <MultiTrendChart
               kpis={kpis}
               period="30d"
+              loading={isLoading}
+            />
+          )}
+
+          {/* Quick Actions - moved here */}
+          <Section title="Actions rapides">
+            <QuickActions variant="grid" />
+          </Section>
+
+          {/* Risk Map - only show if there's data */}
+          {riskMap && riskMap.length > 0 && riskMap.some(row => row.some(cell => cell.count > 0)) && (
+            <RiskMap
+              data={riskMap}
+              viewMode={riskMapViewMode}
+              onViewModeChange={setRiskMapViewMode}
+              onCellClick={handleRiskCellClick}
               loading={isLoading}
             />
           )}
@@ -200,11 +207,6 @@ export default function DashboardPage() {
           />
         </Sidebar>
       </DashboardGrid>
-
-      {/* Quick Actions */}
-      <Section title="Actions rapides">
-        <QuickActions variant="grid" />
-      </Section>
 
       {/* Error display */}
       {error && (
