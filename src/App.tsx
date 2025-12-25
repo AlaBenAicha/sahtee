@@ -1,5 +1,17 @@
-import { AppRouter } from "./components/AppRouter";
+/**
+ * Main Application Component
+ */
+
+import { RouterProvider } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { router } from "@/routes";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function App() {
-  return <AppRouter />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+      <Toaster position="top-right" />
+    </AuthProvider>
+  );
 }
