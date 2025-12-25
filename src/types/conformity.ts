@@ -250,3 +250,87 @@ export interface ComplianceMetrics {
   completedAuditsYTD: number;
 }
 
+/** Norm status */
+export type NormStatus = 
+  | "not_started"
+  | "in_progress"
+  | "compliant"
+  | "non_compliant";
+
+/** Norm/Standard document in Firestore */
+export interface Norm extends FirestoreDocument {
+  organizationId: string;
+  
+  // Norm details
+  code: string;
+  name: string;
+  description?: string;
+  framework: RegulatoryFramework;
+  category: string;
+  
+  // Status tracking
+  status: NormStatus;
+  complianceScore: number; // 0-100
+  
+  // Requirements embedded or referenced
+  requirementIds: string[];
+  
+  // Audit info
+  lastAuditId?: string;
+  lastAuditDate?: Timestamp;
+  nextAuditDate?: Timestamp;
+  
+  // Metadata
+  isActive: boolean;
+  isCustom: boolean; // true if created by organization, false if seeded
+  
+  // Audit trail
+  audit: AuditInfo;
+}
+
+/** Norm requirement (embedded in Norm for seeded data) */
+export interface NormRequirement {
+  id: string;
+  clause: string;
+  title: string;
+  description: string;
+  status: ComplianceStatus;
+  evidenceRequired: boolean;
+  evidence: Evidence[];
+  notes?: string;
+  linkedCapaIds: string[];
+}
+
+/** Norm with embedded requirements */
+export interface NormWithRequirements extends Norm {
+  requirements: NormRequirement[];
+}
+
+/** Filters for norms */
+export interface NormFilters {
+  framework?: RegulatoryFramework[];
+  status?: NormStatus[];
+  searchQuery?: string;
+  isActive?: boolean;
+}
+
+/** Filters for audits */
+export interface AuditFilters {
+  status?: AuditStatus[];
+  type?: AuditType[];
+  framework?: RegulatoryFramework[];
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+  searchQuery?: string;
+}
+
+/** Filters for findings */
+export interface FindingFilters {
+  category?: FindingCategory[];
+  severity?: FindingSeverity[];
+  status?: FindingStatus[];
+  hasLinkedCapa?: boolean;
+}
+

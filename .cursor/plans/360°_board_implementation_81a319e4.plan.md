@@ -472,5 +472,3 @@ src/
 4. PR: `SAH-XX: Implement Phase 2 - 360° Board`
 
 ---
-
-## Estimated Effort
