@@ -5,7 +5,6 @@
  * to help with root cause analysis and prevention.
  */
 
-import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ import {
   Search,
 } from "lucide-react";
 import type { SimilarPatternResult } from "@/hooks/useCAPAAI";
-import type { AIIncidentAnalysis } from "@/types/capa";
+import type { AIIncidentAnalysis, SimilarIncident } from "@/types/capa";
 
 interface SimilarIncidentsPanelProps {
   analysis?: AIIncidentAnalysis | null;
@@ -29,6 +28,27 @@ interface SimilarIncidentsPanelProps {
   onFindSimilar?: () => void;
 }
 
+// Type guard to check if incident is SimilarPatternResult
+function isSimilarPatternResult(incident: SimilarIncident | SimilarPatternResult): incident is SimilarPatternResult {
+  return 'incidentId' in incident;
+}
+
+// Helper to get incident ID regardless of type
+function getIncidentId(incident: SimilarIncident | SimilarPatternResult): string {
+  if (isSimilarPatternResult(incident)) {
+    return incident.incidentId;
+  }
+  return incident.id;
+}
+
+// Helper to get common factors (only available on SimilarPatternResult)
+function getCommonFactors(incident: SimilarIncident | SimilarPatternResult): string[] | undefined {
+  if (isSimilarPatternResult(incident)) {
+    return incident.commonFactors;
+  }
+  return undefined;
+}
+
 export function SimilarIncidentsPanel({
   analysis,
   similarIncidents,
@@ -36,7 +56,7 @@ export function SimilarIncidentsPanel({
   onViewIncident,
   onFindSimilar,
 }: SimilarIncidentsPanelProps) {
-  const incidents = similarIncidents || analysis?.similarIncidents || [];
+  const incidents: (SimilarIncident | SimilarPatternResult)[] = similarIncidents || analysis?.similarIncidents || [];
   const hasPattern = analysis?.patternIdentified;
 
   if (isLoading) {
@@ -130,65 +150,68 @@ export function SimilarIncidentsPanel({
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {incidents.map((incident, index) => (
-            <div
-              key={incident.id || incident.incidentId || index}
-              className="p-3 rounded-lg bg-slate-50 border hover:bg-slate-100 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-slate-900">
-                      {incident.reference}
-                    </span>
-                    <Badge className={getSimilarityColor(incident.similarity)}>
-                      {incident.similarity}% similaire
-                    </Badge>
+          {incidents.map((incident, index) => {
+            const incidentId = getIncidentId(incident);
+            const commonFactors = getCommonFactors(incident);
+            
+            return (
+              <div
+                key={incidentId || index}
+                className="p-3 rounded-lg bg-slate-50 border hover:bg-slate-100 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-slate-900">
+                        {incident.reference}
+                      </span>
+                      <Badge className={getSimilarityColor(incident.similarity)}>
+                        {incident.similarity}% similaire
+                      </Badge>
+                    </div>
+                    {"summary" in incident && incident.summary && (
+                      <p className="text-sm text-slate-600 mb-2">
+                        {incident.summary}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(incident.date)}
+                    </div>
                   </div>
-                  {"summary" in incident && incident.summary && (
-                    <p className="text-sm text-slate-600 mb-2">
-                      {incident.summary}
-                    </p>
+                  {onViewIncident && incidentId && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onViewIncident(incidentId)}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                   )}
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(incident.date)}
-                  </div>
                 </div>
-                {onViewIncident && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      onViewIncident(incident.id || incident.incidentId)
-                    }
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
+
+                {/* Common Factors */}
+                {commonFactors && commonFactors.length > 0 && (
+                  <div className="mt-2 pt-2 border-t">
+                    <p className="text-xs font-medium text-slate-500 mb-1">
+                      Facteurs communs
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {commonFactors.map((factor: string, i: number) => (
+                        <Badge
+                          key={i}
+                          variant="outline"
+                          className="text-xs bg-white"
+                        >
+                          {factor}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {/* Common Factors */}
-              {incident.commonFactors && incident.commonFactors.length > 0 && (
-                <div className="mt-2 pt-2 border-t">
-                  <p className="text-xs font-medium text-slate-500 mb-1">
-                    Facteurs communs
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {incident.commonFactors.map((factor, i) => (
-                      <Badge
-                        key={i}
-                        variant="outline"
-                        className="text-xs bg-white"
-                      >
-                        {factor}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 

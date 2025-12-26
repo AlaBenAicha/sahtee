@@ -252,7 +252,7 @@ export function OptionalModules() {
 
       {/* Contact Dialog */}
       <Dialog open={contactOpen} onOpenChange={setContactOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedModule && <selectedModule.icon className="h-5 w-5 text-emerald-500" />}

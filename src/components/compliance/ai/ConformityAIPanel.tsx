@@ -7,7 +7,7 @@
  * - CAPA suggestions
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Brain,
   TrendingUp,
@@ -17,18 +17,27 @@ import {
   Lightbulb,
   RefreshCw,
   ChevronRight,
-  Clock,
   FileText,
   Target,
+  Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useComplianceMetrics, useNorms, useAudits } from "@/hooks/useCompliance";
+import { 
+  useConformityAI, 
+  useGapAnalysis, 
+  useAuditPlanning, 
+  usePerformGapAnalysis 
+} from "@/hooks/useConformityAI";
 import { cn } from "@/lib/utils";
+import type { ComplianceGap, AuditRecommendation, ComplianceRecommendation } from "@/services/ai/types";
 
 interface AIRecommendation {
   id: string;
@@ -55,12 +64,25 @@ export function ConformityAIPanel() {
   const { data: norms, isLoading: normsLoading } = useNorms({ isActive: true });
   const { data: audits, isLoading: auditsLoading } = useAudits();
   
+  // AI hooks
+  const { isEnabled: isAIEnabled, isInitialized } = useConformityAI();
+  const { 
+    data: gapAnalysis, 
+    isLoading: gapLoading, 
+    streamedContent,
+    isStreaming,
+    refetch: refetchGaps 
+  } = useGapAnalysis();
+  const { data: auditRecommendations, isLoading: auditRecLoading } = useAuditPlanning();
+  const performGapAnalysis = usePerformGapAnalysis();
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const isLoading = metricsLoading || normsLoading || auditsLoading;
 
-  // Generate AI recommendations based on data analysis
-  const recommendations = useMemo((): AIRecommendation[] => {
+  // Generate fallback recommendations based on data analysis (when AI is disabled)
+  const fallbackRecommendations = useMemo((): AIRecommendation[] => {
     if (!metrics || !norms || !audits) return [];
 
     const recs: AIRecommendation[] = [];
@@ -122,19 +144,6 @@ export function ConformityAIPanel() {
           description: `Le référentiel ${norm.name} n'a jamais fait l'objet d'un audit.`,
           action: "Planifier un premier audit pour cette norme.",
         });
-      } else {
-        const lastAuditTime = norm.lastAuditDate.toMillis();
-        const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
-        if (lastAuditTime < oneYearAgo) {
-          recs.push({
-            id: `old-audit-${norm.id}`,
-            type: "audit",
-            priority: "low",
-            title: `Audit ${norm.code} à renouveler`,
-            description: `Le dernier audit de ${norm.name} date de plus d'un an.`,
-            action: "Prévoir un audit de suivi.",
-          });
-        }
       }
     });
 
@@ -152,27 +161,6 @@ export function ConformityAIPanel() {
       });
     }
 
-    // 6. Requirements without evidence
-    let reqsWithoutEvidence = 0;
-    norms?.forEach(norm => {
-      norm.requirements.forEach(req => {
-        if (req.evidenceRequired && req.evidence.length === 0 && req.status !== "not_applicable") {
-          reqsWithoutEvidence++;
-        }
-      });
-    });
-
-    if (reqsWithoutEvidence > 0) {
-      recs.push({
-        id: "missing-evidence",
-        type: "gap",
-        priority: reqsWithoutEvidence > 10 ? "high" : "medium",
-        title: `${reqsWithoutEvidence} exigence(s) sans preuve`,
-        description: "Des exigences nécessitent une preuve documentaire mais n'en ont pas.",
-        action: "Collecter et attacher les preuves manquantes.",
-      });
-    }
-
     // Sort by priority
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     recs.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
@@ -180,11 +168,31 @@ export function ConformityAIPanel() {
     return recs;
   }, [metrics, norms, audits]);
 
+  // Combine AI recommendations with fallback
+  const recommendations = useMemo(() => {
+    if (isAIEnabled && gapAnalysis?.recommendations) {
+      return gapAnalysis.recommendations.map((r, i) => ({
+        id: `ai-${i}`,
+        type: r.type === "audit" ? "audit" : r.type === "training" || r.type === "documentation" ? "capa" : "gap",
+        priority: r.priority,
+        title: r.title,
+        description: r.description,
+      })) as AIRecommendation[];
+    }
+    return fallbackRecommendations;
+  }, [isAIEnabled, gapAnalysis, fallbackRecommendations]);
+
   const handleRefresh = async () => {
     setIsAnalyzing(true);
-    await refetchMetrics();
-    // Simulate AI analysis time
-    setTimeout(() => setIsAnalyzing(false), 1000);
+    try {
+      if (isAIEnabled && isInitialized) {
+        await performGapAnalysis.mutateAsync();
+      } else {
+        await refetchMetrics();
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const priorityConfig = {
@@ -226,9 +234,19 @@ export function ConformityAIPanel() {
                 <Brain className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <CardTitle>Conformity-AI</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  Conformity-AI
+                  {isAIEnabled && (
+                    <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      IA Active
+                    </Badge>
+                  )}
+                </CardTitle>
                 <CardDescription>
-                  Assistant IA pour l'analyse de conformité
+                  {isAIEnabled 
+                    ? "Analyse intelligente de votre conformité" 
+                    : "Assistant d'analyse de conformité"}
                 </CardDescription>
               </div>
             </div>
@@ -236,11 +254,11 @@ export function ConformityAIPanel() {
               variant="outline"
               size="sm"
               onClick={handleRefresh}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || isStreaming}
               className="gap-2"
             >
-              <RefreshCw className={cn("h-4 w-4", isAnalyzing && "animate-spin")} />
-              {isAnalyzing ? "Analyse..." : "Actualiser"}
+              <RefreshCw className={cn("h-4 w-4", (isAnalyzing || isStreaming) && "animate-spin")} />
+              {isAnalyzing || isStreaming ? "Analyse..." : "Analyser"}
             </Button>
           </div>
         </CardHeader>
@@ -249,15 +267,19 @@ export function ConformityAIPanel() {
             <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-900/50 rounded-lg">
               <TrendingUp className="h-5 w-5 text-emerald-600" />
               <div>
-                <p className="text-2xl font-bold">{metrics?.overallComplianceRate || 0}%</p>
+                <p className="text-2xl font-bold">
+                  {gapAnalysis?.overallScore ?? metrics?.overallComplianceRate ?? 0}%
+                </p>
                 <p className="text-xs text-muted-foreground">Taux de conformité</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-900/50 rounded-lg">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
               <div>
-                <p className="text-2xl font-bold">{metrics?.nonCompliantCount || 0}</p>
-                <p className="text-xs text-muted-foreground">Non-conformités</p>
+                <p className="text-2xl font-bold">
+                  {gapAnalysis?.gaps?.length ?? metrics?.nonCompliantCount ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Écarts identifiés</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-900/50 rounded-lg">
@@ -271,64 +293,217 @@ export function ConformityAIPanel() {
         </CardContent>
       </Card>
 
-      {/* Recommendations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Lightbulb className="h-5 w-5" />
-            Recommandations IA
-          </CardTitle>
-          <CardDescription>
-            Suggestions basées sur l'analyse de vos données de conformité
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {recommendations.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
-              <p className="font-medium">Excellent !</p>
-              <p className="text-sm">
-                Aucune recommandation critique pour le moment. Votre conformité est bien gérée.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recommendations.map((rec) => (
-                <div
-                  key={rec.id}
-                  className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className={cn(
-                    "p-2 rounded-lg",
-                    rec.priority === "high" 
-                      ? "bg-red-100 text-red-600" 
-                      : rec.priority === "medium"
-                      ? "bg-amber-100 text-amber-600"
-                      : "bg-blue-100 text-blue-600"
-                  )}>
-                    {typeConfig[rec.type].icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium">{rec.title}</p>
-                      <Badge className={cn("text-xs", priorityConfig[rec.priority].color)}>
-                        {priorityConfig[rec.priority].label}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{rec.description}</p>
-                    {rec.action && (
-                      <p className="text-sm text-primary mt-2 flex items-center gap-1">
-                        <ChevronRight className="h-3 w-3" />
-                        {rec.action}
-                      </p>
-                    )}
-                  </div>
+      {/* AI Status Alert */}
+      {!isAIEnabled && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            L'IA Gemini n'est pas configurée. Les recommandations sont basées sur des règles prédéfinies.
+            Configurez VITE_GEMINI_API_KEY pour activer l'analyse IA avancée.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Streaming Content */}
+      {isStreaming && streamedContent && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Sparkles className="h-5 w-5 animate-pulse text-purple-500" />
+              Analyse en cours...
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-48">
+              <div className="prose prose-sm dark:prose-invert">
+                <p className="whitespace-pre-wrap">{streamedContent}</p>
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="gaps">Écarts</TabsTrigger>
+          <TabsTrigger value="audits">Audits</TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Lightbulb className="h-5 w-5" />
+                Recommandations {isAIEnabled ? "IA" : ""}
+              </CardTitle>
+              <CardDescription>
+                {isAIEnabled 
+                  ? "Suggestions intelligentes basées sur l'analyse de vos données"
+                  : "Suggestions basées sur l'analyse de vos données de conformité"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {recommendations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
+                  <p className="font-medium">Excellent !</p>
+                  <p className="text-sm">
+                    Aucune recommandation critique pour le moment.
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              ) : (
+                <div className="space-y-3">
+                  {recommendations.map((rec) => (
+                    <div
+                      key={rec.id}
+                      className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className={cn(
+                        "p-2 rounded-lg",
+                        rec.priority === "high" 
+                          ? "bg-red-100 text-red-600" 
+                          : rec.priority === "medium"
+                          ? "bg-amber-100 text-amber-600"
+                          : "bg-blue-100 text-blue-600"
+                      )}>
+                        {typeConfig[rec.type].icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium">{rec.title}</p>
+                          <Badge className={cn("text-xs", priorityConfig[rec.priority].color)}>
+                            {priorityConfig[rec.priority].label}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{rec.description}</p>
+                        {rec.action && (
+                          <p className="text-sm text-primary mt-2 flex items-center gap-1">
+                            <ChevronRight className="h-3 w-3" />
+                            {rec.action}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Gaps Tab */}
+        <TabsContent value="gaps">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Écarts de conformité</CardTitle>
+              <CardDescription>
+                Exigences non conformes identifiées
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(!gapAnalysis?.gaps || gapAnalysis.gaps.length === 0) ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
+                  <p>Aucun écart critique identifié</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-96">
+                  <div className="space-y-3">
+                    {gapAnalysis.gaps.map((gap, index) => (
+                      <div
+                        key={`${gap.normId}-${gap.requirementId}-${index}`}
+                        className="p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">{gap.normCode}</Badge>
+                          <Badge 
+                            className={cn(
+                              "text-xs",
+                              gap.severity === "critical" && "bg-red-100 text-red-800",
+                              gap.severity === "major" && "bg-amber-100 text-amber-800",
+                              gap.severity === "minor" && "bg-blue-100 text-blue-800"
+                            )}
+                          >
+                            {gap.severity === "critical" ? "Critique" : 
+                             gap.severity === "major" ? "Majeur" : "Mineur"}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            Clause {gap.clause}
+                          </span>
+                        </div>
+                        <p className="text-sm">{gap.description}</p>
+                        {gap.suggestedAction && (
+                          <p className="text-sm text-primary mt-2 flex items-center gap-1">
+                            <ChevronRight className="h-3 w-3" />
+                            {gap.suggestedAction}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Audits Tab */}
+        <TabsContent value="audits">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Recommandations d'audit</CardTitle>
+              <CardDescription>
+                Audits à planifier selon l'analyse
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(!gapAnalysis?.prioritizedAudits && !auditRecommendations) || 
+               ((gapAnalysis?.prioritizedAudits?.length || 0) === 0 && 
+                (auditRecommendations?.length || 0) === 0) ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-3 text-blue-500" />
+                  <p>Aucun audit recommandé pour le moment</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-96">
+                  <div className="space-y-3">
+                    {(gapAnalysis?.prioritizedAudits || auditRecommendations || []).map((audit, index) => (
+                      <div
+                        key={`${audit.normId}-${index}`}
+                        className="p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">{audit.normCode}</Badge>
+                          <Badge 
+                            className={cn(
+                              "text-xs",
+                              audit.priority === "urgent" && "bg-red-100 text-red-800",
+                              audit.priority === "soon" && "bg-amber-100 text-amber-800",
+                              audit.priority === "planned" && "bg-blue-100 text-blue-800"
+                            )}
+                          >
+                            {audit.priority === "urgent" ? "Urgent" : 
+                             audit.priority === "soon" ? "Prochainement" : "Planifié"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm">{audit.reason}</p>
+                        {audit.suggestedDate && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Date suggérée : {new Date(audit.suggestedDate).toLocaleDateString("fr-FR")}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Quick Actions */}
       <Card>
@@ -358,4 +533,3 @@ export function ConformityAIPanel() {
     </div>
   );
 }
-

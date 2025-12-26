@@ -10,14 +10,13 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import type {
-  ActionPlan,
-  Incident,
-  AIIncidentAnalysis,
-  AIRecommendedAction,
-} from "@/types/capa";
+import { getCAPAAIService, isCAPAAIEnabled } from "@/services/ai/capaAIService";
+import type { Incident, ActionPlan, AIIncidentAnalysis, AIRecommendedAction } from "@/types/capa";
+import type { Priority } from "@/types/common";
+import type { AIContext, IncidentAnalysisResult, SuggestedCapa } from "@/services/ai/types";
+import { Timestamp } from "firebase/firestore";
 
 // Query keys for caching
 export const capaAIKeys = {
@@ -26,6 +25,8 @@ export const capaAIKeys = {
   incidentAnalysis: (incidentId: string) => [...capaAIKeys.all, "incident-analysis", incidentId] as const,
   priorityRecommendations: (orgId: string) => [...capaAIKeys.all, "priority", orgId] as const,
   rootCause: (incidentId: string) => [...capaAIKeys.all, "root-cause", incidentId] as const,
+  similarIncidents: (incidentId: string) => [...capaAIKeys.all, "similar", incidentId] as const,
+  capaSuggestions: (incidentId: string) => [...capaAIKeys.all, "capa-suggestions", incidentId] as const,
 };
 
 // =============================================================================
@@ -75,34 +76,103 @@ export interface SimilarPatternResult {
   date: Date;
 }
 
+export interface FiveWhysResult {
+  problem: string;
+  whys: string[];
+  rootCause: string;
+  contributingFactors: Array<{ category: string; factor: string }>;
+}
+
+// =============================================================================
+// CAPA-AI Hook
+// =============================================================================
+
+/**
+ * Main hook for CAPA-AI functionality
+ */
+export function useCAPAAI() {
+  const { user, userProfile } = useAuth();
+  const serviceRef = useRef(getCAPAAIService());
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isEnabled] = useState(isCAPAAIEnabled());
+
+  // Initialize the service when user context is available
+  useEffect(() => {
+    if (!user || !userProfile || !isEnabled) return;
+
+    const context: AIContext = {
+      organizationId: userProfile.organizationId,
+      userId: user.uid,
+      userRole: userProfile.role,
+      userName: userProfile.displayName || user.email || "Utilisateur",
+      organizationName: userProfile.organizationId, // Would be fetched in a real app
+      currentModule: "capa",
+    };
+
+    serviceRef.current.initialize(context);
+    setIsInitialized(true);
+  }, [user, userProfile, isEnabled]);
+
+  return {
+    service: serviceRef.current,
+    isInitialized,
+    isEnabled,
+  };
+}
+
 // =============================================================================
 // AI Analysis Hooks
 // =============================================================================
 
 /**
- * Hook to get AI suggestions for CAPAs
- * This would typically call an AI service/API
+ * Map AI priority to capa Priority type
  */
-export function useCAPARecommendations() {
-  const { userProfile } = useAuth();
-  const orgId = userProfile?.organizationId;
-  const [isGenerating, setIsGenerating] = useState(false);
+function mapToPriority(priority: string): Priority {
+  switch (priority) {
+    case "critique": return "critique";
+    case "haute": return "haute";
+    case "moyenne": return "moyenne";
+    case "basse": return "basse";
+    default: return "moyenne";
+  }
+}
 
-  const query = useQuery({
-    queryKey: capaAIKeys.suggestions(orgId || ""),
-    queryFn: async (): Promise<CAPARecommendation[]> => {
-      // In production, this would call the AI service
-      // For now, return mock suggestions
-      return getMockCAPARecommendations();
-    },
-    enabled: !!orgId,
-    staleTime: 10 * 60 * 1000, // 10 minutes
-  });
-
+/**
+ * Convert IncidentAnalysisResult to AIIncidentAnalysis for component compatibility
+ */
+function convertToAIIncidentAnalysis(result: IncidentAnalysisResult): AIIncidentAnalysis {
   return {
-    ...query,
-    isGenerating,
-    setIsGenerating,
+    analyzedAt: Timestamp.now(),
+    confidence: Math.round(result.confidence * 100),
+    rootCause: result.rootCause,
+    rootCauseCategory: result.rootCauseCategory,
+    contributingFactors: result.contributingFactors,
+    recommendedActions: result.suggestedCapas.map((capa, i): AIRecommendedAction => ({
+      id: `action-${i}`,
+      type: "capa",
+      title: capa.title,
+      description: capa.description,
+      priority: mapToPriority(capa.priority),
+      confidence: Math.round(capa.confidence * 100),
+    })),
+    similarIncidents: result.similarIncidents.map((inc) => ({
+      id: inc.incidentId,
+      reference: inc.reference,
+      similarity: Math.round(inc.similarity * 100),
+      date: Timestamp.fromDate(inc.date),
+      summary: inc.commonFactors.join(", "),
+    })),
+    patternIdentified: result.similarIncidents.length > 0,
+    patternDescription: result.similarIncidents.length > 0 
+      ? `${result.similarIncidents.length} incident(s) similaire(s) identifié(s)` 
+      : undefined,
+    preventiveMeasures: result.preventiveMeasures,
+    trainingRecommendations: result.suggestedCapas
+      .filter(c => c.linkedTrainings?.length)
+      .flatMap(c => c.linkedTrainings || []),
+    equipmentRecommendations: result.suggestedCapas
+      .filter(c => c.linkedEquipment?.length)
+      .flatMap(c => c.linkedEquipment || []),
   };
 }
 
@@ -110,49 +180,119 @@ export function useCAPARecommendations() {
  * Hook to analyze an incident with AI
  */
 export function useAnalyzeIncident(incidentId: string | undefined) {
-  return useQuery({
+  const { service, isInitialized, isEnabled } = useCAPAAI();
+  const [streamedContent, setStreamedContent] = useState<string>("");
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const query = useQuery({
     queryKey: capaAIKeys.incidentAnalysis(incidentId || ""),
     queryFn: async (): Promise<AIIncidentAnalysis | null> => {
-      if (!incidentId) return null;
-      // In production, this would call the AI service
-      return getMockIncidentAnalysis(incidentId);
+      if (!incidentId || !isInitialized) return null;
+
+      setIsStreaming(true);
+      setStreamedContent("");
+
+      try {
+        const result = await service.streamAnalysis(incidentId, (chunk) => {
+          setStreamedContent((prev) => prev + chunk);
+        });
+        return convertToAIIncidentAnalysis(result);
+      } finally {
+        setIsStreaming(false);
+      }
     },
-    enabled: !!incidentId,
+    enabled: !!incidentId && isInitialized && isEnabled,
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
+
+  return {
+    ...query,
+    streamedContent,
+    isStreaming,
+    isAIEnabled: isEnabled,
+  };
 }
 
 /**
- * Hook to get priority recommendations for existing CAPAs
- */
-export function usePriorityRecommendations() {
-  const { userProfile } = useAuth();
-  const orgId = userProfile?.organizationId;
-
-  return useQuery({
-    queryKey: capaAIKeys.priorityRecommendations(orgId || ""),
-    queryFn: async (): Promise<PriorityRecommendation[]> => {
-      // In production, this would call the AI service
-      return getMockPriorityRecommendations();
-    },
-    enabled: !!orgId,
-    staleTime: 15 * 60 * 1000, // 15 minutes
-  });
-}
-
-/**
- * Hook for root cause analysis
+ * Hook for root cause analysis with 5 Whys
  */
 export function useRootCauseAnalysis(incidentId: string | undefined) {
+  const { service, isInitialized, isEnabled } = useCAPAAI();
+
   return useQuery({
     queryKey: capaAIKeys.rootCause(incidentId || ""),
     queryFn: async (): Promise<RootCauseAnalysis | null> => {
-      if (!incidentId) return null;
-      // In production, this would call the AI service
-      return getMockRootCauseAnalysis(incidentId);
+      if (!incidentId || !isInitialized) return null;
+      const result = await service.analyzeIncident(incidentId);
+      return {
+        incidentId: result.incidentId,
+        rootCause: result.rootCause,
+        rootCauseCategory: result.rootCauseCategory,
+        confidence: Math.round(result.confidence * 100),
+        contributingFactors: result.contributingFactors,
+        immediateActions: result.immediateActions,
+        preventiveMeasures: result.preventiveMeasures,
+        methodology: "auto",
+      };
     },
-    enabled: !!incidentId,
+    enabled: !!incidentId && isInitialized && isEnabled,
     staleTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to perform 5 Whys analysis
+ */
+export function useFiveWhysAnalysis() {
+  const { service, isInitialized, isEnabled } = useCAPAAI();
+
+  return useMutation({
+    mutationFn: async ({
+      problem,
+      initialCause,
+    }: {
+      problem: string;
+      initialCause?: string;
+    }): Promise<FiveWhysResult> => {
+      if (!isInitialized || !isEnabled) {
+        throw new Error("CAPA-AI not initialized");
+      }
+      return service.performFiveWhys(problem, initialCause);
+    },
+  });
+}
+
+/**
+ * Hook to find similar incidents
+ */
+export function useFindSimilarIncidents(incidentId: string | undefined) {
+  const { service, isInitialized, isEnabled } = useCAPAAI();
+
+  return useQuery({
+    queryKey: capaAIKeys.similarIncidents(incidentId || ""),
+    queryFn: async () => {
+      if (!incidentId || !isInitialized) return [];
+      return service.findSimilarIncidents(incidentId);
+    },
+    enabled: !!incidentId && isInitialized && isEnabled,
+    staleTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to get CAPA suggestions from an incident
+ */
+export function useCAPASuggestions(incidentId: string | undefined, rootCause?: string) {
+  const { service, isInitialized, isEnabled } = useCAPAAI();
+
+  return useQuery({
+    queryKey: capaAIKeys.capaSuggestions(incidentId || ""),
+    queryFn: async (): Promise<SuggestedCapa[]> => {
+      if (!incidentId || !isInitialized) return [];
+      return service.generateCAPASuggestions(incidentId, rootCause);
+    },
+    enabled: !!incidentId && isInitialized && isEnabled,
+    staleTime: 15 * 60 * 1000,
   });
 }
 
@@ -164,34 +304,48 @@ export function useRootCauseAnalysis(incidentId: string | undefined) {
  * Hook to generate CAPA from incident using AI
  */
 export function useGenerateCAPAFromIncident() {
-  const { user, userProfile } = useAuth();
+  const { service, isInitialized, isEnabled } = useCAPAAI();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (incident: Incident): Promise<Partial<ActionPlan>> => {
-      // In production, this would call the AI service
-      // For now, return a mock generated CAPA
-      await simulateAIDelay();
+      if (!isInitialized || !isEnabled) {
+        // Fallback to basic generation without AI
+        return {
+          title: `Action corrective: ${incident.description.substring(0, 50)}...`,
+          description: `Action générée suite à l'incident ${incident.reference}.\n\nDescription: ${incident.description}`,
+          category: "correctif",
+          priority: incident.severity === "critical" ? "critique" : incident.severity === "severe" ? "haute" : "moyenne",
+          status: "draft",
+          sourceType: "incident",
+          sourceIncidentId: incident.id,
+          aiGenerated: false,
+        };
+      }
+
+      // Use AI to generate CAPA suggestions
+      const suggestions = await service.generateCAPASuggestions(incident.id);
       
+      if (suggestions.length === 0) {
+        throw new Error("Aucune suggestion générée");
+      }
+
+      const suggestion = suggestions[0];
+
       return {
-        title: `Action corrective: ${incident.description.substring(0, 50)}...`,
-        description: `Action générée par IA suite à l'incident ${incident.reference}.\n\nDescription: ${incident.description}\n\nActions immédiates: ${incident.immediateActions}`,
-        category: "correctif",
-        priority: incident.severity === "critical" ? "critique" : incident.severity === "severe" ? "haute" : "moyenne",
+        title: suggestion.title,
+        description: suggestion.description,
+        category: suggestion.category,
+        priority: suggestion.priority,
         status: "draft",
         sourceType: "incident",
         sourceIncidentId: incident.id,
         aiGenerated: true,
-        aiConfidence: 85,
-        aiSuggestions: [
-          "Analyser les causes racines",
-          "Mettre en place des barrières préventives",
-          "Former le personnel concerné",
-          "Réviser les procédures existantes",
-        ],
+        aiConfidence: Math.round(suggestion.confidence * 100),
+        aiSuggestions: suggestions.slice(1).map(s => s.title),
         checklistItems: [],
-        linkedTrainingIds: [],
-        linkedEquipmentIds: [],
+        linkedTrainingIds: suggestion.linkedTrainings || [],
+        linkedEquipmentIds: suggestion.linkedEquipment || [],
         linkedDocumentIds: [],
         comments: [],
       };
@@ -206,59 +360,40 @@ export function useGenerateCAPAFromIncident() {
  * Hook to generate action suggestions using AI
  */
 export function useGenerateActionSuggestions() {
+  const { service, isInitialized, isEnabled } = useCAPAAI();
+
   return useMutation({
     mutationFn: async ({
-      context,
       incidentId,
-      existingActions,
     }: {
-      context: string;
+      context?: string;
       incidentId?: string;
       existingActions?: string[];
     }): Promise<AIRecommendedAction[]> => {
-      // In production, this would call the AI service
-      await simulateAIDelay();
-      
-      return [
-        {
-          id: crypto.randomUUID(),
-          type: "capa",
-          title: "Renforcer les procédures de sécurité",
-          description: "Mettre à jour et diffuser les procédures de sécurité relatives à cette situation",
-          priority: "high",
-          confidence: 88,
-        },
-        {
-          id: crypto.randomUUID(),
-          type: "training",
-          title: "Formation de sensibilisation",
-          description: "Organiser une formation pour le personnel concerné",
-          priority: "medium",
-          confidence: 82,
-        },
-        {
-          id: crypto.randomUUID(),
-          type: "equipment",
-          title: "Équipement de protection",
-          description: "Évaluer le besoin en EPI supplémentaires",
-          priority: "medium",
-          confidence: 75,
-        },
-      ];
-    },
-  });
-}
+      if (!isInitialized || !isEnabled || !incidentId) {
+        // Return default suggestions
+        return [
+          {
+            id: crypto.randomUUID(),
+            type: "capa",
+            title: "Renforcer les procédures de sécurité",
+            description: "Mettre à jour et diffuser les procédures de sécurité",
+            priority: "haute",
+            confidence: 70,
+          },
+        ];
+      }
 
-/**
- * Hook to find similar incidents using AI
- */
-export function useFindSimilarIncidents() {
-  return useMutation({
-    mutationFn: async (incident: Incident): Promise<SimilarPatternResult[]> => {
-      // In production, this would call the AI service
-      await simulateAIDelay();
+      const suggestions = await service.generateCAPASuggestions(incidentId);
       
-      return getMockSimilarIncidents(incident);
+      return suggestions.map((s): AIRecommendedAction => ({
+        id: crypto.randomUUID(),
+        type: "capa",
+        title: s.title,
+        description: s.description,
+        priority: mapToPriority(s.priority),
+        confidence: Math.round(s.confidence * 100),
+      }));
     },
   });
 }
@@ -267,6 +402,8 @@ export function useFindSimilarIncidents() {
  * Hook to suggest root cause using AI
  */
 export function useSuggestRootCause() {
+  const { service, isInitialized, isEnabled } = useCAPAAI();
+
   return useMutation({
     mutationFn: async ({
       incident,
@@ -275,34 +412,50 @@ export function useSuggestRootCause() {
       incident: Incident;
       methodology?: "5why" | "fishbone" | "barrier" | "fta" | "auto";
     }): Promise<RootCauseAnalysis> => {
-      // In production, this would call the AI service
-      await simulateAIDelay();
+      if (!isInitialized || !isEnabled) {
+        // Fallback mock response
+        return {
+          incidentId: incident.id,
+          rootCause: "Analyse IA non disponible",
+          rootCauseCategory: "unknown",
+          confidence: 0,
+          contributingFactors: [],
+          immediateActions: [],
+          preventiveMeasures: [],
+          methodology: methodology || "auto",
+        };
+      }
+
+      const analysis = await service.analyzeIncident(incident.id);
       
       return {
         incidentId: incident.id,
-        rootCause: "Manque de supervision et formation insuffisante du personnel",
-        rootCauseCategory: "organizational",
-        confidence: 78,
-        contributingFactors: [
-          "Procédures non suivies",
-          "Équipement de protection non porté",
-          "Manque de signalisation",
-          "Pression de production",
-        ],
-        immediateActions: [
-          "Rappeler les règles de sécurité",
-          "Vérifier les EPI disponibles",
-          "Renforcer la supervision",
-        ],
-        preventiveMeasures: [
-          "Mettre à jour les procédures",
-          "Organiser des formations de rappel",
-          "Installer une signalisation supplémentaire",
-          "Revoir la planification des tâches",
-        ],
+        rootCause: analysis.rootCause,
+        rootCauseCategory: analysis.rootCauseCategory,
+        confidence: analysis.confidence,
+        contributingFactors: analysis.contributingFactors,
+        immediateActions: analysis.immediateActions,
+        preventiveMeasures: analysis.preventiveMeasures,
         methodology: methodology || "auto",
       };
     },
+  });
+}
+
+/**
+ * Hook to analyze CAPA effectiveness
+ */
+export function useAnalyzeCAPAEffectiveness(capaId: string | undefined) {
+  const { service, isInitialized, isEnabled } = useCAPAAI();
+
+  return useQuery({
+    queryKey: [...capaAIKeys.all, "effectiveness", capaId],
+    queryFn: async () => {
+      if (!capaId || !isInitialized) return null;
+      return service.analyzeCAPAEffectiveness(capaId);
+    },
+    enabled: !!capaId && isInitialized && isEnabled,
+    staleTime: 15 * 60 * 1000,
   });
 }
 
@@ -340,8 +493,9 @@ export function useAcceptAIRecommendation() {
       recommendationId: string;
       action: "accept" | "reject" | "modify";
     }) => {
-      // In production, this would track AI recommendation acceptance
-      await simulateAIDelay(300);
+      // Track AI recommendation acceptance
+      // In production, this would log to analytics
+      console.log(`AI recommendation ${recommendationId}: ${action}`);
       return { recommendationId, action };
     },
     onSuccess: () => {
@@ -350,31 +504,82 @@ export function useAcceptAIRecommendation() {
   });
 }
 
-// =============================================================================
-// Mock Data Functions
-// =============================================================================
+/**
+ * Hook to get CAPA recommendations (uses real AI when available)
+ */
+export function useCAPARecommendations() {
+  const { userProfile } = useAuth();
+  const { isEnabled } = useCAPAAI();
+  const orgId = userProfile?.organizationId;
+  const [isGenerating, setIsGenerating] = useState(false);
 
-function simulateAIDelay(ms = 1000): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  const query = useQuery({
+    queryKey: capaAIKeys.suggestions(orgId || ""),
+    queryFn: async (): Promise<CAPARecommendation[]> => {
+      // For now, return empty array - in production,
+      // this would aggregate suggestions from open incidents
+      if (!isEnabled) {
+        return getMockCAPARecommendations();
+      }
+      // TODO: Implement batch analysis of open incidents
+      return [];
+    },
+    enabled: !!orgId,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  return {
+    ...query,
+    isGenerating,
+    setIsGenerating,
+    isAIEnabled: isEnabled,
+  };
 }
+
+/**
+ * Hook to get priority recommendations for existing CAPAs
+ */
+export function usePriorityRecommendations() {
+  const { userProfile } = useAuth();
+  const { isEnabled } = useCAPAAI();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: capaAIKeys.priorityRecommendations(orgId || ""),
+    queryFn: async (): Promise<PriorityRecommendation[]> => {
+      // In production, this would analyze CAPAs and suggest priority changes
+      if (!isEnabled) {
+        return getMockPriorityRecommendations();
+      }
+      // TODO: Implement CAPA priority analysis
+      return [];
+    },
+    enabled: !!orgId,
+    staleTime: 15 * 60 * 1000, // 15 minutes
+  });
+}
+
+// =============================================================================
+// Mock Data Functions (fallback when AI is disabled)
+// =============================================================================
 
 function getMockCAPARecommendations(): CAPARecommendation[] {
   return [
     {
       id: "rec-1",
       title: "Renforcer la signalisation zone de stockage",
-      description: "Installer une signalisation supplémentaire dans la zone de stockage chimique suite aux incidents récents",
+      description: "Installer une signalisation supplémentaire dans la zone de stockage chimique",
       priority: "haute",
       category: "preventif",
       confidence: 92,
-      reasoning: "Basé sur 3 incidents similaires dans les 6 derniers mois impliquant la zone de stockage",
+      reasoning: "Basé sur 3 incidents similaires dans les 6 derniers mois",
       linkedIncidentIds: ["inc-1", "inc-2", "inc-3"],
       suggestedDueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     },
     {
       id: "rec-2",
       title: "Formation manutention manuelle",
-      description: "Organiser une formation sur les gestes et postures pour le personnel de l'atelier B",
+      description: "Organiser une formation sur les gestes et postures pour le personnel",
       priority: "moyenne",
       category: "preventif",
       confidence: 85,
@@ -382,82 +587,7 @@ function getMockCAPARecommendations(): CAPARecommendation[] {
       linkedTrainings: ["training-ergo"],
       suggestedDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
-    {
-      id: "rec-3",
-      title: "Audit équipements de levage",
-      description: "Planifier un audit complet des équipements de levage et de manutention",
-      priority: "haute",
-      category: "preventif",
-      confidence: 78,
-      reasoning: "Dernier audit datant de plus de 12 mois",
-      suggestedDueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
   ];
-}
-
-function getMockIncidentAnalysis(incidentId: string): AIIncidentAnalysis {
-  return {
-    analyzedAt: { seconds: Date.now() / 1000, nanoseconds: 0 } as any,
-    confidence: 85,
-    rootCause: "Manque de supervision et non-respect des procédures établies",
-    rootCauseCategory: "organizational",
-    contributingFactors: [
-      "Personnel non formé sur les nouvelles procédures",
-      "Équipement de protection non disponible",
-      "Pression sur les délais de production",
-      "Signalisation insuffisante",
-    ],
-    recommendedActions: [
-      {
-        id: "action-1",
-        type: "capa",
-        title: "Réviser les procédures de travail",
-        description: "Mettre à jour et diffuser les procédures de sécurité",
-        priority: "high",
-        confidence: 90,
-      },
-      {
-        id: "action-2",
-        type: "training",
-        title: "Formation de rappel sécurité",
-        description: "Organiser des sessions de formation pour tout le personnel concerné",
-        priority: "high",
-        confidence: 88,
-      },
-      {
-        id: "action-3",
-        type: "equipment",
-        title: "Équipements de protection individuelle",
-        description: "Vérifier et compléter le stock d'EPI",
-        priority: "medium",
-        confidence: 75,
-      },
-    ],
-    similarIncidents: [
-      {
-        id: "similar-1",
-        reference: "INC-2025-001",
-        similarity: 85,
-        date: { seconds: Date.now() / 1000 - 86400 * 30, nanoseconds: 0 } as any,
-        summary: "Incident similaire dans le même atelier",
-      },
-    ],
-    patternIdentified: true,
-    patternDescription: "Tendance récurrente liée au manque de supervision pendant les changements d'équipe",
-    preventiveMeasures: [
-      "Renforcer la supervision pendant les transitions",
-      "Mettre en place des points de contrôle",
-      "Améliorer la communication entre équipes",
-    ],
-    trainingRecommendations: [
-      "Formation gestes et postures",
-      "Sensibilisation aux risques chimiques",
-    ],
-    equipmentRecommendations: [
-      "Gants de protection nitrile",
-      "Lunettes de sécurité",
-    ],
-  };
 }
 
 function getMockPriorityRecommendations(): PriorityRecommendation[] {
@@ -468,60 +598,7 @@ function getMockPriorityRecommendations(): PriorityRecommendation[] {
       suggestedPriority: "haute",
       reasoning: "L'échéance approche et le taux de completion est faible",
       confidence: 88,
-      factors: ["Échéance dans 5 jours", "Progression: 20%", "2 dépendances non résolues"],
-    },
-    {
-      capaId: "capa-2",
-      currentPriority: "haute",
-      suggestedPriority: "critique",
-      reasoning: "Nouvel incident lié à cette action non résolue",
-      confidence: 92,
-      factors: ["Incident INC-2025-045 lié", "Impact potentiel élevé"],
+      factors: ["Échéance dans 5 jours", "Progression: 20%"],
     },
   ];
 }
-
-function getMockRootCauseAnalysis(incidentId: string): RootCauseAnalysis {
-  return {
-    incidentId,
-    rootCause: "Défaillance dans le processus de vérification pré-opératoire",
-    rootCauseCategory: "process",
-    confidence: 82,
-    contributingFactors: [
-      "Checklist pré-démarrage non suivie",
-      "Formation initiale insuffisante",
-      "Absence de contrôle hiérarchique",
-    ],
-    immediateActions: [
-      "Suspendre les opérations concernées",
-      "Rappeler les procédures à tout le personnel",
-      "Vérifier les équipements similaires",
-    ],
-    preventiveMeasures: [
-      "Digitaliser la checklist pré-démarrage",
-      "Renforcer la formation initiale",
-      "Mettre en place des audits surprise",
-    ],
-    methodology: "5why",
-  };
-}
-
-function getMockSimilarIncidents(incident: Incident): SimilarPatternResult[] {
-  return [
-    {
-      incidentId: "inc-similar-1",
-      reference: "INC-2024-089",
-      similarity: 87,
-      commonFactors: ["Même zone", "Même type d'équipement", "Conditions similaires"],
-      date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    },
-    {
-      incidentId: "inc-similar-2",
-      reference: "INC-2024-056",
-      similarity: 72,
-      commonFactors: ["Même département", "Facteurs humains similaires"],
-      date: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000),
-    },
-  ];
-}
-

@@ -120,8 +120,8 @@ export function ChatInput({
       </form>
 
       {/* Helper text */}
-      <p className="text-[10px] text-slate-400 mt-2 text-center">
-        Appuyez sur Entrée pour envoyer, Maj+Entrée pour un retour à la ligne
+      <p className="text-[9px] text-slate-400/70 mt-1.5 text-center">
+        Entrée pour envoyer · Maj+Entrée pour retour à la ligne
       </p>
     </div>
   );

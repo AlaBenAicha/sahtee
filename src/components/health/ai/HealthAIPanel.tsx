@@ -7,12 +7,15 @@
  * - Prevention recommendations
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Brain,
   TrendingUp,
@@ -22,158 +25,88 @@ import {
   RefreshCw,
   Sparkles,
   Activity,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TrendAnalysisCard } from "./TrendAnalysisCard";
 import { RiskGroupCard } from "./RiskGroupCard";
 import { PreventionRecommendations } from "./PreventionRecommendations";
+import { 
+  useHealthAI, 
+  useHealthTrendAnalysis, 
+  usePerformHealthAnalysis,
+  getMockHealthAnalysis 
+} from "@/hooks/useHealthAI";
+import type { HealthTrendResult } from "@/services/ai/types";
 
 interface HealthAIPanelProps {
   className?: string;
 }
 
-// Mock AI analysis data (in production, this would come from the AI service)
-const mockAnalysis = {
-  lastAnalyzed: new Date(),
-  confidence: 0.87,
-  trends: [
-    {
-      id: "trend-1",
-      type: "tms",
-      description: "Augmentation des TMS dans le département Production",
-      direction: "increasing" as const,
-      changePercent: 15,
-      affectedDepartments: ["Production", "Logistique"],
-      affectedEmployeeCount: 23,
-      severity: "high" as const,
-      confidence: 0.89,
-      periodMonths: 6,
-    },
-    {
-      id: "trend-2",
-      type: "rps",
-      description: "Stabilisation des RPS après les actions correctives",
-      direction: "stable" as const,
-      changePercent: 2,
-      affectedDepartments: ["Commercial", "R&D"],
-      affectedEmployeeCount: 18,
-      severity: "medium" as const,
-      confidence: 0.82,
-      periodMonths: 3,
-    },
-    {
-      id: "trend-3",
-      type: "respiratory",
-      description: "Diminution des affections respiratoires suite au renouvellement des EPI",
-      direction: "decreasing" as const,
-      changePercent: 28,
-      affectedDepartments: ["Production"],
-      affectedEmployeeCount: 12,
-      severity: "low" as const,
-      confidence: 0.91,
-      periodMonths: 6,
-    },
-  ],
-  riskGroups: [
-    {
-      id: "group-1",
-      name: "Opérateurs production ligne A",
-      description: "Exposés aux mouvements répétitifs et postures contraignantes",
-      riskFactors: ["Gestes répétitifs", "Port de charges", "Postures statiques"],
-      primaryRisk: "tms",
-      riskLevel: "high" as const,
-      employeeCount: 15,
-      departmentIds: ["production"],
-      suggestedActions: [
-        "Rotation des postes toutes les 2 heures",
-        "Formation gestes et postures",
-        "Évaluation ergonomique des postes",
-      ],
-      priority: "immediate" as const,
-    },
-    {
-      id: "group-2",
-      name: "Équipe maintenance",
-      description: "Exposés aux risques chimiques lors des interventions",
-      riskFactors: ["Solvants", "Huiles", "Poussières métalliques"],
-      primaryRisk: "chemical",
-      riskLevel: "medium" as const,
-      employeeCount: 8,
-      departmentIds: ["maintenance"],
-      suggestedActions: [
-        "Mise à jour des fiches de données de sécurité",
-        "Vérification des EPI",
-        "Surveillance biologique renforcée",
-      ],
-      priority: "short_term" as const,
-    },
-  ],
-  recommendations: [
-    {
-      id: "rec-1",
-      type: "prevention" as const,
-      title: "Programme de prévention TMS",
-      description: "Mettre en place un programme complet de prévention des troubles musculo-squelettiques ciblant les postes à risque identifiés.",
-      rationale: "L'analyse des données montre une augmentation de 15% des TMS sur 6 mois dans le département Production.",
-      priority: "haute" as const,
-      expectedImpact: "high" as const,
-      confidence: 0.89,
-      targetDepartments: ["Production", "Logistique"],
-      targetEmployeeCount: 23,
-      suggestedCapaTitle: "Programme prévention TMS - Production",
-      status: "pending" as const,
-    },
-    {
-      id: "rec-2",
-      type: "training" as const,
-      title: "Formation gestes et postures",
-      description: "Organiser des sessions de formation sur les bonnes pratiques de manutention et les postures de travail.",
-      rationale: "65% des employés du département Production n'ont pas suivi de formation gestes et postures depuis plus de 2 ans.",
-      priority: "haute" as const,
-      expectedImpact: "medium" as const,
-      confidence: 0.85,
-      targetDepartments: ["Production"],
-      targetEmployeeCount: 35,
-      status: "pending" as const,
-    },
-    {
-      id: "rec-3",
-      type: "equipment" as const,
-      title: "Renouvellement EPI respiratoires",
-      description: "Planifier le renouvellement des équipements de protection respiratoire pour les postes exposés aux poussières.",
-      rationale: "Les EPI actuels approchent de leur date de péremption et des améliorations technologiques sont disponibles.",
-      priority: "moyenne" as const,
-      expectedImpact: "medium" as const,
-      confidence: 0.78,
-      targetDepartments: ["Production", "Maintenance"],
-      targetEmployeeCount: 28,
-      status: "pending" as const,
-    },
-    {
-      id: "rec-4",
-      type: "monitoring" as const,
-      title: "Surveillance renforcée bruit",
-      description: "Augmenter la fréquence des mesures de bruit dans les zones identifiées comme critiques.",
-      rationale: "Les dernières mesures indiquent des niveaux proches des seuils réglementaires.",
-      priority: "moyenne" as const,
-      expectedImpact: "low" as const,
-      confidence: 0.72,
-      targetDepartments: ["Production"],
-      status: "pending" as const,
-    },
-  ],
-};
-
 export function HealthAIPanel({ className }: HealthAIPanelProps) {
   const [activeTab, setActiveTab] = useState("overview");
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // AI hooks
+  const { isEnabled: isAIEnabled, isInitialized } = useHealthAI();
+  const { 
+    data: aiAnalysis, 
+    isLoading, 
+    streamedContent,
+    isStreaming,
+    refetch 
+  } = useHealthTrendAnalysis();
+  const performAnalysis = usePerformHealthAnalysis();
+
+  // Use AI data or fallback to mock
+  const analysis: HealthTrendResult = useMemo(() => {
+    if (isAIEnabled && aiAnalysis) {
+      return aiAnalysis;
+    }
+    return getMockHealthAnalysis();
+  }, [isAIEnabled, aiAnalysis]);
+
+  const isRefreshing = isStreaming || performAnalysis.isPending;
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Simulate AI analysis refresh
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsRefreshing(false);
+    if (isAIEnabled && isInitialized) {
+      await performAnalysis.mutateAsync();
+    } else {
+      await refetch();
+    }
   };
+
+  // Calculate confidence (average of all trends)
+  const confidence = useMemo(() => {
+    if (!analysis.trends.length) return 0.8;
+    const sum = analysis.trends.reduce((acc, t) => acc + t.confidence, 0);
+    return sum / analysis.trends.length;
+  }, [analysis.trends]);
+
+  // Calculate total affected employees
+  const totalAffectedEmployees = useMemo(() => {
+    const fromTrends = analysis.trends.reduce((sum, t) => sum + t.affectedEmployeeCount, 0);
+    const fromGroups = analysis.riskGroups.reduce((sum, g) => sum + g.employeeCount, 0);
+    return Math.max(fromTrends, fromGroups);
+  }, [analysis]);
+
+  if (isLoading && isAIEnabled) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={className}>
@@ -185,18 +118,26 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
                 <Brain className="h-5 w-5 text-white" />
               </div>
               Health-AI
-              <Badge variant="secondary" className="ml-2 text-xs">
-                <Sparkles className="mr-1 h-3 w-3" />
-                IA
-              </Badge>
+              {isAIEnabled ? (
+                <Badge variant="secondary" className="ml-2 text-xs bg-purple-100 text-purple-700 border-purple-300">
+                  <Sparkles className="mr-1 h-3 w-3" />
+                  IA Active
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="ml-2 text-xs">
+                  Mode démo
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>
-              Analyse intelligente des données de santé au travail
+              {isAIEnabled 
+                ? "Analyse intelligente des données de santé au travail"
+                : "Aperçu des fonctionnalités d'analyse santé"}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              Confiance: {(mockAnalysis.confidence * 100).toFixed(0)}%
+              Confiance: {(confidence * 100).toFixed(0)}%
             </Badge>
             <Button
               variant="outline"
@@ -205,13 +146,41 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
               disabled={isRefreshing}
             >
               <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
-              Actualiser
+              {isRefreshing ? "Analyse..." : "Actualiser"}
             </Button>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* AI Status Alert */}
+        {!isAIEnabled && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              L'IA Gemini n'est pas configurée. Les données affichées sont des exemples.
+              Configurez VITE_GEMINI_API_KEY pour activer l'analyse IA avancée.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Streaming Content */}
+        {isStreaming && streamedContent && (
+          <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Sparkles className="h-4 w-4 animate-pulse text-purple-500" />
+                Analyse en cours...
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-32">
+                <p className="text-sm whitespace-pre-wrap">{streamedContent}</p>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="rounded-lg border bg-gradient-to-br from-violet-50 to-purple-50 p-4">
@@ -220,7 +189,7 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
               <span className="text-sm font-medium">Tendances</span>
             </div>
             <p className="text-2xl font-bold text-violet-700 mt-1">
-              {mockAnalysis.trends.length}
+              {analysis.trends.length}
             </p>
             <p className="text-xs text-violet-500">détectées</p>
           </div>
@@ -230,7 +199,7 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
               <span className="text-sm font-medium">Groupes à risque</span>
             </div>
             <p className="text-2xl font-bold text-amber-700 mt-1">
-              {mockAnalysis.riskGroups.length}
+              {analysis.riskGroups.length}
             </p>
             <p className="text-xs text-amber-500">identifiés</p>
           </div>
@@ -240,19 +209,51 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
               <span className="text-sm font-medium">Recommandations</span>
             </div>
             <p className="text-2xl font-bold text-emerald-700 mt-1">
-              {mockAnalysis.recommendations.length}
+              {analysis.recommendations.length}
             </p>
             <p className="text-xs text-emerald-500">proposées</p>
           </div>
           <div className="rounded-lg border bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
             <div className="flex items-center gap-2 text-blue-600">
               <Activity className="h-4 w-4" />
-              <span className="text-sm font-medium">Employés analysés</span>
+              <span className="text-sm font-medium">Employés concernés</span>
             </div>
-            <p className="text-2xl font-bold text-blue-700 mt-1">156</p>
-            <p className="text-xs text-blue-500">sur 180</p>
+            <p className="text-2xl font-bold text-blue-700 mt-1">
+              {totalAffectedEmployees}
+            </p>
+            <p className="text-xs text-blue-500">personnes</p>
           </div>
         </div>
+
+        {/* Alerts */}
+        {analysis.alerts && analysis.alerts.length > 0 && (
+          <div className="space-y-2">
+            {analysis.alerts.map((alert, index) => (
+              <Alert 
+                key={index} 
+                variant={alert.severity === "critical" ? "destructive" : "default"}
+                className={cn(
+                  alert.severity === "warning" && "border-amber-300 bg-amber-50 dark:bg-amber-950/20"
+                )}
+              >
+                <AlertTriangle className={cn(
+                  "h-4 w-4",
+                  alert.severity === "warning" && "text-amber-600"
+                )} />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>
+                    <strong>{alert.title}</strong>: {alert.description}
+                  </span>
+                  {alert.affectedCount && (
+                    <Badge variant="outline" className="ml-2">
+                      {alert.affectedCount} personnes
+                    </Badge>
+                  )}
+                </AlertDescription>
+              </Alert>
+            ))}
+          </div>
+        )}
 
         <Separator />
 
@@ -277,37 +278,62 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
           <TabsContent value="overview" className="mt-4 space-y-4">
             <div className="flex items-center justify-between text-sm text-slate-500">
               <span>
-                Analyse sur les {mockAnalysis.trends[0]?.periodMonths || 6} derniers mois
+                Analyse sur les {analysis.trends[0]?.periodMonths || 6} derniers mois
               </span>
               <span>
-                Dernière analyse: {mockAnalysis.lastAnalyzed.toLocaleDateString("fr-FR")}
+                Dernière analyse: {new Date().toLocaleDateString("fr-FR")}
               </span>
             </div>
-            <div className="space-y-3">
-              {mockAnalysis.trends.map((trend) => (
-                <TrendAnalysisCard key={trend.id} trend={trend} />
-              ))}
-            </div>
+            <ScrollArea className="h-80">
+              <div className="space-y-3">
+                {analysis.trends.length > 0 ? (
+                  analysis.trends.map((trend, index) => (
+                    <TrendAnalysisCard key={`trend-${index}`} trend={trend} />
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <TrendingUp className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                    <p>Aucune tendance significative détectée</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </TabsContent>
 
           {/* Risk Groups Tab */}
           <TabsContent value="risks" className="mt-4 space-y-4">
             <div className="flex items-center justify-between text-sm text-slate-500">
               <span>
-                {mockAnalysis.riskGroups.reduce((sum, g) => sum + g.employeeCount, 0)} employés
+                {analysis.riskGroups.reduce((sum, g) => sum + g.employeeCount, 0)} employés
                 dans les groupes à risque
               </span>
             </div>
-            <div className="space-y-3">
-              {mockAnalysis.riskGroups.map((group) => (
-                <RiskGroupCard key={group.id} group={group} />
-              ))}
-            </div>
+            <ScrollArea className="h-80">
+              <div className="space-y-3">
+                {analysis.riskGroups.length > 0 ? (
+                  analysis.riskGroups.map((group, index) => (
+                    <RiskGroupCard key={`group-${index}`} group={group} />
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                    <p>Aucun groupe à risque identifié</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </TabsContent>
 
           {/* Recommendations Tab */}
           <TabsContent value="recommendations" className="mt-4">
-            <PreventionRecommendations recommendations={mockAnalysis.recommendations} />
+            {analysis.recommendations.length > 0 ? (
+              <PreventionRecommendations recommendations={analysis.recommendations} />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Lightbulb className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                <p>Aucune recommandation pour le moment</p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
@@ -328,4 +354,3 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
 }
 
 export default HealthAIPanel;
-

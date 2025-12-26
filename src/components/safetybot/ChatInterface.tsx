@@ -31,31 +31,29 @@ export function ChatInterface({
   }, [messages]);
 
   return (
-    <ScrollArea className={cn("flex-1", className)} ref={scrollRef}>
-      <div className="min-h-full flex flex-col">
+    <ScrollArea className={cn("flex-1 min-h-0", className)} ref={scrollRef}>
+      <div className="p-2">
         {/* Messages */}
-        <div className="flex-1">
-          {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full p-8">
-              <div className="text-center text-slate-500">
-                <p className="text-lg font-medium mb-2">Bienvenue !</p>
-                <p className="text-sm">
-                  Posez une question pour commencer la conversation.
-                </p>
-              </div>
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center min-h-[200px] p-8">
+            <div className="text-center text-slate-500">
+              <p className="text-lg font-medium mb-2">Bienvenue !</p>
+              <p className="text-sm">
+                Posez une question pour commencer la conversation.
+              </p>
             </div>
-          ) : (
-            <div className="py-2">
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                  onActionClick={onActionClick}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                onActionClick={onActionClick}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Scroll anchor */}
         <div ref={bottomRef} className="h-px" />

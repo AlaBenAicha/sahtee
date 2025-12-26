@@ -1,90 +1,230 @@
 /**
  * SafetyBot Service
- * Handles AI interactions using Google Gemini API
+ * 
+ * Enhanced AI service with:
+ * - Function calling (tools) for data access
+ * - Session persistence in Firestore
+ * - Streaming responses
+ * - Context-aware prompts
  */
 
-import { GoogleGenerativeAI, type GenerativeModel, type ChatSession } from "@google/generative-ai";
 import type {
-  SafetyBotMessage,
-  SafetyBotResponse,
-  ConversationContext,
-  SuggestedAction,
-  MessageSource,
-} from "@/types/safetybot";
-import { buildSystemPrompt, QUICK_RESPONSES } from "@/prompts/safetyBot";
+  AIContext,
+  AIMessage,
+  AISession,
+  AISessionSummary,
+  AIResponse,
+} from "@/services/ai/types";
+import { GeminiClient, isGeminiEnabled } from "@/services/ai/geminiClient";
+import { getToolsForBot } from "@/services/ai/tools";
+import {
+  createSession,
+  getSession,
+  getUserSessions,
+  addMessageToSession,
+  archiveSession,
+  deleteSession,
+} from "@/services/ai/sessionService";
+import {
+  buildSafetyBotPrompt,
+  getSafetyBotGreeting,
+  SAFETYBOT_QUICK_RESPONSES,
+  getSuggestedQuestions,
+} from "@/prompts/safetyBot";
 import {
   PLATFORM_MODULES,
-  COMMON_WORKFLOWS,
-  FAQ_ITEMS,
   searchModules,
   searchFAQs,
 } from "@/data/platformKnowledge";
+import type { SuggestedAction, MessageSource } from "@/types/safetybot";
 
-// Get API key from environment
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+export type { SuggestedAction, MessageSource };
+
+/**
+ * Response from SafetyBot
+ */
+export interface SafetyBotResponse {
+  content: string;
+  suggestedActions?: SuggestedAction[];
+  sources?: MessageSource[];
+  confidence: number;
+}
+
+/**
+ * SafetyBot message type
+ */
+export interface SafetyBotMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+  suggestedActions?: SuggestedAction[];
+  sources?: MessageSource[];
+  isStreaming?: boolean;
+  isError?: boolean;
+}
 
 /**
  * Check if SafetyBot is enabled
  */
 export function isSafetyBotEnabled(): boolean {
-  return Boolean(GEMINI_API_KEY) && import.meta.env.VITE_ENABLE_SAFETYBOT !== "false";
+  return isGeminiEnabled() && import.meta.env.VITE_ENABLE_SAFETYBOT !== "false";
 }
 
 /**
  * SafetyBot Service Class
  */
 export class SafetyBotService {
-  private genAI: GoogleGenerativeAI | null = null;
-  private model: GenerativeModel | null = null;
-  private chat: ChatSession | null = null;
-  private context: ConversationContext | null = null;
+  private client: GeminiClient;
+  private context: AIContext | null = null;
+  private currentSessionId: string | null = null;
+  private isInitialized: boolean = false;
 
   constructor() {
-    if (GEMINI_API_KEY) {
-      this.genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    }
+    this.client = new GeminiClient();
   }
 
   /**
-   * Initialize a new chat session with context
+   * Initialize SafetyBot with user context
    */
-  initializeChat(context: ConversationContext): void {
-    if (!this.model) {
-      console.warn("SafetyBot: Gemini API not configured");
-      return;
-    }
-
+  async initialize(context: AIContext, sessionId?: string): Promise<void> {
     this.context = context;
-    const systemPrompt = buildSystemPrompt(context);
 
-    this.chat = this.model.startChat({
-      history: [
-        {
-          role: "user",
-          parts: [{ text: "Initialisation du contexte." }],
-        },
-        {
-          role: "model",
-          parts: [{ text: QUICK_RESPONSES.greeting }],
-        },
-      ],
-      generationConfig: {
-        maxOutputTokens: 2048,
-        temperature: 0.7,
-        topP: 0.9,
-        topK: 40,
-      },
-      systemInstruction: systemPrompt,
+    // Get tools for SafetyBot
+    const tools = getToolsForBot("safetybot");
+
+    // Build system prompt
+    const systemPrompt = buildSafetyBotPrompt(context);
+
+    // Initialize Gemini client
+    this.client.initialize({
+      botType: "safetybot",
+      context,
+      tools,
+      systemPrompt,
+      modelType: "flash",
     });
+
+    // Load or create session
+    if (sessionId) {
+      await this.loadSession(sessionId);
+    } else {
+      // Start with empty chat
+      this.client.startChat([]);
+      this.currentSessionId = null;
+    }
+
+    this.isInitialized = true;
   }
 
   /**
-   * Update the conversation context
+   * Update context (e.g., when user navigates)
    */
-  updateContext(context: Partial<ConversationContext>): void {
+  updateContext(context: Partial<AIContext>): void {
     if (this.context) {
       this.context = { ...this.context, ...context };
+      this.client.updateContext(context);
+    }
+  }
+
+  /**
+   * Create a new session
+   */
+  async createNewSession(): Promise<string> {
+    if (!this.context) {
+      throw new Error("SafetyBot not initialized");
+    }
+
+    // Create greeting message
+    const greeting = this.getGreeting();
+    const greetingMessage: AIMessage = {
+      id: generateMessageId(),
+      role: "assistant",
+      content: greeting,
+      timestamp: new Date(),
+    };
+
+    // Create session in Firestore
+    const session = await createSession(
+      this.context.userId,
+      this.context.organizationId,
+      "safetybot",
+      this.context,
+      greetingMessage
+    );
+
+    this.currentSessionId = session.id;
+
+    // Start fresh chat
+    this.client.startChat([]);
+
+    return session.id;
+  }
+
+  /**
+   * Load an existing session
+   */
+  async loadSession(sessionId: string): Promise<AISession | null> {
+    const session = await getSession(sessionId);
+
+    if (!session) {
+      return null;
+    }
+
+    // Verify access
+    if (
+      this.context &&
+      (session.userId !== this.context.userId ||
+        session.organizationId !== this.context.organizationId)
+    ) {
+      throw new Error("Access denied to session");
+    }
+
+    this.currentSessionId = sessionId;
+
+    // Load chat history into Gemini
+    this.client.startChat(session.messages);
+
+    return session;
+  }
+
+  /**
+   * Get user's sessions
+   */
+  async getSessions(includeArchived = false): Promise<AISessionSummary[]> {
+    if (!this.context) {
+      return [];
+    }
+
+    return getUserSessions(
+      this.context.userId,
+      this.context.organizationId,
+      {
+        botType: "safetybot",
+        includeArchived,
+      }
+    );
+  }
+
+  /**
+   * Archive current session
+   */
+  async archiveCurrentSession(): Promise<void> {
+    if (this.currentSessionId) {
+      await archiveSession(this.currentSessionId);
+      this.currentSessionId = null;
+      this.client.startChat([]);
+    }
+  }
+
+  /**
+   * Delete a session
+   */
+  async deleteSession(sessionId: string): Promise<void> {
+    await deleteSession(sessionId);
+    if (this.currentSessionId === sessionId) {
+      this.currentSessionId = null;
+      this.client.startChat([]);
     }
   }
 
@@ -92,37 +232,46 @@ export class SafetyBotService {
    * Send a message and get a response
    */
   async sendMessage(message: string): Promise<SafetyBotResponse> {
-    if (!this.chat || !this.model) {
-      // Return offline response with local knowledge
+    if (!this.isInitialized || !this.context) {
       return this.getOfflineResponse(message);
     }
 
+    // Check local knowledge first for quick responses
+    const localResponse = this.checkLocalKnowledge(message);
+    if (localResponse) {
+      await this.saveMessage(message, localResponse.content);
+      return localResponse;
+    }
+
     try {
-      // Check for local knowledge first (faster response)
-      const localResponse = this.checkLocalKnowledge(message);
-      if (localResponse) {
-        return localResponse;
+      // Create session if needed
+      if (!this.currentSessionId) {
+        await this.createNewSession();
       }
 
-      // Send to Gemini
-      const result = await this.chat.sendMessage(message);
-      const response = await result.response;
-      const text = response.text();
+      // Send to Gemini with tools
+      const response = await this.client.sendMessage(message, true);
 
-      // Parse response for suggested actions
-      const suggestedActions = this.extractSuggestedActions(text, message);
-      const sources = this.extractSources(text);
+      // Save to session
+      await this.saveMessage(message, response.content);
+
+      // Extract suggested actions and sources
+      const suggestedActions = this.extractSuggestedActions(
+        response.content,
+        message
+      );
+      const sources = this.extractSources(response.content);
 
       return {
-        content: text,
+        content: response.content,
         suggestedActions,
         sources,
-        confidence: 0.85,
+        confidence: response.confidence || 0.85,
       };
     } catch (error) {
       console.error("SafetyBot API error:", error);
       return {
-        content: QUICK_RESPONSES.error,
+        content: SAFETYBOT_QUICK_RESPONSES.error,
         confidence: 0,
       };
     }
@@ -135,43 +284,49 @@ export class SafetyBotService {
     message: string,
     onChunk: (chunk: string) => void
   ): Promise<SafetyBotResponse> {
-    if (!this.chat || !this.model) {
+    if (!this.isInitialized || !this.context) {
       const offlineResponse = this.getOfflineResponse(message);
       onChunk(offlineResponse.content);
       return offlineResponse;
     }
 
+    // Check local knowledge first
+    const localResponse = this.checkLocalKnowledge(message);
+    if (localResponse) {
+      onChunk(localResponse.content);
+      await this.saveMessage(message, localResponse.content);
+      return localResponse;
+    }
+
     try {
-      // Check local knowledge first
-      const localResponse = this.checkLocalKnowledge(message);
-      if (localResponse) {
-        onChunk(localResponse.content);
-        return localResponse;
+      // Create session if needed
+      if (!this.currentSessionId) {
+        await this.createNewSession();
       }
 
-      const result = await this.chat.sendMessageStream(message);
+      // Stream from Gemini with tools
+      const response = await this.client.streamMessage(message, onChunk, true);
 
-      let fullText = "";
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
-        fullText += chunkText;
-        onChunk(chunkText);
-      }
+      // Save to session
+      await this.saveMessage(message, response.content);
 
-      const suggestedActions = this.extractSuggestedActions(fullText, message);
-      const sources = this.extractSources(fullText);
+      const suggestedActions = this.extractSuggestedActions(
+        response.content,
+        message
+      );
+      const sources = this.extractSources(response.content);
 
       return {
-        content: fullText,
+        content: response.content,
         suggestedActions,
         sources,
-        confidence: 0.85,
+        confidence: response.confidence || 0.85,
       };
     } catch (error) {
       console.error("SafetyBot streaming error:", error);
-      const errorResponse = QUICK_RESPONSES.error;
-      onChunk(errorResponse);
-      return { content: errorResponse, confidence: 0 };
+      const errorMsg = SAFETYBOT_QUICK_RESPONSES.error;
+      onChunk(errorMsg);
+      return { content: errorMsg, confidence: 0 };
     }
   }
 
@@ -179,16 +334,69 @@ export class SafetyBotService {
    * Get greeting message
    */
   getGreeting(): string {
-    return QUICK_RESPONSES.greeting;
+    if (this.context) {
+      return getSafetyBotGreeting(this.context);
+    }
+    return SAFETYBOT_QUICK_RESPONSES.greeting({
+      organizationId: "",
+      userId: "",
+      userRole: "",
+      userName: "",
+    });
   }
 
   /**
-   * Clear chat history and start fresh
+   * Get suggested questions based on context
+   */
+  getSuggestedQuestions(): string[] {
+    if (this.context) {
+      return getSuggestedQuestions(this.context);
+    }
+    return [
+      "Quelle est la situation SST globale ?",
+      "Y a-t-il des actions urgentes ?",
+    ];
+  }
+
+  /**
+   * Clear chat history (in-memory only)
    */
   clearHistory(): void {
-    if (this.context) {
-      this.initializeChat(this.context);
-    }
+    this.client.startChat([]);
+  }
+
+  /**
+   * Get current session ID
+   */
+  getCurrentSessionId(): string | null {
+    return this.currentSessionId;
+  }
+
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
+
+  /**
+   * Save messages to session
+   */
+  private async saveMessage(userMessage: string, assistantResponse: string): Promise<void> {
+    if (!this.currentSessionId) return;
+
+    // Save user message
+    await addMessageToSession(this.currentSessionId, {
+      id: generateMessageId(),
+      role: "user",
+      content: userMessage,
+      timestamp: new Date(),
+    });
+
+    // Save assistant response
+    await addMessageToSession(this.currentSessionId, {
+      id: generateMessageId(),
+      role: "assistant",
+      content: assistantResponse,
+      timestamp: new Date(),
+    });
   }
 
   /**
@@ -208,30 +416,12 @@ export class SafetyBotService {
       if (modules.length > 0) {
         const module = modules[0];
         return {
-          content: `Pour accéder à **${module.nameFr}** (${module.name}) :\n\n1. Cliquez sur "${module.nameFr}" dans le menu latéral\n2. Ou utilisez ce lien direct\n\n**Description** : ${module.description}\n\n**Fonctionnalités** :\n${module.features.map((f) => `- ${f}`).join("\n")}`,
+          content: `Pour accéder à **${module.nameFr}** :\n\n1. Cliquez sur "${module.nameFr}" dans le menu latéral\n2. Ou utilisez le lien direct\n\n**Description** : ${module.description}\n\n**Fonctionnalités** :\n${module.features.map((f) => `- ${f}`).join("\n")}`,
           suggestedActions: [
             {
               type: "navigate",
               label: `Aller vers ${module.nameFr}`,
               path: module.path,
-            },
-          ],
-          confidence: 0.95,
-        };
-      }
-    }
-
-    // Check for workflow questions
-    for (const [key, workflow] of Object.entries(COMMON_WORKFLOWS)) {
-      const workflowKeywords = key.split("_");
-      if (workflowKeywords.every((kw) => lowerMessage.includes(kw))) {
-        return {
-          content: `## ${workflow.title}\n\n${workflow.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\n💡 **Astuce** : ${workflow.tip}`,
-          suggestedActions: [
-            {
-              type: "navigate",
-              label: `Aller vers ${workflow.relatedModule}`,
-              path: `/app/${workflow.relatedModule}`,
             },
           ],
           confidence: 0.95,
@@ -264,7 +454,7 @@ export class SafetyBotService {
   }
 
   /**
-   * Get offline response when API is not available
+   * Get offline response
    */
   private getOfflineResponse(message: string): SafetyBotResponse {
     const localResponse = this.checkLocalKnowledge(message);
@@ -272,30 +462,24 @@ export class SafetyBotService {
       return localResponse;
     }
 
-    // Generic offline response
     return {
-      content: `Je suis actuellement en mode hors-ligne et ne peux pas traiter votre demande complètement.
-
-Voici ce que vous pouvez faire :
-- Consultez directement le module concerné dans le menu latéral
-- Utilisez les boutons d'aide (?) présents dans chaque module
-- Rafraîchissez la page et réessayez
-
-**Modules disponibles** :
-${PLATFORM_MODULES.map((m) => `- **${m.nameFr}** : ${m.description}`).join("\n")}`,
+      content: SAFETYBOT_QUICK_RESPONSES.offline,
       suggestedActions: PLATFORM_MODULES.slice(0, 4).map((m) => ({
         type: "navigate" as const,
         label: m.nameFr,
         path: m.path,
       })),
-      confidence: 0.5,
+      confidence: 0.3,
     };
   }
 
   /**
-   * Extract suggested actions from response text
+   * Extract suggested actions from response
    */
-  private extractSuggestedActions(text: string, originalMessage: string): SuggestedAction[] {
+  private extractSuggestedActions(
+    text: string,
+    originalMessage: string
+  ): SuggestedAction[] {
     const actions: SuggestedAction[] = [];
     const lowerText = text.toLowerCase();
     const lowerMessage = originalMessage.toLowerCase();
@@ -330,7 +514,10 @@ ${PLATFORM_MODULES.map((m) => `- **${m.nameFr}** : ${m.description}`).join("\n")
       });
     }
 
-    if (lowerMessage.includes("incident") && lowerMessage.includes("déclarer")) {
+    if (
+      lowerMessage.includes("incident") &&
+      lowerMessage.includes("déclarer")
+    ) {
       actions.push({
         type: "create_incident",
         label: "Déclarer un incident",
@@ -338,7 +525,6 @@ ${PLATFORM_MODULES.map((m) => `- **${m.nameFr}** : ${m.description}`).join("\n")
       });
     }
 
-    // Limit to 3 actions
     return actions.slice(0, 3);
   }
 
@@ -349,7 +535,6 @@ ${PLATFORM_MODULES.map((m) => `- **${m.nameFr}** : ${m.description}`).join("\n")
     const sources: MessageSource[] = [];
     const lowerText = text.toLowerCase();
 
-    // Check for regulation mentions
     if (lowerText.includes("iso 45001")) {
       sources.push({
         type: "regulation",
@@ -370,18 +555,9 @@ ${PLATFORM_MODULES.map((m) => `- **${m.nameFr}** : ${m.description}`).join("\n")
   }
 }
 
-// Singleton instance
-let safetyBotInstance: SafetyBotService | null = null;
-
-/**
- * Get or create SafetyBot service instance
- */
-export function getSafetyBotService(): SafetyBotService {
-  if (!safetyBotInstance) {
-    safetyBotInstance = new SafetyBotService();
-  }
-  return safetyBotInstance;
-}
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
 /**
  * Generate a unique message ID
@@ -416,4 +592,27 @@ export function createAssistantMessage(
     timestamp: new Date(),
     ...options,
   };
+}
+
+// =============================================================================
+// Singleton
+// =============================================================================
+
+let safetyBotInstance: SafetyBotService | null = null;
+
+/**
+ * Get or create SafetyBot service instance
+ */
+export function getSafetyBotService(): SafetyBotService {
+  if (!safetyBotInstance) {
+    safetyBotInstance = new SafetyBotService();
+  }
+  return safetyBotInstance;
+}
+
+/**
+ * Reset SafetyBot instance (for testing or logout)
+ */
+export function resetSafetyBotService(): void {
+  safetyBotInstance = null;
 }

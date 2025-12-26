@@ -127,7 +127,7 @@ export function IncidentDetailModal({
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-3xl max-h-[90vh] p-0">
+        <DialogContent size="xl" className="p-0">
           <ScrollArea className="max-h-[90vh]">
             <div className="p-6 space-y-6">
               {/* Header */}

@@ -8,7 +8,7 @@
  * - Similar incident patterns
  */
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,7 +17,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   Sparkles,
@@ -25,7 +24,6 @@ import {
   GitBranch,
   Link2,
   TrendingUp,
-  X,
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
@@ -67,7 +65,6 @@ export function CAPAAIPanel({
 
   const {
     data: priorityRecs,
-    isLoading: loadingPriority,
   } = usePriorityRecommendations();
 
   const {
@@ -279,7 +276,7 @@ export function CAPAAIPanel({
           <TabsContent value="analysis" className="space-y-4 mt-4">
             {selectedIncident ? (
               <RootCauseAnalysisPanel
-                analysis={rootCauseData}
+                analysis={rootCauseData ?? null}
                 isLoading={loadingRootCause}
                 onRefresh={() => refetchRootCause()}
                 onApplyRecommendation={handleApplyRecommendation}

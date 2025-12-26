@@ -7,15 +7,11 @@
 
 import { useState } from "react";
 import {
-  X,
   Calendar,
   User,
-  Building2,
   AlertCircle,
   CheckCircle2,
-  Clock,
   MessageSquare,
-  Paperclip,
   Sparkles,
   Link as LinkIcon,
   GraduationCap,
@@ -117,7 +113,7 @@ export function CAPADetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent size="xl" className="overflow-hidden flex flex-col">
         {isLoading ? (
           <div className="space-y-4 p-4">
             <Skeleton className="h-8 w-64" />

@@ -180,7 +180,7 @@ export function AuditForm({ open, onOpenChange, audit, onSuccess }: AuditFormPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Modifier l'audit" : "Planifier un nouvel audit"}

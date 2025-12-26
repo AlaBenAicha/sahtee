@@ -135,7 +135,7 @@ export function VisitForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Modifier la visite" : "Planifier une visite"}

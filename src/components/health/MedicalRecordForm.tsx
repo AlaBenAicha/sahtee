@@ -166,7 +166,7 @@ export function MedicalRecordForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Modifier la fiche médicale" : "Nouvelle fiche médicale"}

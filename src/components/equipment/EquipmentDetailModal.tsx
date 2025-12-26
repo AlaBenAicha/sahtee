@@ -155,7 +155,7 @@ export function EquipmentDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent size="xl">
         <DialogHeader>
           <div className="flex items-start gap-4">
             <div className={`p-3 rounded-xl ${category.color}`}>

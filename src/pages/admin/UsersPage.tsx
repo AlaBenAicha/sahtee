@@ -366,7 +366,7 @@ export default function UsersPage() {
                 Inviter un utilisateur
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent size="sm">
               <DialogHeader>
                 <DialogTitle>Inviter un utilisateur</DialogTitle>
                 <DialogDescription>
@@ -711,7 +711,7 @@ export default function UsersPage() {
 
       {/* Role Change Dialog */}
       <Dialog open={showRoleChangeDialog} onOpenChange={setShowRoleChangeDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle>Changer le rôle</DialogTitle>
             <DialogDescription>

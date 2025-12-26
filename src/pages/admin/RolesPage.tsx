@@ -493,7 +493,7 @@ export default function RolesPage() {
                 Nouveau rôle
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent size="xl" className="overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>Créer un nouveau rôle</DialogTitle>
                 <DialogDescription>
@@ -648,7 +648,7 @@ export default function RolesPage() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={handleEditDialogChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent size="xl" className="overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Modifier le rôle</DialogTitle>
             <DialogDescription>

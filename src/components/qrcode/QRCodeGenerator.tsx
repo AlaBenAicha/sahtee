@@ -108,7 +108,7 @@ export function QRCodeGenerator({ isOpen, onClose, onSuccess }: QRCodeGeneratorP
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode className="h-5 w-5 text-primary" />

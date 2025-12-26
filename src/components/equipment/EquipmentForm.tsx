@@ -169,7 +169,7 @@ export function EquipmentForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Modifier l'équipement" : "Nouvelle recommandation d'équipement"}

@@ -8,7 +8,6 @@
 import { useMemo } from "react";
 import {
   Calendar,
-  User,
   AlertCircle,
   CheckCircle2,
   Clock,

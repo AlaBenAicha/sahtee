@@ -1,13 +1,29 @@
 /**
  * SafetyBot Component
- * Main container for the SafetyBot AI assistant
+ * Main container for the SafetyBot AI assistant with session management
  */
 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useSafetyBot from "@/hooks/useSafetyBot";
 import SafetyBotTrigger from "./SafetyBotTrigger";
 import SafetyBotPanel from "./SafetyBotPanel";
+import { createAssistantMessage } from "@/services/safetyBotService";
 import type { SuggestedAction } from "@/types/safetybot";
+
+// Fallback message when AI is not configured
+const FALLBACK_MESSAGE = `👋 Bienvenue sur SafetyBot !
+
+Je suis votre assistant IA dédié à la santé et sécurité au travail. Actuellement, le service IA n'est pas configuré.
+
+**Pour activer SafetyBot :**
+Configurez la variable d'environnement \`VITE_GEMINI_API_KEY\` avec votre clé API Gemini.
+
+En attendant, voici comment je peux vous aider une fois activé :
+- 📊 Analyser vos indicateurs SST
+- 📋 Vous guider dans la création de CAPA
+- 🔍 Répondre à vos questions sur la conformité
+- 📅 Suivre vos formations et audits`;
 
 interface SafetyBotProps {
   /** Whether to show the trigger button */
@@ -16,22 +32,31 @@ interface SafetyBotProps {
 
 export function SafetyBot({ showTrigger = true }: SafetyBotProps) {
   const navigate = useNavigate();
+  const [fallbackPanelOpen, setFallbackPanelOpen] = useState(false);
+  
   const {
     isOpen,
     isLoading,
     isEnabled,
+    isInitializing,
     messages,
     toggle,
     close,
     sendMessage,
     clearHistory,
     getSuggestions,
+    // Session management
+    currentSessionId,
+    sessions,
+    isSessionsLoading,
+    createNewSession,
+    switchSession,
+    archiveCurrentSession,
+    deleteSession,
   } = useSafetyBot();
 
-  // Don't render if SafetyBot is not enabled
-  if (!isEnabled) {
-    return null;
-  }
+  // Fallback messages when AI is not configured
+  const fallbackMessages = [createAssistantMessage(FALLBACK_MESSAGE)];
 
   const handleActionClick = (action: SuggestedAction) => {
     // Navigate if path is provided
@@ -61,22 +86,57 @@ export function SafetyBot({ showTrigger = true }: SafetyBotProps) {
     }
   };
 
+  // If AI is not enabled, show a simplified panel with fallback message
+  if (!isEnabled) {
+    return (
+      <>
+        {/* Fallback Panel */}
+        <SafetyBotPanel
+          isOpen={fallbackPanelOpen}
+          isLoading={false}
+          messages={fallbackMessages}
+          suggestions={[]}
+          onClose={() => setFallbackPanelOpen(false)}
+          onSend={() => {}} // No-op when AI is not configured
+          onClear={() => {}}
+          onActionClick={handleActionClick}
+        />
+
+        {/* Floating Trigger Button - Hidden when panel is open */}
+        {showTrigger && !fallbackPanelOpen && (
+          <SafetyBotTrigger 
+            isOpen={fallbackPanelOpen} 
+            onClick={() => setFallbackPanelOpen(!fallbackPanelOpen)} 
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       {/* Panel */}
       <SafetyBotPanel
         isOpen={isOpen}
-        isLoading={isLoading}
+        isLoading={isLoading || isInitializing}
         messages={messages}
         suggestions={getSuggestions()}
         onClose={close}
         onSend={sendMessage}
         onClear={clearHistory}
         onActionClick={handleActionClick}
+        // Session management props
+        currentSessionId={currentSessionId}
+        sessions={sessions}
+        isSessionsLoading={isSessionsLoading}
+        onNewSession={createNewSession}
+        onSwitchSession={switchSession}
+        onArchiveSession={archiveCurrentSession}
+        onDeleteSession={deleteSession}
       />
 
-      {/* Floating Trigger Button */}
-      {showTrigger && (
+      {/* Floating Trigger Button - Hidden when panel is open */}
+      {showTrigger && !isOpen && (
         <SafetyBotTrigger isOpen={isOpen} onClick={toggle} />
       )}
     </>

@@ -153,7 +153,7 @@ export function AuditDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+      <DialogContent size="xl" className="p-0">
         <DialogHeader className="p-6 pb-0">
           <div className="flex items-start justify-between">
             <div>
