@@ -162,4 +162,3 @@ Create [`src/hooks/useEmployeeSearch.ts`](src/hooks/useEmployeeSearch.ts):
 ## Testing Points
 
 - Create a new fiche medicale and verify employee search works
-- Create a new visite and verify employee data auto-populates
