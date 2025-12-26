@@ -1,46 +1,62 @@
 /**
  * Application Routes Configuration
+ * With lazy loading for performance optimization
  */
 
+import { Suspense, lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
-// Layout
+// Layout - loaded eagerly as it's always needed
 import AppLayout from "@/components/layout/AppLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import FeatureGuard from "@/components/auth/FeatureGuard";
 
-// Public Pages
-import LandingPage from "@/pages/LandingPage";
-import ReportPage from "@/pages/public/ReportPage";
+// Loading component for lazy-loaded pages
+import { Loader2 } from "lucide-react";
 
-// Auth Pages
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+  </div>
+);
+
+// Public Pages - eagerly loaded for fast initial experience
+import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/auth/LoginPage";
 import SignupPage from "@/pages/auth/SignupPage";
-import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
-import VerifyEmailPage from "@/pages/auth/VerifyEmailPage";
 
-// App Pages
-import DashboardPage from "@/pages/dashboard/DashboardPage";
-import IncidentsPage from "@/pages/incidents/IncidentsPage";
-import CAPAPage from "@/pages/capa/CAPAPage";
-import TrainingPage from "@/pages/training/TrainingPage";
-import EquipmentPage from "@/pages/equipment/EquipmentPage";
-import CompliancePage from "@/pages/compliance/CompliancePage";
-import HealthPage from "@/pages/health/HealthPage";
-import AnalyticsPage from "@/pages/analytics/AnalyticsPage";
-import AdminPage from "@/pages/admin/AdminPage";
-import RolesPage from "@/pages/admin/RolesPage";
-import UsersPage from "@/pages/admin/UsersPage";
-import SettingsPage from "@/pages/settings/SettingsPage";
-import ProfilePage from "@/pages/profile/ProfilePage";
-import AcceptInvitationPage from "@/pages/auth/AcceptInvitationPage";
+// Lazy-loaded public pages
+const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"));
+const VerifyEmailPage = lazy(() => import("@/pages/auth/VerifyEmailPage"));
+const AcceptInvitationPage = lazy(() => import("@/pages/auth/AcceptInvitationPage"));
+const ReportPage = lazy(() => import("@/pages/public/ReportPage"));
 
-// Onboarding
-import OnboardingPage from "@/pages/onboarding/OnboardingPage";
+// Lazy-loaded App Pages
+const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage"));
+const IncidentsPage = lazy(() => import("@/pages/incidents/IncidentsPage"));
+const CAPAPage = lazy(() => import("@/pages/capa/CAPAPage"));
+const TrainingPage = lazy(() => import("@/pages/training/TrainingPage"));
+const EquipmentPage = lazy(() => import("@/pages/equipment/EquipmentPage"));
+const CompliancePage = lazy(() => import("@/pages/compliance/CompliancePage"));
+const HealthPage = lazy(() => import("@/pages/health/HealthPage"));
+const AnalyticsPage = lazy(() => import("@/pages/analytics/AnalyticsPage"));
+const AdminPage = lazy(() => import("@/pages/admin/AdminPage"));
+const RolesPage = lazy(() => import("@/pages/admin/RolesPage"));
+const UsersPage = lazy(() => import("@/pages/admin/UsersPage"));
+const SettingsPage = lazy(() => import("@/pages/settings/SettingsPage"));
+const ProfilePage = lazy(() => import("@/pages/profile/ProfilePage"));
+const OnboardingPage = lazy(() => import("@/pages/onboarding/OnboardingPage"));
 
 // Error Pages
-import NotFoundPage from "@/pages/errors/NotFoundPage";
-import AccessDeniedPage from "@/pages/errors/AccessDeniedPage";
+const NotFoundPage = lazy(() => import("@/pages/errors/NotFoundPage"));
+const AccessDeniedPage = lazy(() => import("@/pages/errors/AccessDeniedPage"));
+
+// Helper to wrap lazy components with Suspense
+const withSuspense = (Component: React.ComponentType) => (
+  <Suspense fallback={<PageLoader />}>
+    <Component />
+  </Suspense>
+);
 
 export const router = createBrowserRouter([
   // Public routes
@@ -58,25 +74,25 @@ export const router = createBrowserRouter([
   },
   {
     path: "/forgot-password",
-    element: <ForgotPasswordPage />,
+    element: withSuspense(ForgotPasswordPage),
   },
   {
     path: "/verify-email",
-    element: <VerifyEmailPage />,
+    element: withSuspense(VerifyEmailPage),
   },
   {
     path: "/accept-invitation",
-    element: <AcceptInvitationPage />,
+    element: withSuspense(AcceptInvitationPage),
   },
 
   // Public reporting route (for QR code scans)
   {
     path: "/report",
-    element: <ReportPage />,
+    element: withSuspense(ReportPage),
   },
   {
     path: "/report/:code",
-    element: <ReportPage />,
+    element: withSuspense(ReportPage),
   },
 
   // Protected routes
@@ -95,7 +111,9 @@ export const router = createBrowserRouter([
             path: "dashboard",
             element: (
               <FeatureGuard feature="dashboard">
-                <DashboardPage />
+                <Suspense fallback={<PageLoader />}>
+                  <DashboardPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -103,7 +121,9 @@ export const router = createBrowserRouter([
             path: "incidents",
             element: (
               <FeatureGuard feature="incidents">
-                <IncidentsPage />
+                <Suspense fallback={<PageLoader />}>
+                  <IncidentsPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -111,7 +131,9 @@ export const router = createBrowserRouter([
             path: "capa",
             element: (
               <FeatureGuard feature="capa">
-                <CAPAPage />
+                <Suspense fallback={<PageLoader />}>
+                  <CAPAPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -119,7 +141,9 @@ export const router = createBrowserRouter([
             path: "training",
             element: (
               <FeatureGuard feature="training">
-                <TrainingPage />
+                <Suspense fallback={<PageLoader />}>
+                  <TrainingPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -127,7 +151,9 @@ export const router = createBrowserRouter([
             path: "equipment",
             element: (
               <FeatureGuard feature="equipment">
-                <EquipmentPage />
+                <Suspense fallback={<PageLoader />}>
+                  <EquipmentPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -135,7 +161,9 @@ export const router = createBrowserRouter([
             path: "compliance",
             element: (
               <FeatureGuard feature="compliance">
-                <CompliancePage />
+                <Suspense fallback={<PageLoader />}>
+                  <CompliancePage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -143,7 +171,9 @@ export const router = createBrowserRouter([
             path: "health",
             element: (
               <FeatureGuard feature="health">
-                <HealthPage />
+                <Suspense fallback={<PageLoader />}>
+                  <HealthPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -151,7 +181,9 @@ export const router = createBrowserRouter([
             path: "analytics",
             element: (
               <FeatureGuard feature="analytics">
-                <AnalyticsPage />
+                <Suspense fallback={<PageLoader />}>
+                  <AnalyticsPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -159,7 +191,9 @@ export const router = createBrowserRouter([
             path: "admin",
             element: (
               <FeatureGuard feature="users">
-                <AdminPage />
+                <Suspense fallback={<PageLoader />}>
+                  <AdminPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -167,7 +201,9 @@ export const router = createBrowserRouter([
             path: "admin/roles",
             element: (
               <FeatureGuard feature="roles">
-                <RolesPage />
+                <Suspense fallback={<PageLoader />}>
+                  <RolesPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -175,7 +211,9 @@ export const router = createBrowserRouter([
             path: "admin/users",
             element: (
               <FeatureGuard feature="users">
-                <UsersPage />
+                <Suspense fallback={<PageLoader />}>
+                  <UsersPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
@@ -183,19 +221,29 @@ export const router = createBrowserRouter([
             path: "settings",
             element: (
               <FeatureGuard feature="settings">
-                <SettingsPage />
+                <Suspense fallback={<PageLoader />}>
+                  <SettingsPage />
+                </Suspense>
               </FeatureGuard>
             ),
           },
           {
             // Profile is always accessible to authenticated users
             path: "profile",
-            element: <ProfilePage />,
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <ProfilePage />
+              </Suspense>
+            ),
           },
           {
             // Access denied page route
             path: "access-denied",
-            element: <AccessDeniedPage />,
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <AccessDeniedPage />
+              </Suspense>
+            ),
           },
         ],
       },
@@ -209,7 +257,11 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <OnboardingPage />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <OnboardingPage />
+          </Suspense>
+        ),
       },
     ],
   },
@@ -217,7 +269,7 @@ export const router = createBrowserRouter([
   // 404
   {
     path: "*",
-    element: <NotFoundPage />,
+    element: withSuspense(NotFoundPage),
   },
 ]);
 

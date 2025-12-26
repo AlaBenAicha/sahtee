@@ -13,4 +13,5 @@ export * from "./conformity";
 export * from "./health";
 export * from "./dashboard";
 export * from "./common";
+export * from "./safetybot";
 

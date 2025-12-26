@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FeatureModule } from "@/types/organization";
+import { SafetyBot } from "@/components/safetybot";
 
 interface NavItem {
   label: string;
@@ -398,6 +399,9 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* SafetyBot AI Assistant */}
+      <SafetyBot />
     </div>
   );
 }
