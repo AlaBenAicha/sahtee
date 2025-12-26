@@ -104,17 +104,17 @@ export function CAPACard({ capa, onClick, isDraggable = false, className }: CAPA
           </div>
         )}
 
-        <CardHeader className="p-3 pb-2">
+        <CardHeader className="p-3 pb-2 space-y-2">
           <div className="flex items-start justify-between gap-2">
             {/* Reference and AI badge */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-muted-foreground">
+            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+              <span className="text-xs font-mono text-muted-foreground truncate">
                 {capa.reference}
               </span>
               {capa.aiGenerated && (
                 <Tooltip>
                   <TooltipTrigger>
-                    <Badge variant="outline" className="h-5 px-1 gap-0.5">
+                    <Badge variant="outline" className="h-5 px-1 gap-0.5 shrink-0">
                       <Sparkles className="h-3 w-3 text-violet-500" />
                       <span className="text-[10px]">IA</span>
                     </Badge>
@@ -129,14 +129,14 @@ export function CAPACard({ capa, onClick, isDraggable = false, className }: CAPA
             {/* Priority badge */}
             <Badge
               variant="secondary"
-              className={cn("text-[10px] font-medium", priority.color, priority.bgColor)}
+              className={cn("text-[10px] font-medium shrink-0 whitespace-nowrap", priority.color, priority.bgColor)}
             >
               {priority.label}
             </Badge>
           </div>
 
           {/* Title */}
-          <h4 className="text-sm font-medium line-clamp-2 leading-tight mt-1">
+          <h4 className="text-sm font-medium line-clamp-2 leading-tight">
             {capa.title}
           </h4>
         </CardHeader>
@@ -235,21 +235,21 @@ export function CAPACard({ capa, onClick, isDraggable = false, className }: CAPA
           </div>
 
           {/* Assignee */}
-          <div className="flex items-center justify-between pt-1 border-t">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
+          <div className="flex items-center justify-between pt-2 border-t gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Avatar className="h-6 w-6 shrink-0">
                 <AvatarFallback className="text-[10px] bg-primary/10">
                   {assigneeInitials}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-xs text-muted-foreground truncate max-w-[120px]">
+              <span className="text-xs text-muted-foreground truncate">
                 {capa.assigneeName}
               </span>
             </div>
 
-            <span className={cn("text-[10px] font-medium", status.color)}>
+            <Badge variant="outline" className={cn("text-[10px] font-medium shrink-0 whitespace-nowrap", status.color)}>
               {status.label}
-            </span>
+            </Badge>
           </div>
         </CardContent>
       </Card>

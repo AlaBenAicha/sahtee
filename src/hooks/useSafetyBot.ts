@@ -1,6 +1,7 @@
 /**
  * SafetyBot Hook
  * Provides SafetyBot functionality with session persistence and context awareness
+ * Supports both chat mode and agent mode
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -13,9 +14,10 @@ import {
   createAssistantMessage,
   type SafetyBotMessage,
 } from "@/services/safetyBotService";
-import type { AIContext, AISessionSummary } from "@/services/ai/types";
+import type { AIContext, AISessionSummary, SafetyBotMode } from "@/services/ai/types";
 import { getModuleByPath, getSuggestionsForPage } from "@/data/platformKnowledge";
 import type { QuickSuggestion } from "@/types/safetybot";
+import type { AgentAction } from "@/types/agent";
 
 /**
  * SafetyBot state
@@ -30,6 +32,11 @@ interface SafetyBotState {
   currentSessionId: string | null;
   sessions: AISessionSummary[];
   isSessionsLoading: boolean;
+  // Agent mode state
+  mode: SafetyBotMode;
+  thinking: string;
+  isThinking: boolean;
+  pendingActions: AgentAction[];
 }
 
 /**
@@ -73,6 +80,11 @@ export function useSafetyBot() {
     currentSessionId: null,
     sessions: [],
     isSessionsLoading: false,
+    // Agent mode defaults
+    mode: "chat",
+    thinking: "",
+    isThinking: false,
+    pendingActions: [],
   });
 
   // Initialize SafetyBot when context is ready
@@ -280,6 +292,40 @@ export function useSafetyBot() {
   }, []);
 
   /**
+   * Set SafetyBot mode (chat or agent)
+   */
+  const setMode = useCallback((mode: SafetyBotMode) => {
+    serviceRef.current.setMode(mode);
+    setState((prev) => ({
+      ...prev,
+      mode,
+      thinking: "",
+      isThinking: false,
+      pendingActions: [],
+    }));
+  }, []);
+
+  /**
+   * Handle agent action from AI response
+   */
+  const handleAgentAction = useCallback((action: AgentAction) => {
+    setState((prev) => ({
+      ...prev,
+      pendingActions: [...prev.pendingActions, action],
+    }));
+  }, []);
+
+  /**
+   * Clear pending actions
+   */
+  const clearPendingActions = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      pendingActions: [],
+    }));
+  }, []);
+
+  /**
    * Send a message to SafetyBot
    */
   const sendMessage = useCallback(async (content: string) => {
@@ -293,6 +339,9 @@ export function useSafetyBot() {
       isLoading: true,
       isStreaming: true,
       error: null,
+      thinking: "",
+      isThinking: state.mode === "agent",
+      pendingActions: [],
     }));
 
     // Create placeholder for assistant response
@@ -303,48 +352,115 @@ export function useSafetyBot() {
     }));
 
     try {
-      // Stream the response
       let fullContent = "";
-      const response = await serviceRef.current.streamMessage(
-        content,
-        (chunk) => {
-          fullContent += chunk;
-          setState((prev) => ({
-            ...prev,
-            messages: prev.messages.map((msg) =>
-              msg.id === assistantMessage.id
-                ? { ...msg, content: fullContent }
-                : msg
-            ),
-          }));
+      let fullThinking = "";
+      const actions: AgentAction[] = [];
+
+      // Use agent mode streaming if in agent mode
+      if (state.mode === "agent") {
+        const response = await serviceRef.current.streamAgentMessage(
+          content,
+          (chunk) => {
+            fullContent += chunk;
+            setState((prev) => ({
+              ...prev,
+              messages: prev.messages.map((msg) =>
+                msg.id === assistantMessage.id
+                  ? { ...msg, content: fullContent }
+                  : msg
+              ),
+            }));
+          },
+          // Thinking callback
+          (thinkingChunk) => {
+            fullThinking += thinkingChunk;
+            setState((prev) => ({
+              ...prev,
+              thinking: fullThinking,
+            }));
+          },
+          // Agent action callback
+          (action) => {
+            actions.push(action);
+            setState((prev) => ({
+              ...prev,
+              pendingActions: [...prev.pendingActions, action],
+            }));
+          }
+        );
+
+        // Update current session ID if it was created
+        const sessionId = serviceRef.current.getCurrentSessionId();
+
+        // Update final message with full response and metadata
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          isStreaming: false,
+          isThinking: false,
+          currentSessionId: sessionId,
+          messages: prev.messages.map((msg) =>
+            msg.id === assistantMessage.id
+              ? {
+                  ...msg,
+                  content: response.content,
+                  sources: response.sources,
+                  suggestedActions: response.suggestedActions,
+                  thinking: response.thinking,
+                  agentActions: response.agentActions,
+                  isStreaming: false,
+                }
+              : msg
+          ),
+        }));
+
+        // Refresh sessions if new session was created
+        if (sessionId && !state.currentSessionId) {
+          loadSessions();
         }
-      );
+      } else {
+        // Standard chat mode streaming
+        const response = await serviceRef.current.streamMessage(
+          content,
+          (chunk) => {
+            fullContent += chunk;
+            setState((prev) => ({
+              ...prev,
+              messages: prev.messages.map((msg) =>
+                msg.id === assistantMessage.id
+                  ? { ...msg, content: fullContent }
+                  : msg
+              ),
+            }));
+          }
+        );
 
-      // Update current session ID if it was created
-      const sessionId = serviceRef.current.getCurrentSessionId();
+        // Update current session ID if it was created
+        const sessionId = serviceRef.current.getCurrentSessionId();
 
-      // Update final message with full response and metadata
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        isStreaming: false,
-        currentSessionId: sessionId,
-        messages: prev.messages.map((msg) =>
-          msg.id === assistantMessage.id
-            ? {
-                ...msg,
-                content: response.content,
-                sources: response.sources,
-                suggestedActions: response.suggestedActions,
-                isStreaming: false,
-              }
-            : msg
-        ),
-      }));
+        // Update final message with full response and metadata
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          isStreaming: false,
+          currentSessionId: sessionId,
+          messages: prev.messages.map((msg) =>
+            msg.id === assistantMessage.id
+              ? {
+                  ...msg,
+                  content: response.content,
+                  sources: response.sources,
+                  suggestedActions: response.suggestedActions,
+                  isStreaming: false,
+                }
+              : msg
+          ),
+        }));
 
-      // Refresh sessions if new session was created
-      if (sessionId && !state.currentSessionId) {
-        loadSessions();
+        // Refresh sessions if new session was created
+        if (sessionId && !state.currentSessionId) {
+          loadSessions();
+        }
       }
     } catch (error) {
       console.error("SafetyBot error:", error);
@@ -352,6 +468,7 @@ export function useSafetyBot() {
         ...prev,
         isLoading: false,
         isStreaming: false,
+        isThinking: false,
         error: "Une erreur s'est produite. Veuillez réessayer.",
         messages: prev.messages.map((msg) =>
           msg.id === assistantMessage.id
@@ -365,7 +482,7 @@ export function useSafetyBot() {
         ),
       }));
     }
-  }, [state.currentSessionId, loadSessions]);
+  }, [state.currentSessionId, state.mode, loadSessions]);
 
   /**
    * Clear current chat (start fresh without saving)
@@ -411,6 +528,12 @@ export function useSafetyBot() {
     sessions: state.sessions,
     isSessionsLoading: state.isSessionsLoading,
 
+    // Agent mode state
+    mode: state.mode,
+    thinking: state.thinking,
+    isThinking: state.isThinking,
+    pendingActions: state.pendingActions,
+
     // Panel actions
     open,
     close,
@@ -426,6 +549,11 @@ export function useSafetyBot() {
     archiveCurrentSession,
     deleteSession,
     loadSessions,
+
+    // Agent mode actions
+    setMode,
+    handleAgentAction,
+    clearPendingActions,
 
     // Suggestions
     getSuggestions,

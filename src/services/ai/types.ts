@@ -180,16 +180,83 @@ export interface AIResponse {
   suggestedActions?: AISuggestedAction[];
   confidence?: number;
   functionCalls?: FunctionCall[];
+  /** Thinking content from Gemini thinking mode */
+  thinking?: string;
+  /** Agent actions to execute (when in agent mode) */
+  agentActions?: AgentActionRequest[];
 }
 
 /**
  * Streaming chunk from AI
  */
 export interface AIStreamChunk {
-  type: "text" | "function_call" | "done" | "error";
+  type: "text" | "thinking" | "function_call" | "agent_action" | "done" | "error";
   content?: string;
+  thinking?: string;
   functionCall?: FunctionCall;
+  agentAction?: AgentActionRequest;
   error?: string;
+}
+
+// =============================================================================
+// Thinking Mode Types
+// =============================================================================
+
+/**
+ * Thinking mode configuration for Gemini
+ */
+export interface ThinkingConfig {
+  /** Token budget for thinking (1-24576) */
+  thinkingBudget: number;
+  /** Whether to include thought summaries in response */
+  includeThoughts: boolean;
+}
+
+/**
+ * Thought content from Gemini
+ */
+export interface ThinkingContent {
+  /** The thinking/reasoning text */
+  text: string;
+  /** Whether this is the final thought */
+  isFinal: boolean;
+}
+
+// =============================================================================
+// Agent Mode Types
+// =============================================================================
+
+/**
+ * Agent action request from AI
+ */
+export interface AgentActionRequest {
+  /** Action type */
+  type: string;
+  /** Target element or path */
+  target: string;
+  /** Action parameters */
+  params?: Record<string, unknown>;
+  /** Human-readable description */
+  description: string;
+  /** Whether action requires confirmation */
+  requiresConfirmation?: boolean;
+}
+
+/**
+ * Agent mode for SafetyBot
+ */
+export type SafetyBotMode = "chat" | "agent";
+
+/**
+ * Extended context for agent mode
+ */
+export interface AgentModeContext extends AIContext {
+  /** Current mode */
+  mode: SafetyBotMode;
+  /** Available features for the user */
+  availableFeatures: string[];
+  /** Current visible elements (for action targeting) */
+  visibleElements?: string[];
 }
 
 // =============================================================================
@@ -327,5 +394,49 @@ export interface HealthAlert {
   title: string;
   description: string;
   affectedCount?: number;
+}
+
+// =============================================================================
+// Model Configuration Types
+// =============================================================================
+
+/**
+ * Model configuration with thinking support
+ */
+export interface ModelConfig {
+  /** Model name */
+  model: string;
+  /** Maximum output tokens */
+  maxOutputTokens: number;
+  /** Temperature for responses */
+  temperature: number;
+  /** Top P sampling */
+  topP: number;
+  /** Top K sampling */
+  topK: number;
+  /** Optional thinking configuration */
+  thinkingConfig?: ThinkingConfig;
+}
+
+/**
+ * Callback for thinking updates
+ */
+export type ThinkingCallback = (thinking: string) => void;
+
+/**
+ * Callback for agent action requests
+ */
+export type AgentActionCallback = (action: AgentActionRequest) => void;
+
+/**
+ * Extended stream options
+ */
+export interface StreamOptions {
+  /** Enable tool execution */
+  executeTools?: boolean;
+  /** Callback for thinking updates */
+  onThinking?: ThinkingCallback;
+  /** Callback for agent actions */
+  onAgentAction?: AgentActionCallback;
 }
 

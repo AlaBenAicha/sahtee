@@ -10,6 +10,7 @@ export { CAPAFilters } from "./CAPAFilters";
 export { ViewToggle } from "./ViewToggle";
 export { CAPAKanbanBoard } from "./CAPAKanbanBoard";
 export { CAPAListView } from "./CAPAListView";
+export { CAPACalendarView } from "./CAPACalendarView";
 export { CAPADetailModal } from "./CAPADetailModal";
 export { CAPAForm } from "./CAPAForm";
 

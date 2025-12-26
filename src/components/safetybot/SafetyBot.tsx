@@ -53,6 +53,11 @@ export function SafetyBot({ showTrigger = true }: SafetyBotProps) {
     switchSession,
     archiveCurrentSession,
     deleteSession,
+    // Agent mode
+    mode,
+    thinking,
+    isThinking,
+    setMode,
   } = useSafetyBot();
 
   // Fallback messages when AI is not configured
@@ -133,6 +138,11 @@ export function SafetyBot({ showTrigger = true }: SafetyBotProps) {
         onSwitchSession={switchSession}
         onArchiveSession={archiveCurrentSession}
         onDeleteSession={deleteSession}
+        // Agent mode props
+        mode={mode}
+        onModeChange={setMode}
+        thinking={thinking}
+        isThinking={isThinking}
       />
 
       {/* Floating Trigger Button - Hidden when panel is open */}

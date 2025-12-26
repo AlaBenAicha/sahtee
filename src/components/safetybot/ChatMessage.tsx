@@ -1,12 +1,11 @@
 /**
  * Chat Message Component
  * Renders individual messages in the SafetyBot chat
+ * Modern design with gradient bubbles and refined interactions
  */
 
 import { useNavigate } from "react-router-dom";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Bot,
   User,
@@ -14,16 +13,21 @@ import {
   FileText,
   AlertCircle,
   Loader2,
+  Wand2,
+  ArrowUpRight,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SafetyBotMessage, SuggestedAction } from "@/types/safetybot";
+import type { SafetyBotMode } from "@/services/ai/types";
 
 interface ChatMessageProps {
   message: SafetyBotMessage;
   onActionClick?: (action: SuggestedAction) => void;
+  mode?: SafetyBotMode;
 }
 
-export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
+export function ChatMessage({ message, onActionClick, mode = "chat" }: ChatMessageProps) {
   const navigate = useNavigate();
   const isUser = message.role === "user";
   const isStreaming = message.isStreaming;
@@ -38,13 +42,12 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
 
   // Format message content with markdown-like styling
   const formatContent = (content: string) => {
-    // Split by lines and process
     const lines = content.split("\n");
     return lines.map((line, index) => {
       // Headers
       if (line.startsWith("## ")) {
         return (
-          <h3 key={index} className="font-semibold text-slate-900 mt-3 mb-2">
+          <h3 key={index} className="font-semibold text-slate-800 mt-3 mb-2 text-sm">
             {line.replace("## ", "")}
           </h3>
         );
@@ -56,7 +59,7 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
           <p key={index} className="mb-1">
             {parts.map((part, i) =>
               i % 2 === 1 ? (
-                <strong key={i} className="font-semibold">
+                <strong key={i} className="font-semibold text-slate-800">
                   {part}
                 </strong>
               ) : (
@@ -69,26 +72,37 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
       // List items
       if (line.startsWith("- ") || line.startsWith("• ")) {
         return (
-          <li key={index} className="ml-4 mb-0.5">
-            {line.replace(/^[-•]\s/, "")}
+          <li key={index} className="ml-3 mb-0.5 text-slate-600 flex items-start gap-1.5">
+            <span className={cn(
+              "mt-2 w-1 h-1 rounded-full flex-shrink-0",
+              mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+            )} />
+            <span>{line.replace(/^[-•]\s/, "")}</span>
           </li>
         );
       }
       // Numbered items
       if (/^\d+\.\s/.test(line)) {
+        const number = line.match(/^(\d+)\./)?.[1];
         return (
-          <li key={index} className="ml-4 mb-0.5 list-decimal">
-            {line.replace(/^\d+\.\s/, "")}
+          <li key={index} className="ml-3 mb-0.5 text-slate-600 flex items-start gap-2">
+            <span className={cn(
+              "text-xs font-medium mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0",
+              mode === "agent" ? "bg-violet-100 text-violet-600" : "bg-emerald-100 text-emerald-600"
+            )}>
+              {number}
+            </span>
+            <span>{line.replace(/^\d+\.\s/, "")}</span>
           </li>
         );
       }
       // Empty lines
       if (!line.trim()) {
-        return <br key={index} />;
+        return <div key={index} className="h-2" />;
       }
       // Regular text
       return (
-        <p key={index} className="mb-1">
+        <p key={index} className="mb-1 text-slate-600">
           {line}
         </p>
       );
@@ -98,68 +112,119 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
   return (
     <div
       className={cn(
-        "flex gap-3 p-4",
+        "flex gap-3 py-3 px-2",
         isUser ? "flex-row-reverse" : "flex-row"
       )}
     >
       {/* Avatar */}
-      <Avatar className={cn("h-8 w-8 flex-shrink-0", isUser ? "bg-emerald-500" : "bg-slate-100")}>
-        <AvatarFallback className={cn(isUser ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-600")}>
-          {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-        </AvatarFallback>
-      </Avatar>
+      <div className={cn(
+        "flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center shadow-sm",
+        isUser 
+          ? mode === "agent"
+            ? "bg-gradient-to-br from-violet-500 to-purple-600"
+            : "bg-gradient-to-br from-emerald-500 to-teal-600"
+          : "bg-white border border-slate-200"
+      )}>
+        {isUser ? (
+          <User className="h-4 w-4 text-white" />
+        ) : mode === "agent" ? (
+          <Wand2 className="h-4 w-4 text-violet-600" />
+        ) : (
+          <Bot className="h-4 w-4 text-emerald-600" />
+        )}
+      </div>
 
       {/* Message Content */}
       <div
         className={cn(
-          "flex-1 max-w-[85%] rounded-2xl px-4 py-3",
+          "flex-1 max-w-[85%] rounded-2xl px-4 py-3 shadow-sm",
           isUser
-            ? "bg-emerald-500 text-white rounded-tr-sm"
-            : "bg-slate-100 text-slate-900 rounded-tl-sm",
-          isError && "bg-red-50 border border-red-200"
+            ? cn(
+                "rounded-tr-md",
+                mode === "agent"
+                  ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
+                  : "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+              )
+            : cn(
+                "rounded-tl-md bg-white border",
+                mode === "agent" 
+                  ? "border-l-[3px] border-l-violet-400 border-t-slate-100 border-r-slate-100 border-b-slate-100" 
+                  : "border-l-[3px] border-l-emerald-400 border-t-slate-100 border-r-slate-100 border-b-slate-100"
+              ),
+          isError && "bg-red-50 border-l-red-400 border-red-200"
         )}
       >
         {/* Error indicator */}
         {isError && (
-          <div className="flex items-center gap-2 text-red-600 text-sm mb-2">
+          <div className="flex items-center gap-2 text-red-600 text-sm mb-2 font-medium">
             <AlertCircle className="h-4 w-4" />
-            <span>Erreur</span>
+            <span>Une erreur est survenue</span>
           </div>
         )}
 
         {/* Message text */}
-        <div className={cn("text-sm leading-relaxed", isUser && "text-white")}>
+        <div className={cn(
+          "text-sm leading-relaxed", 
+          isUser ? "text-white/95" : "text-slate-700"
+        )}>
           {isStreaming && !message.content ? (
             <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Réflexion en cours...</span>
+              <div className="flex gap-1">
+                <span className={cn(
+                  "w-2 h-2 rounded-full animate-bounce",
+                  mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+                )} style={{ animationDelay: "0ms" }} />
+                <span className={cn(
+                  "w-2 h-2 rounded-full animate-bounce",
+                  mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+                )} style={{ animationDelay: "150ms" }} />
+                <span className={cn(
+                  "w-2 h-2 rounded-full animate-bounce",
+                  mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+                )} style={{ animationDelay: "300ms" }} />
+              </div>
+              <span className="text-slate-500 text-xs">Réflexion en cours...</span>
             </div>
           ) : (
-            formatContent(message.content)
+            <div className="space-y-0.5">
+              {formatContent(message.content)}
+            </div>
           )}
         </div>
 
         {/* Streaming indicator */}
         {isStreaming && message.content && (
-          <div className="flex items-center gap-1 mt-2 text-slate-500">
-            <Loader2 className="h-3 w-3 animate-spin" />
+          <div className="flex items-center gap-1.5 mt-2">
+            <Loader2 className={cn(
+              "h-3 w-3 animate-spin",
+              mode === "agent" ? "text-violet-400" : "text-emerald-400"
+            )} />
+            <span className="text-xs text-slate-400">En train d'écrire...</span>
           </div>
         )}
 
         {/* Sources */}
         {message.sources && message.sources.length > 0 && !isStreaming && (
-          <div className="mt-3 pt-2 border-t border-slate-200">
-            <p className="text-xs text-slate-500 mb-1">Sources :</p>
-            <div className="flex flex-wrap gap-1">
+          <div className="mt-3 pt-3 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 mb-2">
+              <BookOpen className="h-3 w-3 text-slate-400" />
+              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                Sources
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               {message.sources.map((source, index) => (
-                <Badge
+                <div
                   key={index}
-                  variant="outline"
-                  className="text-xs bg-white"
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs",
+                    "bg-slate-50 border border-slate-200 text-slate-600",
+                    "hover:bg-slate-100 hover:border-slate-300 transition-colors cursor-default"
+                  )}
                 >
-                  <FileText className="h-3 w-3 mr-1" />
-                  {source.title}
-                </Badge>
+                  <FileText className="h-3 w-3 text-slate-400" />
+                  <span className="font-medium">{source.title}</span>
+                </div>
               ))}
             </div>
           </div>
@@ -167,17 +232,27 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
 
         {/* Suggested Actions */}
         {message.suggestedActions && message.suggestedActions.length > 0 && !isStreaming && (
-          <div className="mt-3 pt-2 border-t border-slate-200">
+          <div className="mt-3 pt-3 border-t border-slate-100">
             <div className="flex flex-wrap gap-2">
               {message.suggestedActions.map((action, index) => (
                 <Button
                   key={index}
                   variant="outline"
                   size="sm"
-                  className="text-xs bg-white hover:bg-slate-50"
+                  className={cn(
+                    "h-8 text-xs font-medium rounded-lg gap-1.5",
+                    "bg-white hover:shadow-sm transition-all",
+                    mode === "agent"
+                      ? "border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300"
+                      : "border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                  )}
                   onClick={() => handleActionClick(action)}
                 >
-                  {action.path && <ExternalLink className="h-3 w-3 mr-1" />}
+                  {action.path ? (
+                    <ArrowUpRight className="h-3 w-3" />
+                  ) : (
+                    <ExternalLink className="h-3 w-3" />
+                  )}
                   {action.label}
                 </Button>
               ))}
@@ -188,8 +263,8 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
         {/* Timestamp */}
         <div
           className={cn(
-            "text-[10px] mt-2 opacity-60",
-            isUser ? "text-right text-white" : "text-right text-slate-500"
+            "text-[10px] mt-2 text-right",
+            isUser ? "text-white/60" : "text-slate-400"
           )}
         >
           {message.timestamp.toLocaleTimeString("fr-FR", {

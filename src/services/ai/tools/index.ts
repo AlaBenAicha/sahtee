@@ -4,7 +4,7 @@
  * Central registry for all AI data access tools.
  */
 
-import type { AITool, AIBotType } from "../types";
+import type { AITool, AIBotType, SafetyBotMode } from "../types";
 import { getToolRegistry } from "../toolExecutor";
 
 // Import tool collections
@@ -13,6 +13,7 @@ import { capaTools } from "./capaTools";
 import { complianceTools } from "./complianceTools";
 import { healthTools } from "./healthTools";
 import { organizationTools } from "./organizationTools";
+import { agentTools } from "./agentTools";
 
 /**
  * Register all tools with the global registry
@@ -29,22 +30,30 @@ export function registerAllTools(): void {
     registry.registerTools(complianceTools, "compliance");
     registry.registerTools(healthTools, "health");
     registry.registerTools(organizationTools, "organization");
+    registry.registerTools(agentTools, "agent");
 }
 
 /**
  * Get all tools for a specific AI bot type
  */
-export function getToolsForBot(botType: AIBotType): AITool[] {
+export function getToolsForBot(botType: AIBotType, mode: SafetyBotMode = "chat"): AITool[] {
     switch (botType) {
         case "safetybot":
-            // SafetyBot has access to all tools
-            return [
+            // SafetyBot has access to all data tools
+            const dataTools = [
                 ...organizationTools,
                 ...incidentTools,
                 ...capaTools,
                 ...complianceTools,
                 ...healthTools,
             ];
+            
+            // In agent mode, also include action tools
+            if (mode === "agent") {
+                return [...dataTools, ...agentTools];
+            }
+            
+            return dataTools;
 
         case "capa_ai":
             // CAPA-AI focuses on incidents and CAPAs
@@ -77,6 +86,13 @@ export function getToolsForBot(botType: AIBotType): AITool[] {
         default:
             return [];
     }
+}
+
+/**
+ * Get agent-specific tools only
+ */
+export function getAgentTools(): AITool[] {
+    return agentTools;
 }
 
 /**
@@ -113,4 +129,5 @@ export { capaTools } from "./capaTools";
 export { complianceTools } from "./complianceTools";
 export { healthTools } from "./healthTools";
 export { organizationTools } from "./organizationTools";
+export { agentTools } from "./agentTools";
 

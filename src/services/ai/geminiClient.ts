@@ -23,6 +23,10 @@ import type {
     AIMessage,
     FunctionCall,
     AIBotType,
+    ThinkingConfig,
+    ThinkingCallback,
+    StreamOptions,
+    SafetyBotMode,
 } from "./types";
 
 // Get API key from environment
@@ -37,9 +41,26 @@ export function isGeminiEnabled(): boolean {
 
 /**
  * Configuration for different AI models
+ * 
+ * Model hierarchy (from fastest/cheapest to most capable):
+ * - flashLite: Ultra fast, cost-efficient for simple tasks
+ * - flash: Best price-performance for chat (stable)
+ * - flashThinking: Gemini 3 Flash with thinking for agent mode
+ * - pro: Advanced reasoning for complex analysis (stable)
+ * - proThinking: Gemini 3 Pro - most powerful for complex agent tasks
+ * 
+ * @see https://ai.google.dev/gemini-api/docs/models
  */
 export const MODEL_CONFIG = {
-    // Fast model for quick responses
+    // Ultra fast model for cost-efficient, high-throughput operations
+    flashLite: {
+        model: "gemini-2.5-flash-lite",
+        maxOutputTokens: 2048,
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
+    },
+    // Fast model for quick responses (chat mode) - Stable, best price-performance
     flash: {
         model: "gemini-2.5-flash",
         maxOutputTokens: 2048,
@@ -47,7 +68,19 @@ export const MODEL_CONFIG = {
         topP: 0.9,
         topK: 40,
     },
-    // Pro model for complex analysis
+    // Gemini 3 Flash with thinking enabled (agent mode) - Latest with frontier intelligence
+    flashThinking: {
+        model: "gemini-3-flash-preview",
+        maxOutputTokens: 4096,
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
+        thinkingConfig: {
+            thinkingBudget: 2048,
+            includeThoughts: true,
+        } as ThinkingConfig,
+    },
+    // Pro model for complex analysis - Stable, state-of-the-art reasoning
     pro: {
         model: "gemini-2.5-pro",
         maxOutputTokens: 4096,
@@ -55,7 +88,21 @@ export const MODEL_CONFIG = {
         topP: 0.9,
         topK: 40,
     },
+    // Gemini 3 Pro with thinking enabled - Most powerful agentic model
+    proThinking: {
+        model: "gemini-3-pro-preview",
+        maxOutputTokens: 8192,
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+        thinkingConfig: {
+            thinkingBudget: 4096,
+            includeThoughts: true,
+        } as ThinkingConfig,
+    },
 } as const;
+
+export type ModelConfigKey = keyof typeof MODEL_CONFIG;
 
 /**
  * Convert AITool to Gemini FunctionDeclaration format
@@ -142,16 +189,40 @@ function extractTextContent(parts: Part[]): string {
 }
 
 /**
+ * Extract thinking content from Gemini response parts
+ * Thinking content is returned with thought: true flag
+ */
+function extractThinkingContent(parts: Part[]): string {
+    // In Gemini API, thinking content comes as parts with thought: true
+    return parts
+        .filter((part) => "thought" in part && part.thought === true && "text" in part)
+        .map((part) => ("text" in part ? part.text : ""))
+        .join("");
+}
+
+/**
+ * Check if a part is thinking content
+ */
+function isThinkingPart(part: Part): boolean {
+    return "thought" in part && (part as Record<string, unknown>).thought === true;
+}
+
+/**
  * GeminiClient class for interacting with Gemini API
  */
 export class GeminiClient {
     private genAI: GoogleGenerativeAI | null = null;
     private model: GenerativeModel | null = null;
+    private thinkingModel: GenerativeModel | null = null;
     private chat: ChatSession | null = null;
+    private thinkingChat: ChatSession | null = null;
     private tools: AITool[] = [];
     private systemPrompt: string = "";
     private context: AIContext | null = null;
     private botType: AIBotType = "safetybot";
+    private mode: SafetyBotMode = "chat";
+    private thinkingEnabled: boolean = false;
+    private currentModelType: ModelConfigKey = "flash";
 
     constructor() {
         if (GEMINI_API_KEY) {
@@ -167,7 +238,8 @@ export class GeminiClient {
         context: AIContext;
         tools: AITool[];
         systemPrompt: string;
-        modelType?: keyof typeof MODEL_CONFIG;
+        modelType?: ModelConfigKey;
+        enableThinking?: boolean;
     }): void {
         if (!this.genAI) {
             console.warn("GeminiClient: API key not configured");
@@ -178,12 +250,15 @@ export class GeminiClient {
         this.context = options.context;
         this.tools = options.tools;
         this.systemPrompt = options.systemPrompt;
+        this.thinkingEnabled = options.enableThinking ?? false;
+        this.currentModelType = options.modelType || "flash";
 
-        const config = MODEL_CONFIG[options.modelType || "flash"];
+        const config = MODEL_CONFIG[this.currentModelType];
 
         // Convert tools to function declarations
         const functionDeclarations = this.tools.map(toolToFunctionDeclaration);
 
+        // Create standard model
         this.model = this.genAI.getGenerativeModel({
             model: config.model,
             generationConfig: {
@@ -198,6 +273,67 @@ export class GeminiClient {
                     ? [{ functionDeclarations }]
                     : undefined,
         });
+
+        // Create thinking-enabled model if requested
+        if (this.thinkingEnabled) {
+            const thinkingConfig = MODEL_CONFIG.flashThinking;
+            this.thinkingModel = this.genAI.getGenerativeModel({
+                model: thinkingConfig.model,
+                generationConfig: {
+                    maxOutputTokens: thinkingConfig.maxOutputTokens,
+                    temperature: thinkingConfig.temperature,
+                    topP: thinkingConfig.topP,
+                    topK: thinkingConfig.topK,
+                    // Note: thinkingConfig is passed via generateContent options
+                },
+                systemInstruction: this.systemPrompt,
+                tools:
+                    functionDeclarations.length > 0
+                        ? [{ functionDeclarations }]
+                        : undefined,
+            });
+        }
+    }
+
+    /**
+     * Set the current mode (chat or agent)
+     */
+    setMode(mode: SafetyBotMode): void {
+        this.mode = mode;
+    }
+
+    /**
+     * Get current mode
+     */
+    getMode(): SafetyBotMode {
+        return this.mode;
+    }
+
+    /**
+     * Enable or disable thinking mode
+     */
+    setThinkingEnabled(enabled: boolean): void {
+        this.thinkingEnabled = enabled;
+        if (enabled && !this.thinkingModel && this.genAI) {
+            // Create thinking model on demand
+            const thinkingConfig = MODEL_CONFIG.flashThinking;
+            const functionDeclarations = this.tools.map(toolToFunctionDeclaration);
+
+            this.thinkingModel = this.genAI.getGenerativeModel({
+                model: thinkingConfig.model,
+                generationConfig: {
+                    maxOutputTokens: thinkingConfig.maxOutputTokens,
+                    temperature: thinkingConfig.temperature,
+                    topP: thinkingConfig.topP,
+                    topK: thinkingConfig.topK,
+                },
+                systemInstruction: this.systemPrompt,
+                tools:
+                    functionDeclarations.length > 0
+                        ? [{ functionDeclarations }]
+                        : undefined,
+            });
+        }
     }
 
     /**
@@ -248,8 +384,8 @@ export class GeminiClient {
             const functionCalls = extractFunctionCalls(parts);
 
             if (functionCalls.length > 0 && executeTools) {
-                // Execute tools and continue conversation
-                return await this.handleFunctionCalls(functionCalls);
+                // Execute tools and continue conversation (use the same chat session)
+                return await this.handleFunctionCalls(functionCalls, this.chat);
             }
 
             // Return text response
@@ -288,11 +424,10 @@ export class GeminiClient {
             const result = await this.chat.sendMessageStream(message);
 
             let fullText = "";
-            const allParts: Part[] = [];
 
+            // Stream content to UI as it arrives
             for await (const chunk of result.stream) {
                 const parts = chunk.candidates?.[0]?.content?.parts || [];
-                allParts.push(...parts);
 
                 const chunkText = extractTextContent(parts);
                 if (chunkText) {
@@ -301,12 +436,17 @@ export class GeminiClient {
                 }
             }
 
-            // Check for function calls after streaming
-            const functionCalls = extractFunctionCalls(allParts);
+            // IMPORTANT: Wait for the finalized response to ensure chat history is properly updated
+            // This is required before sending function responses
+            const finalResponse = await result.response;
+            const finalParts = finalResponse.candidates?.[0]?.content?.parts || [];
+
+            // Check for function calls from the finalized response
+            const functionCalls = extractFunctionCalls(finalParts);
 
             if (functionCalls.length > 0 && executeTools) {
-                // Execute tools and continue conversation
-                const toolResponse = await this.handleFunctionCalls(functionCalls);
+                // Execute tools and continue conversation (use the same chat session)
+                const toolResponse = await this.handleFunctionCalls(functionCalls, this.chat);
 
                 // Stream the tool response
                 if (toolResponse.content) {
@@ -335,6 +475,116 @@ export class GeminiClient {
     }
 
     /**
+     * Send a message with streaming response and thinking support
+     * Used for agent mode where we want to show the AI's reasoning
+     */
+    async streamMessageWithThinking(
+        message: string,
+        onChunk: (chunk: string) => void,
+        options: StreamOptions = {}
+    ): Promise<AIResponse> {
+        const { executeTools = true, onThinking } = options;
+
+        // Use thinking model if available and enabled
+        const activeChat = this.thinkingEnabled && this.thinkingChat
+            ? this.thinkingChat
+            : this.chat;
+        const activeModel = this.thinkingEnabled && this.thinkingModel
+            ? this.thinkingModel
+            : this.model;
+
+        if (!activeChat || !activeModel || !this.context) {
+            const errorMsg = "L'assistant IA n'est pas disponible pour le moment.";
+            onChunk(errorMsg);
+            return { content: errorMsg, confidence: 0 };
+        }
+
+        try {
+            const result = await activeChat.sendMessageStream(message);
+
+            let fullText = "";
+            let fullThinking = "";
+
+            // Stream content to UI as it arrives
+            for await (const chunk of result.stream) {
+                const parts = chunk.candidates?.[0]?.content?.parts || [];
+
+                // Process each part for UI streaming
+                for (const part of parts) {
+                    if (isThinkingPart(part) && "text" in part) {
+                        // This is thinking content
+                        const thinkingText = part.text || "";
+                        fullThinking += thinkingText;
+                        if (onThinking) {
+                            onThinking(thinkingText);
+                        }
+                    } else if ("text" in part && part.text) {
+                        // Regular text content
+                        fullText += part.text;
+                        onChunk(part.text);
+                    }
+                }
+            }
+
+            // IMPORTANT: Wait for the finalized response to ensure chat history is properly updated
+            // This is required before sending function responses, as the Gemini API requires
+            // function response turns to come immediately after function call turns in the history
+            const finalResponse = await result.response;
+            const finalParts = finalResponse.candidates?.[0]?.content?.parts || [];
+
+            // Check for function calls from the finalized response
+            const functionCalls = extractFunctionCalls(finalParts);
+
+            if (functionCalls.length > 0 && executeTools) {
+                // Execute tools and continue conversation using the SAME chat session
+                // This is critical: function responses must go to the same session that made the call
+                const toolResponse = await this.handleFunctionCalls(functionCalls, activeChat);
+
+                // Stream the tool response
+                if (toolResponse.content) {
+                    onChunk("\n\n" + toolResponse.content);
+                    fullText += "\n\n" + toolResponse.content;
+                }
+
+                return {
+                    content: fullText,
+                    thinking: fullThinking || undefined,
+                    functionCalls,
+                    confidence: 0.85,
+                };
+            }
+
+            return {
+                content: fullText,
+                thinking: fullThinking || undefined,
+                confidence: 0.85,
+            };
+        } catch (error) {
+            console.error("GeminiClient streamMessageWithThinking error:", error);
+            const errorMsg =
+                "Désolé, une erreur s'est produite. Veuillez réessayer plus tard.";
+            onChunk(errorMsg);
+            return { content: errorMsg, confidence: 0 };
+        }
+    }
+
+    /**
+     * Start thinking chat session
+     */
+    startThinkingChat(history: AIMessage[] = []): void {
+        if (!this.thinkingModel) {
+            console.warn("GeminiClient: Thinking model not initialized");
+            return;
+        }
+
+        const contents = messagesToContents(history);
+
+        this.thinkingChat = this.thinkingModel.startChat({
+            history: contents,
+        });
+    }
+
+    /**
      * Wrap a value in an object if it's not already a plain object.
      * Gemini API requires function_response.response to be an object, not an array or primitive.
      */
@@ -360,11 +610,15 @@ export class GeminiClient {
 
     /**
      * Handle function calls by executing tools and sending results back
+     * 
+     * IMPORTANT: The chatSession parameter must be the same session that made the function call.
+     * The Gemini API requires that function response turns come immediately after function call turns.
      */
     private async handleFunctionCalls(
-        functionCalls: FunctionCall[]
+        functionCalls: FunctionCall[],
+        chatSession: ChatSession
     ): Promise<AIResponse> {
-        if (!this.chat || !this.context) {
+        if (!chatSession || !this.context) {
             return {
                 content: "Impossible d'exécuter les outils.",
                 confidence: 0,
@@ -408,16 +662,16 @@ export class GeminiClient {
             }
         }
 
-        // Send function responses back to the model
+        // Send function responses back to the model using the SAME chat session
         try {
-            const result = await this.chat.sendMessage(functionResponses);
+            const result = await chatSession.sendMessage(functionResponses);
             const response = result.response;
             const parts = response.candidates?.[0]?.content?.parts || [];
 
-            // Check for more function calls (recursive)
+            // Check for more function calls (recursive) - pass same session
             const moreCalls = extractFunctionCalls(parts);
             if (moreCalls.length > 0) {
-                return await this.handleFunctionCalls(moreCalls);
+                return await this.handleFunctionCalls(moreCalls, chatSession);
             }
 
             const textContent = extractTextContent(parts);

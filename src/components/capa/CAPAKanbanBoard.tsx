@@ -9,7 +9,7 @@ import { useState, useMemo } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CAPACard } from "./CAPACard";
 import { cn } from "@/lib/utils";
@@ -109,11 +109,11 @@ export function CAPAKanbanBoard({ onCAPAClick, onCreateClick }: CAPAKanbanBoardP
 
   if (isLoading) {
     return (
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-4 pb-4 w-full">
         {columns.map((column) => (
           <div
             key={column.id}
-            className="flex-shrink-0 w-72 rounded-lg border bg-card p-3"
+            className="flex-1 min-w-[200px] rounded-lg border bg-card p-3"
           >
             <div className="flex items-center justify-between mb-4">
               <Skeleton className="h-5 w-24" />
@@ -139,8 +139,8 @@ export function CAPAKanbanBoard({ onCAPAClick, onCreateClick }: CAPAKanbanBoardP
   }
 
   return (
-    <ScrollArea className="w-full whitespace-nowrap">
-      <div className="flex gap-4 pb-4 min-w-max">
+    <div className="w-full overflow-x-auto">
+      <div className="flex gap-4 pb-4">
         {columns.map((column) => {
           const columnCapas = capasByColumn?.[column.id] || [];
 
@@ -148,7 +148,7 @@ export function CAPAKanbanBoard({ onCAPAClick, onCreateClick }: CAPAKanbanBoardP
             <div
               key={column.id}
               className={cn(
-                "flex-shrink-0 w-72 rounded-lg border transition-colors",
+                "flex-1 min-w-[200px] rounded-lg border transition-colors flex flex-col",
                 column.bgColor,
                 dragOverColumn === column.id && "ring-2 ring-primary"
               )}
@@ -157,12 +157,12 @@ export function CAPAKanbanBoard({ onCAPAClick, onCreateClick }: CAPAKanbanBoardP
               onDrop={(e) => handleDrop(e, column.id)}
             >
               {/* Column header */}
-              <div className="flex items-center justify-between p-3 border-b bg-background/50 rounded-t-lg">
-                <div className="flex items-center gap-2">
-                  <h3 className={cn("font-semibold text-sm", column.color)}>
+              <div className="flex items-center justify-between p-3 border-b bg-background/50 rounded-t-lg shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className={cn("font-semibold text-sm truncate", column.color)}>
                     {column.title}
                   </h3>
-                  <Badge variant="secondary" className="h-5 text-xs">
+                  <Badge variant="secondary" className="h-5 text-xs shrink-0">
                     {columnCapas.length}
                   </Badge>
                 </div>
@@ -171,7 +171,7 @@ export function CAPAKanbanBoard({ onCAPAClick, onCreateClick }: CAPAKanbanBoardP
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6"
+                    className="h-6 w-6 shrink-0"
                     onClick={onCreateClick}
                   >
                     <Plus className="h-4 w-4" />
@@ -180,7 +180,7 @@ export function CAPAKanbanBoard({ onCAPAClick, onCreateClick }: CAPAKanbanBoardP
               </div>
 
               {/* Column content */}
-              <ScrollArea className="h-[calc(100vh-320px)]">
+              <ScrollArea className="flex-1 h-[calc(100vh-320px)]">
                 <div className="p-3 space-y-3">
                   {columnCapas.length === 0 ? (
                     <div className="flex items-center justify-center h-24 text-xs text-muted-foreground border-2 border-dashed rounded-lg">
@@ -212,8 +212,7 @@ export function CAPAKanbanBoard({ onCAPAClick, onCreateClick }: CAPAKanbanBoardP
           );
         })}
       </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+    </div>
   );
 }
 

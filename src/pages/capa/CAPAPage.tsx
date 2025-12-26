@@ -15,6 +15,7 @@ import {
   ViewToggle,
   CAPAKanbanBoard,
   CAPAListView,
+  CAPACalendarView,
   CAPADetailModal,
   CAPAForm,
 } from "@/components/capa";
@@ -125,10 +126,10 @@ export default function CAPAPage() {
               onEditClick={handleEditClick}
             />
           ) : (
-            // Calendar view - placeholder for now
-            <div className="flex items-center justify-center h-64 text-muted-foreground border-2 border-dashed rounded-lg">
-              Vue calendrier à venir
-            </div>
+            <CAPACalendarView
+              onCAPAClick={handleCAPAClick}
+              onCreateClick={handleCreateClick}
+            />
           )}
         </TabsContent>
 

@@ -1,29 +1,30 @@
 /**
  * SafetyBot Panel Component
  * Sliding panel containing the chat interface with session management
+ * Modern glassmorphism design with refined interactions
  */
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   X,
-  Trash2,
   Bot,
   Sparkles,
   Plus,
   History,
-  ChevronDown,
   Archive,
+  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ChatInterface from "./ChatInterface";
 import ChatInput from "./ChatInput";
+import { ThinkingDisplay } from "./ThinkingDisplay";
 import type {
   SafetyBotMessage,
   QuickSuggestion,
   SuggestedAction,
 } from "@/types/safetybot";
-import type { AISessionSummary } from "@/services/ai/types";
+import type { AISessionSummary, SafetyBotMode } from "@/services/ai/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -51,6 +58,11 @@ interface SafetyBotPanelProps {
   onSwitchSession?: (sessionId: string) => void;
   onArchiveSession?: () => void;
   onDeleteSession?: (sessionId: string) => void;
+  // Agent mode
+  mode?: SafetyBotMode;
+  onModeChange?: (mode: SafetyBotMode) => void;
+  thinking?: string;
+  isThinking?: boolean;
 }
 
 export function SafetyBotPanel({
@@ -60,7 +72,7 @@ export function SafetyBotPanel({
   suggestions,
   onClose,
   onSend,
-  onClear,
+  onClear: _onClear, // Reserved for future use
   onActionClick,
   // Session props
   currentSessionId,
@@ -69,7 +81,12 @@ export function SafetyBotPanel({
   onNewSession,
   onSwitchSession,
   onArchiveSession,
-  onDeleteSession,
+  onDeleteSession: _onDeleteSession, // Reserved for future use
+  // Agent mode props
+  mode = "chat",
+  onModeChange,
+  thinking = "",
+  isThinking = false,
 }: SafetyBotPanelProps) {
   const [showSessionMenu, setShowSessionMenu] = useState(false);
 
@@ -91,155 +108,227 @@ export function SafetyBotPanel({
       <div
         className={cn(
           "fixed right-0 top-0 bottom-0 z-50",
-          "w-full sm:w-[400px] lg:w-[420px]",
-          "bg-white shadow-2xl",
+          "w-[100vw] sm:w-[420px] lg:w-[440px] max-w-full",
+          "bg-white",
+          "shadow-2xl border-l border-slate-200",
           "flex flex-col",
           "transform transition-transform duration-300 ease-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-emerald-500 to-emerald-600">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
-              <Bot className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-white flex items-center gap-1.5">
-                SafetyBot
-                <Sparkles className="h-4 w-4" />
-              </h2>
-              {currentSession ? (
-                <p className="text-xs text-white/80 truncate max-w-[180px]">
-                  {currentSession.title}
-                </p>
-              ) : (
-                <p className="text-xs text-white/80">Nouvelle conversation</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {/* Session Menu */}
-            {(onNewSession || onSwitchSession) && (
-              <DropdownMenu
-                open={showSessionMenu}
-                onOpenChange={setShowSessionMenu}
+        {/* Header - Modern design */}
+        <div className="relative px-6 py-5 border-b border-slate-200 bg-white">
+          {/* Subtle gradient accent line at top */}
+          <div className={cn(
+            "absolute top-0 left-0 right-0 h-1",
+            mode === "agent"
+              ? "bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500"
+              : "bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500"
+          )} />
+          
+          <div className="flex items-center justify-between">
+            {/* Left: Title */}
+            <div className="flex items-center gap-4">
+              {/* Icon */}
+              <div 
+                className="h-12 w-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md"
+                style={{ 
+                  background: mode === "agent" 
+                    ? "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)" 
+                    : "linear-gradient(135deg, #10b981 0%, #059669 100%)" 
+                }}
               >
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-white/80 hover:text-white hover:bg-white/20"
-                    title="Sessions"
-                  >
-                    <History className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
-                  {/* New Session */}
-                  {onNewSession && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        onNewSession();
-                        setShowSessionMenu(false);
-                      }}
-                      className="gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Nouvelle conversation
-                    </DropdownMenuItem>
+                {mode === "agent" ? (
+                  <Wand2 className="h-6 w-6 text-white" />
+                ) : (
+                  <Bot className="h-6 w-6 text-white" />
+                )}
+              </div>
+
+              {/* Title block */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold text-slate-900 text-lg tracking-tight">
+                    SafetyBot
+                  </h2>
+                  {mode === "agent" && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                      Agent
+                    </span>
                   )}
+                </div>
+                <p className="text-sm text-slate-500 truncate max-w-[180px]">
+                  {currentSession 
+                    ? currentSession.title 
+                    : mode === "agent" 
+                      ? "Mode agent actif" 
+                      : "Nouvelle conversation"
+                  }
+                </p>
+              </div>
+            </div>
 
-                  {sessions.length > 0 && <DropdownMenuSeparator />}
-
-                  {/* Recent Sessions */}
-                  <div className="max-h-64 overflow-y-auto">
-                    {isSessionsLoading ? (
-                      <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                        Chargement...
-                      </div>
-                    ) : sessions.length === 0 ? (
-                      <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                        Aucune conversation précédente
-                      </div>
-                    ) : (
-                      sessions.slice(0, 10).map((session) => (
-                        <DropdownMenuItem
-                          key={session.id}
-                          onClick={() => {
-                            onSwitchSession?.(session.id);
-                            setShowSessionMenu(false);
-                          }}
-                          className={cn(
-                            "flex flex-col items-start gap-0.5 py-2",
-                            session.id === currentSessionId &&
-                              "bg-accent"
-                          )}
-                        >
-                          <span className="text-sm font-medium truncate w-full">
-                            {session.title}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {session.messageCount} messages •{" "}
-                            {formatDistanceToNow(session.updatedAt, {
-                              addSuffix: true,
-                              locale: fr,
-                            })}
-                          </span>
-                        </DropdownMenuItem>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Archive Current */}
-                  {currentSessionId && onArchiveSession && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => {
-                          onArchiveSession();
-                          setShowSessionMenu(false);
-                        }}
-                        className="gap-2 text-amber-600"
+            {/* Right: Action buttons */}
+            <div className="flex items-center gap-1">
+              <TooltipProvider delayDuration={300}>
+                {/* New Session Button */}
+                {onNewSession && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onNewSession}
+                        className={cn(
+                          "h-9 w-9 rounded-xl text-slate-500 transition-all duration-200",
+                          mode === "agent"
+                            ? "hover:text-violet-600 hover:bg-violet-50"
+                            : "hover:text-emerald-600 hover:bg-emerald-50"
+                        )}
                       >
-                        <Archive className="h-4 w-4" />
-                        Archiver cette conversation
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                        <Plus className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Nouvelle session</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
-            {/* Clear Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClear}
-              className="text-white/80 hover:text-white hover:bg-white/20"
-              title="Effacer et recommencer"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+                {/* Session History */}
+                {onSwitchSession && sessions.length > 0 && (
+                  <DropdownMenu
+                    open={showSessionMenu}
+                    onOpenChange={setShowSessionMenu}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-9 w-9 rounded-xl text-slate-500 transition-all duration-200",
+                              mode === "agent"
+                                ? "hover:text-violet-600 hover:bg-violet-50"
+                                : "hover:text-emerald-600 hover:bg-emerald-50"
+                            )}
+                          >
+                          <History className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Historique</p>
+                    </TooltipContent>
+                  </Tooltip>
+                    <DropdownMenuContent align="end" className="w-72 shadow-xl border-slate-200">
+                      <div className="px-3 py-2 border-b border-slate-100">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          Sessions récentes
+                        </p>
+                      </div>
 
-            {/* Close Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="text-white/80 hover:text-white hover:bg-white/20"
-              title="Fermer"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+                      {/* Recent Sessions */}
+                      <div className="max-h-64 overflow-y-auto py-1">
+                        {isSessionsLoading ? (
+                          <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                              Chargement...
+                            </div>
+                          </div>
+                        ) : sessions.length === 0 ? (
+                          <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                            Aucune conversation
+                          </div>
+                        ) : (
+                          sessions.slice(0, 10).map((session) => (
+                            <DropdownMenuItem
+                              key={session.id}
+                              onClick={() => {
+                                onSwitchSession?.(session.id);
+                                setShowSessionMenu(false);
+                              }}
+                              className={cn(
+                                "flex flex-col items-start gap-1 py-2.5 px-3 mx-1 rounded-lg cursor-pointer",
+                                session.id === currentSessionId
+                                  ? "bg-emerald-50 border border-emerald-200"
+                                  : "hover:bg-slate-50"
+                              )}
+                            >
+                              <span className="text-sm font-medium truncate w-full text-slate-800">
+                                {session.title}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {session.messageCount} messages •{" "}
+                                {formatDistanceToNow(session.updatedAt, {
+                                  addSuffix: true,
+                                  locale: fr,
+                                })}
+                              </span>
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Archive Current */}
+                      {currentSessionId && onArchiveSession && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              onArchiveSession();
+                              setShowSessionMenu(false);
+                            }}
+                            className="gap-2 text-amber-600 mx-1 rounded-lg"
+                          >
+                            <Archive className="h-4 w-4" />
+                            Archiver cette conversation
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {/* Close Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onClose}
+                      className="h-9 w-9 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all duration-200"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Fermer</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
         </div>
+
+        {/* Thinking Display (Agent Mode) */}
+        {mode === "agent" && (thinking || isThinking) && (
+          <div className="px-4 pt-3">
+            <ThinkingDisplay
+              thinking={thinking}
+              isThinking={isThinking}
+            />
+          </div>
+        )}
 
         {/* Chat Area */}
         <ChatInterface
           messages={messages}
           onActionClick={onActionClick}
           className="flex-1"
+          mode={mode}
         />
 
         {/* Input Area */}
@@ -247,7 +336,13 @@ export function SafetyBotPanel({
           onSend={onSend}
           isLoading={isLoading}
           suggestions={suggestions}
-          placeholder="Posez une question sur la SST..."
+          placeholder={
+            mode === "agent"
+              ? "Demandez à l'agent d'effectuer une action..."
+              : "Posez une question sur la SST..."
+          }
+          mode={mode}
+          onModeChange={onModeChange}
         />
       </div>
     </>

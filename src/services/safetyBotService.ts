@@ -6,6 +6,8 @@
  * - Session persistence in Firestore
  * - Streaming responses
  * - Context-aware prompts
+ * - Agent mode with UI actions
+ * - Thinking mode with reasoning display
  */
 
 import type {
@@ -13,7 +15,9 @@ import type {
   AIMessage,
   AISession,
   AISessionSummary,
-  AIResponse,
+  SafetyBotMode,
+  AgentActionRequest,
+  ThinkingCallback,
 } from "@/services/ai/types";
 import { GeminiClient, isGeminiEnabled } from "@/services/ai/geminiClient";
 import { getToolsForBot } from "@/services/ai/tools";
@@ -37,6 +41,8 @@ import {
   searchFAQs,
 } from "@/data/platformKnowledge";
 import type { SuggestedAction, MessageSource } from "@/types/safetybot";
+import type { AgentAction } from "@/types/agent";
+import { createAction } from "@/types/agent";
 
 export type { SuggestedAction, MessageSource };
 
@@ -48,6 +54,10 @@ export interface SafetyBotResponse {
   suggestedActions?: SuggestedAction[];
   sources?: MessageSource[];
   confidence: number;
+  /** Thinking content from AI (for agent mode) */
+  thinking?: string;
+  /** Agent actions to execute (for agent mode) */
+  agentActions?: AgentAction[];
 }
 
 /**
@@ -62,6 +72,10 @@ export interface SafetyBotMessage {
   sources?: MessageSource[];
   isStreaming?: boolean;
   isError?: boolean;
+  /** Thinking content (for agent mode) */
+  thinking?: string;
+  /** Agent actions (for agent mode) */
+  agentActions?: AgentAction[];
 }
 
 /**
@@ -79,6 +93,8 @@ export class SafetyBotService {
   private context: AIContext | null = null;
   private currentSessionId: string | null = null;
   private isInitialized: boolean = false;
+  private mode: SafetyBotMode = "chat";
+  private executionStopped: boolean = false;
 
   constructor() {
     this.client = new GeminiClient();
@@ -90,19 +106,20 @@ export class SafetyBotService {
   async initialize(context: AIContext, sessionId?: string): Promise<void> {
     this.context = context;
 
-    // Get tools for SafetyBot
-    const tools = getToolsForBot("safetybot");
+    // Get tools for SafetyBot (mode will be updated when switching)
+    const tools = getToolsForBot("safetybot", this.mode);
 
     // Build system prompt
-    const systemPrompt = buildSafetyBotPrompt(context);
+    const systemPrompt = this.buildSystemPrompt(context);
 
-    // Initialize Gemini client
+    // Initialize Gemini client with thinking support for agent mode
     this.client.initialize({
       botType: "safetybot",
       context,
       tools,
       systemPrompt,
-      modelType: "flash",
+      modelType: this.mode === "agent" ? "flashThinking" : "flash",
+      enableThinking: this.mode === "agent",
     });
 
     // Load or create session
@@ -115,6 +132,102 @@ export class SafetyBotService {
     }
 
     this.isInitialized = true;
+  }
+
+  /**
+   * Set the current mode (chat or agent)
+   */
+  setMode(mode: SafetyBotMode): void {
+    if (this.mode === mode) return;
+
+    this.mode = mode;
+    this.client.setMode(mode);
+    this.client.setThinkingEnabled(mode === "agent");
+
+    // Reinitialize with appropriate tools
+    if (this.context) {
+      const tools = getToolsForBot("safetybot", mode);
+      const systemPrompt = this.buildSystemPrompt(this.context);
+
+      this.client.initialize({
+        botType: "safetybot",
+        context: this.context,
+        tools,
+        systemPrompt,
+        modelType: mode === "agent" ? "flashThinking" : "flash",
+        enableThinking: mode === "agent",
+      });
+
+      // Restart chat with current history would be ideal
+      // For now, just start fresh
+      if (mode === "agent") {
+        this.client.startThinkingChat([]);
+      }
+      this.client.startChat([]);
+    }
+  }
+
+  /**
+   * Get current mode
+   */
+  getMode(): SafetyBotMode {
+    return this.mode;
+  }
+
+  /**
+   * Notify that execution was stopped by user
+   */
+  notifyExecutionStopped(): void {
+    this.executionStopped = true;
+  }
+
+  /**
+   * Reset execution stopped flag
+   */
+  resetExecutionStopped(): void {
+    this.executionStopped = false;
+  }
+
+  /**
+   * Build system prompt based on mode
+   */
+  private buildSystemPrompt(context: AIContext): string {
+    const basePrompt = buildSafetyBotPrompt(context);
+
+    if (this.mode === "agent") {
+      return `${basePrompt}
+
+## Mode Agent
+
+Tu es maintenant en MODE AGENT. En plus de répondre aux questions, tu peux effectuer des actions dans l'application.
+
+### Capacités d'action
+- Naviguer vers les différentes pages (dashboard, incidents, capa, training, compliance, health, analytics)
+- Créer des incidents et des CAPA
+- Remplir des formulaires
+- Appliquer des filtres et effectuer des recherches
+- Cliquer sur des boutons et interagir avec l'interface
+
+### Restrictions importantes
+- Tu ne peux PAS accéder au profil utilisateur (/app/profile)
+- Tu ne peux PAS accéder aux paramètres (/app/settings)
+- Tu ne peux PAS déconnecter l'utilisateur
+- Tu dois respecter les permissions de l'utilisateur
+
+### Processus de réflexion
+Avant chaque action, explique ton raisonnement :
+1. Comprendre la demande de l'utilisateur
+2. Identifier les actions nécessaires
+3. Vérifier que les actions sont autorisées
+4. Exécuter les actions dans l'ordre approprié
+
+### Communication
+- Décris ce que tu vas faire AVANT de le faire
+- Si l'utilisateur arrête l'exécution, confirme l'arrêt et propose de l'aide
+- En cas d'erreur, explique le problème et propose des alternatives`;
+    }
+
+    return basePrompt;
   }
 
   /**
@@ -331,6 +444,98 @@ export class SafetyBotService {
   }
 
   /**
+   * Send a message in agent mode with thinking and action support
+   */
+  async streamAgentMessage(
+    message: string,
+    onChunk: (chunk: string) => void,
+    onThinking?: ThinkingCallback,
+    onAgentAction?: (action: AgentAction) => void
+  ): Promise<SafetyBotResponse> {
+    if (!this.isInitialized || !this.context) {
+      const offlineResponse = this.getOfflineResponse(message);
+      onChunk(offlineResponse.content);
+      return offlineResponse;
+    }
+
+    // Reset execution stopped flag
+    this.resetExecutionStopped();
+
+    try {
+      // Create session if needed
+      if (!this.currentSessionId) {
+        await this.createNewSession();
+      }
+
+      // Collect thinking and actions
+      let fullThinking = "";
+      const agentActions: AgentAction[] = [];
+
+      // Stream with thinking support
+      const response = await this.client.streamMessageWithThinking(
+        message,
+        onChunk,
+        {
+          executeTools: true,
+          onThinking: (chunk) => {
+            fullThinking += chunk;
+            onThinking?.(chunk);
+          },
+          onAgentAction: (actionRequest: AgentActionRequest) => {
+            // Check if execution was stopped
+            if (this.executionStopped) {
+              return;
+            }
+
+            // Convert AgentActionRequest to AgentAction
+            const action = this.convertActionRequestToAction(actionRequest);
+            agentActions.push(action);
+            onAgentAction?.(action);
+          },
+        }
+      );
+
+      // Save to session
+      await this.saveMessage(message, response.content);
+
+      const suggestedActions = this.extractSuggestedActions(
+        response.content,
+        message
+      );
+      const sources = this.extractSources(response.content);
+
+      return {
+        content: response.content,
+        suggestedActions,
+        sources,
+        confidence: response.confidence || 0.85,
+        thinking: fullThinking || response.thinking,
+        agentActions: agentActions.length > 0 ? agentActions : undefined,
+      };
+    } catch (error) {
+      console.error("SafetyBot agent streaming error:", error);
+      const errorMsg = SAFETYBOT_QUICK_RESPONSES.error;
+      onChunk(errorMsg);
+      return { content: errorMsg, confidence: 0 };
+    }
+  }
+
+  /**
+   * Convert an AgentActionRequest to an AgentAction
+   */
+  private convertActionRequestToAction(request: AgentActionRequest): AgentAction {
+    return createAction(
+      request.type as any,
+      request.target,
+      request.description,
+      {
+        params: request.params,
+        requiresConfirmation: request.requiresConfirmation ?? false,
+      }
+    );
+  }
+
+  /**
    * Get greeting message
    */
   getGreeting(): string {
@@ -435,12 +640,12 @@ export class SafetyBotService {
       const faq = matchingFAQs[0];
       const actions: SuggestedAction[] = faq.relatedModule
         ? [
-            {
-              type: "navigate",
-              label: `Voir ${faq.relatedModule}`,
-              path: `/app/${faq.relatedModule}`,
-            },
-          ]
+          {
+            type: "navigate",
+            label: `Voir ${faq.relatedModule}`,
+            path: `/app/${faq.relatedModule}`,
+          },
+        ]
         : [];
 
       return {

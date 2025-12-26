@@ -211,22 +211,22 @@ export function CAPADetailModal({
 
                 {/* Tabs for different sections */}
                 <Tabs defaultValue="checklist" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="checklist" className="gap-1">
+                  <TabsList className="w-full flex">
+                    <TabsTrigger value="checklist" className="flex-1 gap-1.5">
                       <CheckCircle2 className="h-4 w-4" />
-                      Tâches
+                      <span>Tâches</span>
                     </TabsTrigger>
-                    <TabsTrigger value="comments" className="gap-1">
+                    <TabsTrigger value="comments" className="flex-1 gap-1.5">
                       <MessageSquare className="h-4 w-4" />
-                      Commentaires
+                      <span>Commentaires</span>
                     </TabsTrigger>
-                    <TabsTrigger value="links" className="gap-1">
+                    <TabsTrigger value="links" className="flex-1 gap-1.5">
                       <LinkIcon className="h-4 w-4" />
-                      Liens
+                      <span>Liens</span>
                     </TabsTrigger>
-                    <TabsTrigger value="ai" className="gap-1">
+                    <TabsTrigger value="ai" className="flex-1 gap-1.5">
                       <Sparkles className="h-4 w-4" />
-                      IA
+                      <span>IA</span>
                     </TabsTrigger>
                   </TabsList>
 

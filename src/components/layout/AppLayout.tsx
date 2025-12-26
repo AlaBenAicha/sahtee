@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { AgentProvider } from "@/contexts/AgentContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -35,6 +36,8 @@ import {
 import { cn } from "@/lib/utils";
 import type { FeatureModule } from "@/types/organization";
 import { SafetyBot } from "@/components/safetybot";
+import { AgentActiveOverlay } from "@/components/agent/AgentActiveOverlay";
+import { AgentStopButton } from "@/components/agent/AgentStopButton";
 
 interface NavItem {
   label: string;
@@ -136,7 +139,10 @@ export default function AppLayout() {
   );
 
   return (
+    <AgentProvider>
     <div className="min-h-screen bg-slate-50">
+      {/* Agent Mode Overlay */}
+      <AgentActiveOverlay />
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
@@ -402,6 +408,10 @@ export default function AppLayout() {
 
       {/* SafetyBot AI Assistant */}
       <SafetyBot />
+
+      {/* Agent Stop Button */}
+      <AgentStopButton />
     </div>
+    </AgentProvider>
   );
 }
