@@ -553,12 +553,21 @@ export function IncidentForm({ incident, isOpen, onClose }: IncidentFormProps) {
               </Button>
 
               {currentStep < steps.length ? (
-                <Button type="button" onClick={nextStep} disabled={!canProceed()}>
+                <Button 
+                  type="button" 
+                  onClick={nextStep} 
+                  disabled={!canProceed()}
+                  data-testid="incident-form-next"
+                >
                   Suivant
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={isPending || !canProceed()}>
+                <Button 
+                  type="submit" 
+                  disabled={isPending || !canProceed()}
+                  data-testid="incident-form-submit"
+                >
                   {isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

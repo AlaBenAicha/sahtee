@@ -174,7 +174,7 @@ export default function DashboardPage() {
               Actualiser
             </Button>
             <Button
-              onClick={() => navigate("/incidents?action=new")}
+              onClick={() => navigate("/app/incidents?action=new")}
               className="bg-emerald-500 hover:bg-emerald-600 text-white gap-2"
             >
               <ClipboardList className="h-4 w-4" />

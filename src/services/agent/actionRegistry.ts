@@ -36,10 +36,10 @@ interface ModuleActions {
 
 export const dashboardActions: ModuleActions = {
   navigate: {
-    type: "navigate",
-    target: "/app/dashboard",
-    label: "Navigate to Dashboard",
-    labelFr: "Aller au tableau de bord",
+    type: "click",
+    target: 'a[href="/app/dashboard"]',
+    label: "Click Dashboard link in sidebar",
+    labelFr: "Cliquer sur Tableau de bord dans le menu",
     feature: "dashboard",
     crudAction: "read",
   },
@@ -59,26 +59,26 @@ export const dashboardActions: ModuleActions = {
 
 export const incidentActions: ModuleActions = {
   navigate: {
-    type: "navigate",
-    target: "/app/incidents",
-    label: "Navigate to Incidents",
-    labelFr: "Aller aux incidents",
+    type: "click",
+    target: 'a[href="/app/incidents"]',
+    label: "Click Incidents link in sidebar",
+    labelFr: "Cliquer sur Incidents dans le menu",
     feature: "incidents",
     crudAction: "read",
   },
   create: {
     type: "click",
-    target: 'button:has-text("Déclarer un incident")',
+    target: '[data-testid="declare-incident-button"], button:has-text("Déclarer un incident")',
     label: "Create new incident",
     labelFr: "Déclarer un nouvel incident",
     feature: "incidents",
     crudAction: "create",
   },
   viewList: {
-    type: "navigate",
-    target: "/app/incidents",
-    label: "View incident list",
-    labelFr: "Voir la liste des incidents",
+    type: "click",
+    target: 'a[href="/app/incidents"]',
+    label: "Click Incidents link to view list",
+    labelFr: "Cliquer sur Incidents pour voir la liste",
     feature: "incidents",
     crudAction: "read",
   },
@@ -138,8 +138,8 @@ export const incidentActions: ModuleActions = {
 
 export const capaActions: ModuleActions = {
   navigate: {
-    type: "navigate",
-    target: "/app/capa",
+    type: "click",
+    target: 'a[href="/app/capa"]',
     label: "Navigate to CAPA",
     labelFr: "Aller aux CAPA",
     feature: "capa",
@@ -154,8 +154,8 @@ export const capaActions: ModuleActions = {
     crudAction: "create",
   },
   viewList: {
-    type: "navigate",
-    target: "/app/capa",
+    type: "click",
+    target: 'a[href="/app/capa"]',
     label: "View CAPA list",
     labelFr: "Voir la liste des CAPA",
     feature: "capa",
@@ -202,8 +202,8 @@ export const capaActions: ModuleActions = {
 
 export const trainingActions: ModuleActions = {
   navigate: {
-    type: "navigate",
-    target: "/app/training",
+    type: "click",
+    target: 'a[href="/app/training"]',
     label: "Navigate to Training",
     labelFr: "Aller aux formations",
     feature: "training",
@@ -218,8 +218,8 @@ export const trainingActions: ModuleActions = {
     crudAction: "create",
   },
   viewList: {
-    type: "navigate",
-    target: "/app/training",
+    type: "click",
+    target: 'a[href="/app/training"]',
     label: "View training list",
     labelFr: "Voir la liste des formations",
     feature: "training",
@@ -233,16 +233,16 @@ export const trainingActions: ModuleActions = {
 
 export const complianceActions: ModuleActions = {
   navigate: {
-    type: "navigate",
-    target: "/app/compliance",
+    type: "click",
+    target: 'a[href="/app/compliance"]',
     label: "Navigate to Compliance",
     labelFr: "Aller à la conformité",
     feature: "compliance",
     crudAction: "read",
   },
   viewList: {
-    type: "navigate",
-    target: "/app/compliance",
+    type: "click",
+    target: 'a[href="/app/compliance"]',
     label: "View compliance status",
     labelFr: "Voir l'état de conformité",
     feature: "compliance",
@@ -273,16 +273,16 @@ export const complianceActions: ModuleActions = {
 
 export const healthActions: ModuleActions = {
   navigate: {
-    type: "navigate",
-    target: "/app/health",
+    type: "click",
+    target: 'a[href="/app/health"]',
     label: "Navigate to Health",
     labelFr: "Aller à la santé",
     feature: "health",
     crudAction: "read",
   },
   viewList: {
-    type: "navigate",
-    target: "/app/health",
+    type: "click",
+    target: 'a[href="/app/health"]',
     label: "View health records",
     labelFr: "Voir les dossiers de santé",
     feature: "health",
@@ -312,8 +312,8 @@ export const healthActions: ModuleActions = {
 
 export const analyticsActions: ModuleActions = {
   navigate: {
-    type: "navigate",
-    target: "/app/analytics",
+    type: "click",
+    target: 'a[href="/app/analytics"]',
     label: "Navigate to Analytics",
     labelFr: "Aller aux analytiques",
     feature: "analytics",

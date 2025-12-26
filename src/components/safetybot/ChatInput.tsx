@@ -4,20 +4,19 @@
  * Modern design with mode toggle and refined interactions
  */
 
-import React, { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Send, 
-  Loader2, 
-  MessageCircle, 
-  Wand2, 
-  Sparkles,
-  Lightbulb
-} from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { QuickSuggestion } from "@/types/safetybot";
 import type { SafetyBotMode } from "@/services/ai/types";
+import type { QuickSuggestion } from "@/types/safetybot";
+import {
+  Lightbulb,
+  Loader2,
+  MessageCircle,
+  Send,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -45,7 +44,10 @@ export function ChatInput({
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.min(
+        textareaRef.current.scrollHeight,
+        120
+      )}px`;
     }
   }, [message]);
 
@@ -72,10 +74,7 @@ export function ChatInput({
   };
 
   return (
-    <div className={cn(
-      "border-t border-slate-200 bg-white p-4",
-      className
-    )}>
+    <div className={cn("border-t border-slate-200 bg-white p-4", className)}>
       {/* Mode Toggle - Pill style segmented control */}
       {onModeChange && (
         <div className="flex justify-center mb-4">
@@ -121,11 +120,14 @@ export function ChatInput({
         <div className="mb-4">
           <div className="flex items-center gap-1.5 mb-2.5">
             <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-            <span className="text-xs font-medium text-slate-500">Suggestions</span>
+            <span className="text-xs font-medium text-slate-500">
+              Suggestions
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {suggestions.slice(0, 4).map((suggestion) => (
               <button
+                type="button"
                 key={suggestion.id}
                 onClick={() => handleSuggestionClick(suggestion)}
                 disabled={isLoading}
@@ -135,8 +137,8 @@ export function ChatInput({
                   "hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5",
                   "transition-all duration-200",
                   "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0",
-                  mode === "agent" 
-                    ? "hover:border-violet-200 focus:border-violet-300" 
+                  mode === "agent"
+                    ? "hover:border-violet-200 focus:border-violet-300"
                     : "hover:border-emerald-200 focus:border-emerald-300"
                 )}
               >
@@ -150,7 +152,7 @@ export function ChatInput({
       )}
 
       {/* Input Area */}
-      <form onSubmit={handleSubmit} className="flex gap-3 items-end">
+      <form onSubmit={handleSubmit} className="flex gap-2 items-end">
         <div className="flex-1 relative">
           <Textarea
             ref={textareaRef}
@@ -162,17 +164,17 @@ export function ChatInput({
             rows={1}
             className={cn(
               "w-full resize-none !min-h-[44px] max-h-[120px] py-3 px-4",
-              "rounded-2xl border-slate-200 bg-white",
+              "rounded-xl border-slate-200 bg-slate-50",
               "text-sm",
               "transition-all duration-200",
               mode === "agent"
-                ? "focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
-                : "focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400",
+                ? "focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 focus:bg-white"
+                : "focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 focus:bg-white",
               "placeholder:text-slate-400"
             )}
           />
         </div>
-        
+
         {/* Send button with gradient */}
         <button
           type="submit"
@@ -185,7 +187,7 @@ export function ChatInput({
             mode === "agent"
               ? "bg-gradient-to-br from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
               : "bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700",
-            "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+            "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
           )}
         >
           {isLoading ? (
@@ -196,8 +198,8 @@ export function ChatInput({
         </button>
       </form>
 
-      {/* Simplified helper text */}
-      <p className="text-[8px] text-slate-300 mt-1.5 text-center tracking-wide">
+      {/* Helper text */}
+      <p className="text-[10px] text-slate-400 mt-2 text-center">
         Entrée pour envoyer
       </p>
     </div>

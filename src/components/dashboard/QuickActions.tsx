@@ -37,7 +37,7 @@ const quickActions: QuickAction[] = [
     label: "Déclarer un incident",
     description: "Signaler un nouvel incident de sécurité",
     icon: AlertTriangle,
-    href: "/incidents?action=new",
+    href: "/app/incidents?action=new",
     color: "text-red-600",
     bgColor: "bg-red-100",
     hoverColor: "hover:bg-red-200",
@@ -47,7 +47,7 @@ const quickActions: QuickAction[] = [
     label: "Créer une action CAPA",
     description: "Nouvelle action corrective ou préventive",
     icon: CheckSquare,
-    href: "/capa?action=new",
+    href: "/app/capa?action=new",
     color: "text-blue-600",
     bgColor: "bg-blue-100",
     hoverColor: "hover:bg-blue-200",
@@ -57,7 +57,7 @@ const quickActions: QuickAction[] = [
     label: "Planifier une formation",
     description: "Programmer une session de formation",
     icon: GraduationCap,
-    href: "/training?action=new",
+    href: "/app/training?action=new",
     color: "text-purple-600",
     bgColor: "bg-purple-100",
     hoverColor: "hover:bg-purple-200",
@@ -67,7 +67,7 @@ const quickActions: QuickAction[] = [
     label: "Lancer un audit",
     description: "Démarrer une vérification de conformité",
     icon: ClipboardCheck,
-    href: "/compliance?action=new",
+    href: "/app/compliance?action=new",
     color: "text-amber-600",
     bgColor: "bg-amber-100",
     hoverColor: "hover:bg-amber-200",
@@ -77,7 +77,7 @@ const quickActions: QuickAction[] = [
     label: "Générer un rapport",
     description: "Créer un rapport d'analyse",
     icon: FileText,
-    href: "/analytics?action=report",
+    href: "/app/analytics?action=report",
     color: "text-emerald-600",
     bgColor: "bg-emerald-100",
     hoverColor: "hover:bg-emerald-200",
@@ -228,7 +228,7 @@ export function PrimaryActionButton({ className }: { className?: string }) {
 
   return (
     <Button
-      onClick={() => navigate("/incidents?action=new")}
+      onClick={() => navigate("/app/incidents?action=new")}
       className={cn(
         "bg-emerald-500 hover:bg-emerald-600 text-white gap-2",
         className

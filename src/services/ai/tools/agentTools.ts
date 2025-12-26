@@ -34,12 +34,25 @@ function createAgentAction(
 // =============================================================================
 
 /**
- * Tool: Navigate to a page
+ * Mapping of page names to their sidebar link selectors and labels
+ */
+const PAGE_SIDEBAR_MAPPING: Record<string, { selector: string; label: string }> = {
+  dashboard: { selector: 'a[href="/app/dashboard"]', label: "Tableau de bord" },
+  incidents: { selector: 'a[href="/app/incidents"]', label: "Incidents" },
+  capa: { selector: 'a[href="/app/capa"]', label: "CAPA" },
+  training: { selector: 'a[href="/app/training"]', label: "Formations" },
+  compliance: { selector: 'a[href="/app/compliance"]', label: "Conformité" },
+  health: { selector: 'a[href="/app/health"]', label: "Santé" },
+  analytics: { selector: 'a[href="/app/analytics"]', label: "Analytique" },
+};
+
+/**
+ * Tool: Navigate to a page by clicking on the sidebar link
  */
 export const navigateToPageTool: AITool = {
   name: "navigate_to_page",
   description:
-    "Navigue vers une page spécifique de l'application. Utilisez cet outil quand l'utilisateur demande d'aller vers un module ou une section.",
+    "Navigue vers une page spécifique de l'application en cliquant sur le lien correspondant dans la barre latérale. Utilisez cet outil quand l'utilisateur demande d'aller vers un module ou une section.",
   parameters: {
     type: "object",
     properties: {
@@ -61,13 +74,21 @@ export const navigateToPageTool: AITool = {
     required: ["page"],
   },
   execute: async (params, _context: AIContext) => {
-    const page = params.page as ActionModule;
-    const path = `/app/${page}`;
+    const page = params.page as string;
+    const mapping = PAGE_SIDEBAR_MAPPING[page];
+    
+    if (!mapping) {
+      return createAgentAction(
+        "click",
+        `nav a[href*="${page}"]`,
+        `Clic sur le lien ${page} dans la navigation`
+      );
+    }
 
     return createAgentAction(
-      "navigate",
-      path,
-      `Navigation vers ${page}`
+      "click",
+      mapping.selector,
+      `Clic sur "${mapping.label}" dans la barre latérale`
     );
   },
 };
@@ -77,12 +98,12 @@ export const navigateToPageTool: AITool = {
 // =============================================================================
 
 /**
- * Tool: Create a new incident
+ * Tool: Create a new incident - Opens the form
  */
 export const createIncidentTool: AITool = {
   name: "create_incident",
   description:
-    "Ouvre le formulaire de création d'un nouvel incident. Utilisez cet outil quand l'utilisateur veut déclarer un incident.",
+    "Ouvre le formulaire de création d'un nouvel incident. Utilisez cet outil quand l'utilisateur veut déclarer un incident. Cela ouvre le formulaire multi-étapes.",
   parameters: {
     type: "object",
     properties: {},
@@ -90,8 +111,355 @@ export const createIncidentTool: AITool = {
   execute: async (_params, _context: AIContext) => {
     return createAgentAction(
       "click",
-      'button:has-text("Déclarer un incident")',
+      '[data-testid="declare-incident-button"], button:has-text("Déclarer un incident")',
       "Ouverture du formulaire de déclaration d'incident"
+    );
+  },
+};
+
+/**
+ * Incident form wizard step actions
+ * The incident form is a multi-step wizard with:
+ * Step 1: Type d'incident & Niveau de gravité
+ * Step 2: Lieu et moment
+ * Step 3: Description
+ * Step 4: Déclarant (informations du déclarant)
+ */
+
+/**
+ * Tool: Select incident type (Step 1)
+ */
+export const selectIncidentTypeTool: AITool = {
+  name: "select_incident_type",
+  description:
+    "Sélectionne le type d'incident dans le formulaire. Types: accident, near_miss (presqu'accident), unsafe_condition (condition dangereuse), unsafe_act (acte dangereux).",
+  parameters: {
+    type: "object",
+    properties: {
+      type: {
+        type: "string",
+        description: "Le type d'incident à sélectionner",
+        enum: ["accident", "near_miss", "unsafe_condition", "unsafe_act"],
+      },
+    },
+    required: ["type"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const type = params.type as string;
+    const typeLabels: Record<string, string> = {
+      accident: "Accident",
+      near_miss: "Presqu'accident",
+      unsafe_condition: "Condition dangereuse",
+      unsafe_act: "Acte dangereux",
+    };
+    const label = typeLabels[type] || type;
+
+    // Click on the label that contains the RadioGroupItem for this type
+    // The label has id="type-{value}" (e.g., type-accident)
+    return createAgentAction(
+      "click",
+      `label[for="type-${type}"], #type-${type}, label:has-text("${label}")`,
+      `Sélection du type d'incident: ${label}`
+    );
+  },
+};
+
+/**
+ * Tool: Select severity level (Step 1)
+ */
+export const selectSeverityLevelTool: AITool = {
+  name: "select_severity_level",
+  description:
+    "Sélectionne le niveau de gravité de l'incident. Options: minor (Mineur), moderate (Modéré), severe (Grave), critical (Critique).",
+  parameters: {
+    type: "object",
+    properties: {
+      severity: {
+        type: "string",
+        description: "Le niveau de gravité",
+        enum: ["minor", "moderate", "severe", "critical"],
+      },
+    },
+    required: ["severity"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const severity = params.severity as string;
+    const severityLabels: Record<string, string> = {
+      minor: "Mineur",
+      moderate: "Modéré",
+      severe: "Grave",
+      critical: "Critique",
+    };
+    const label = severityLabels[severity] || severity;
+
+    // The severity buttons are plain buttons with bg color classes
+    // Match by the exact text content
+    return createAgentAction(
+      "click",
+      `button:has-text("${label}")`,
+      `Sélection du niveau de gravité: ${label}`
+    );
+  },
+};
+
+/**
+ * Tool: Click Next/Previous in incident wizard
+ */
+export const incidentWizardNavigationTool: AITool = {
+  name: "incident_wizard_navigation",
+  description:
+    "Navigue entre les étapes du formulaire d'incident (Suivant ou Précédent).",
+  parameters: {
+    type: "object",
+    properties: {
+      direction: {
+        type: "string",
+        description: "La direction de navigation",
+        enum: ["next", "previous"],
+      },
+    },
+    required: ["direction"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const direction = params.direction as string;
+    
+    if (direction === "next") {
+      // Use data-testid for reliable selection
+      return createAgentAction(
+        "click",
+        '[data-testid="incident-form-next"], button:has-text("Suivant")',
+        'Clic sur "Suivant" dans le formulaire d\'incident'
+      );
+    } else {
+      return createAgentAction(
+        "click",
+        'button:has-text("Précédent")',
+        'Clic sur "Précédent" dans le formulaire d\'incident'
+      );
+    }
+  },
+};
+
+/**
+ * Tool: Fill incident location (Step 2)
+ */
+export const fillIncidentLocationTool: AITool = {
+  name: "fill_incident_location",
+  description: "Remplit le lieu de l'incident (Étape 2).",
+  parameters: {
+    type: "object",
+    properties: {
+      location: {
+        type: "string",
+        description: "Le lieu de l'incident (ex: Atelier A, Bureau, Zone de stockage)",
+      },
+    },
+    required: ["location"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const location = params.location as string;
+
+    // The location input has name="location" from react-hook-form
+    return createAgentAction(
+      "fill_input",
+      "input[name='location']",
+      `Saisie du lieu: ${location}`,
+      { value: location }
+    );
+  },
+};
+
+/**
+ * Tool: Fill incident date (Step 2)
+ */
+export const fillIncidentDateTimeTool: AITool = {
+  name: "fill_incident_datetime",
+  description: "Remplit la date de l'incident (Étape 2). Format: YYYY-MM-DD (ex: 2024-12-26).",
+  parameters: {
+    type: "object",
+    properties: {
+      date: {
+        type: "string",
+        description: "La date de l'incident (format: YYYY-MM-DD, ex: 2024-12-26)",
+      },
+    },
+    required: ["date"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const date = params.date as string;
+
+    // The date input has name="incidentDate" from react-hook-form
+    return createAgentAction(
+      "fill_input",
+      "input[name='incidentDate']",
+      `Saisie de la date: ${date}`,
+      { value: date }
+    );
+  },
+};
+
+/**
+ * Tool: Fill incident time (Step 2)
+ */
+export const fillIncidentTimeTool: AITool = {
+  name: "fill_incident_time",
+  description: "Remplit l'heure de l'incident (Étape 2). Format: HH:MM (ex: 14:30).",
+  parameters: {
+    type: "object",
+    properties: {
+      time: {
+        type: "string",
+        description: "L'heure de l'incident (format: HH:MM, ex: 14:30)",
+      },
+    },
+    required: ["time"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const time = params.time as string;
+
+    // The time input has name="incidentTime" from react-hook-form
+    return createAgentAction(
+      "fill_input",
+      "input[name='incidentTime']",
+      `Saisie de l'heure: ${time}`,
+      { value: time }
+    );
+  },
+};
+
+/**
+ * Tool: Fill incident description (Step 3)
+ */
+export const fillIncidentDescriptionTool: AITool = {
+  name: "fill_incident_description",
+  description: "Remplit la description détaillée de l'incident (Étape 3). Minimum 10 caractères.",
+  parameters: {
+    type: "object",
+    properties: {
+      description: {
+        type: "string",
+        description: "La description détaillée de ce qui s'est passé (minimum 10 caractères)",
+      },
+    },
+    required: ["description"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const description = params.description as string;
+
+    // The description textarea has name="description" from react-hook-form
+    return createAgentAction(
+      "fill_input",
+      "textarea[name='description']",
+      `Saisie de la description de l'incident`,
+      { value: description }
+    );
+  },
+};
+
+/**
+ * Tool: Fill immediate actions taken (Step 3 - optional)
+ */
+export const fillImmediateActionsTool: AITool = {
+  name: "fill_immediate_actions",
+  description: "Remplit les actions immédiates prises après l'incident (Étape 3, optionnel).",
+  parameters: {
+    type: "object",
+    properties: {
+      actions: {
+        type: "string",
+        description: "Les actions immédiates prises (premiers secours, mise en sécurité, etc.)",
+      },
+    },
+    required: ["actions"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const actions = params.actions as string;
+
+    return createAgentAction(
+      "fill_input",
+      "textarea[name='immediateActions']",
+      `Saisie des actions immédiates`,
+      { value: actions }
+    );
+  },
+};
+
+/**
+ * Tool: Fill reporter name (Step 4)
+ */
+export const fillReporterNameTool: AITool = {
+  name: "fill_reporter_name",
+  description: "Remplit le nom du déclarant (Étape 4). Requis sauf si signalement anonyme.",
+  parameters: {
+    type: "object",
+    properties: {
+      name: {
+        type: "string",
+        description: "Le nom complet du déclarant (minimum 2 caractères)",
+      },
+    },
+    required: ["name"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const name = params.name as string;
+
+    return createAgentAction(
+      "fill_input",
+      "input[name='reporterName']",
+      `Saisie du nom du déclarant: ${name}`,
+      { value: name }
+    );
+  },
+};
+
+/**
+ * Tool: Set anonymous reporting (Step 4)
+ */
+export const setAnonymousReportingTool: AITool = {
+  name: "set_anonymous_reporting",
+  description: "Active ou désactive le signalement anonyme (Étape 4).",
+  parameters: {
+    type: "object",
+    properties: {
+      anonymous: {
+        type: "boolean",
+        description: "true pour activer le signalement anonyme",
+      },
+    },
+    required: ["anonymous"],
+  },
+  execute: async (params, _context: AIContext) => {
+    const anonymous = params.anonymous as boolean;
+
+    return createAgentAction(
+      "toggle",
+      "input[type='checkbox'][name='isAnonymous'], input[type='checkbox']",
+      anonymous ? "Activation du signalement anonyme" : "Désactivation du signalement anonyme",
+      { checked: anonymous }
+    );
+  },
+};
+
+/**
+ * Tool: Submit incident form (Final step)
+ */
+export const submitIncidentFormTool: AITool = {
+  name: "submit_incident_form",
+  description:
+    "Soumet le formulaire d'incident après avoir rempli toutes les étapes. Utilisez cet outil UNIQUEMENT à l'étape 4 (Déclarant).",
+  parameters: {
+    type: "object",
+    properties: {},
+  },
+  execute: async (_params, _context: AIContext) => {
+    // Use data-testid for reliable selection
+    // No confirmation needed - user already requested incident creation
+    return createAgentAction(
+      "click",
+      '[data-testid="incident-form-submit"], button[type="submit"]',
+      "Soumission du formulaire d'incident",
+      undefined,
+      false // No confirmation - user already requested this action
     );
   },
 };
@@ -591,8 +959,19 @@ export const agentTools: AITool[] = [
   // Navigation
   navigateToPageTool,
   
-  // Incidents
+  // Incidents - Specific tools for incident form wizard
   createIncidentTool,
+  selectIncidentTypeTool,
+  selectSeverityLevelTool,
+  incidentWizardNavigationTool,
+  fillIncidentLocationTool,
+  fillIncidentDateTimeTool,
+  fillIncidentTimeTool,
+  fillIncidentDescriptionTool,
+  fillImmediateActionsTool,
+  fillReporterNameTool,
+  setAnonymousReportingTool,
+  submitIncidentFormTool,
   filterIncidentsByStatusTool,
   filterIncidentsBySeverityTool,
   searchIncidentsTool,
@@ -603,7 +982,7 @@ export const agentTools: AITool[] = [
   filterCAPAByCategoryTool,
   filterCAPAByPriorityTool,
   
-  // Form operations
+  // Form operations (generic)
   fillFormFieldTool,
   selectOptionTool,
   submitFormTool,

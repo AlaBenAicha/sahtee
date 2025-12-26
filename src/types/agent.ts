@@ -15,10 +15,10 @@ export type AgentMode = "chat" | "agent";
 
 /**
  * Types of actions the agent can perform
+ * NOTE: No "navigate" type - agent must always click on visible UI elements
  */
 export type AgentActionType =
-  | "navigate"        // Navigate to a page
-  | "click"           // Click a button or element
+  | "click"           // Click a button, link, or element (including sidebar navigation)
   | "fill_input"      // Fill an input field
   | "select_option"   // Select from dropdown
   | "toggle"          // Toggle a switch or checkbox

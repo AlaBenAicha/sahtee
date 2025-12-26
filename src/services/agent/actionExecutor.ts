@@ -63,6 +63,43 @@ export function injectHighlightStyles(): void {
 // =============================================================================
 
 /**
+ * Find an element using a selector that may include :has-text() patterns
+ * Converts Playwright-style selectors to standard DOM queries
+ */
+function findElement(selector: string): Element | null {
+  // Handle :has-text() pattern (Playwright-style selector)
+  const hasTextMatch = selector.match(/^(\w+):has-text\("([^"]+)"\)$/);
+  if (hasTextMatch) {
+    const [, tagName, text] = hasTextMatch;
+    const elements = document.querySelectorAll(tagName);
+    for (const el of elements) {
+      if (el.textContent?.includes(text)) {
+        return el;
+      }
+    }
+    return null;
+  }
+
+  // Handle multiple selectors separated by comma (try each one)
+  if (selector.includes(",")) {
+    const selectors = selector.split(",").map((s) => s.trim());
+    for (const sel of selectors) {
+      const element = findElement(sel);
+      if (element) return element;
+    }
+    return null;
+  }
+
+  // Standard CSS selector
+  try {
+    return document.querySelector(selector);
+  } catch {
+    console.warn(`[ActionExecutor] Invalid selector: ${selector}`);
+    return null;
+  }
+}
+
+/**
  * Wait for an element to appear in the DOM
  */
 export async function waitForElement(
@@ -70,16 +107,38 @@ export async function waitForElement(
   timeout: number = ELEMENT_WAIT_TIMEOUT
 ): Promise<Element | null> {
   return new Promise((resolve) => {
-    // Check if element already exists
-    const existing = document.querySelector(selector);
+    // Check if element already exists (using findElement for text selectors)
+    const existing = findElement(selector);
     if (existing) {
       resolve(existing);
       return;
     }
 
-    // Set up observer
+    // Set up observer for standard selectors only
+    // For :has-text() selectors, we poll instead
+    const hasTextPattern = /^(\w+):has-text\("([^"]+)"\)$/;
+    if (hasTextPattern.test(selector)) {
+      // Poll for element
+      const startTime = Date.now();
+      const poll = () => {
+        const element = findElement(selector);
+        if (element) {
+          resolve(element);
+          return;
+        }
+        if (Date.now() - startTime < timeout) {
+          setTimeout(poll, 100);
+        } else {
+          resolve(null);
+        }
+      };
+      poll();
+      return;
+    }
+
+    // Standard observer for CSS selectors
     const observer = new MutationObserver(() => {
-      const element = document.querySelector(selector);
+      const element = findElement(selector);
       if (element) {
         observer.disconnect();
         resolve(element);

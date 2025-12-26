@@ -206,24 +206,23 @@ service cloud.firestore {
     // Health Records collection (PHI - Physician Only for write, restricted read)
     // Medical records contain Protected Health Information (PHI)
     match /healthRecords/{recordId} {
+      // Helper to check if user has health management permissions
+      function canManageHealthRecords() {
+        return getUserData().roleName == 'Médecin du travail' || 
+               getUserData().role == 'physician' ||
+               getUserData().featurePermissions.health.delete == true ||
+               isOrgAdminOrSuperAdmin();
+      }
+      
       // Physicians and QHSE can read medical records (QHSE sees aggregate only in app)
       allow read: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
-      // Only physicians can create/update/delete medical records
-      allow create: if isAuthenticated() && 
-        (getUserData().roleName == 'Médecin du travail' || 
-         getUserData().role == 'physician' ||
-         isSuperAdmin());
+      // Physicians, org admins, and users with health permissions can create/update/delete
+      allow create: if isAuthenticated() && canManageHealthRecords();
       allow update: if isAuthenticated() && 
-        belongsToOrg(resource.data.organizationId) &&
-        (getUserData().roleName == 'Médecin du travail' || 
-         getUserData().role == 'physician' ||
-         isSuperAdmin());
+        belongsToOrg(resource.data.organizationId) && canManageHealthRecords();
       allow delete: if isAuthenticated() && 
-        belongsToOrg(resource.data.organizationId) &&
-        (getUserData().roleName == 'Médecin du travail' || 
-         getUserData().role == 'physician' ||
-         isSuperAdmin());
+        belongsToOrg(resource.data.organizationId) && canManageHealthRecords();
     }
 
     // Medical Visits collection

@@ -81,14 +81,29 @@ export function MedicalRecordsList({ onSelectRecord, onCreateRecord }: MedicalRe
   }
 
   if (error) {
+    // Log the actual error for debugging
+    console.error("[MedicalRecordsList] Error loading health records:", error);
+    
+    // Check if it's a Firestore index error
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isIndexError = errorMessage.includes("index") || errorMessage.includes("FAILED_PRECONDITION");
+    
     return (
       <Card>
         <CardContent className="p-8 text-center">
           <XCircle className="mx-auto h-12 w-12 text-red-500" />
           <h3 className="mt-4 text-lg font-semibold text-slate-800">Erreur de chargement</h3>
           <p className="mt-2 text-slate-600">
-            Impossible de charger les fiches médicales. Veuillez réessayer.
+            {isIndexError 
+              ? "L'index de base de données est en cours de création. Veuillez réessayer dans quelques minutes."
+              : "Impossible de charger les fiches médicales. Veuillez réessayer."
+            }
           </p>
+          {process.env.NODE_ENV === 'development' && (
+            <p className="mt-2 text-xs text-slate-400 font-mono break-all">
+              {errorMessage}
+            </p>
+          )}
         </CardContent>
       </Card>
     );

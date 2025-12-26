@@ -372,7 +372,7 @@ export function getMockRecommendations(): AIRecommendation[] {
       confidence: 92,
       priority: "haute",
       actionType: "create",
-      actionUrl: "/training?action=new&type=manutention",
+      actionUrl: "/app/training?action=new&type=manutention",
       status: "pending",
       basedOn: {
         incidents: ["inc-1", "inc-2", "inc-3"],
@@ -389,7 +389,7 @@ export function getMockRecommendations(): AIRecommendation[] {
       confidence: 87,
       priority: "haute",
       actionType: "create",
-      actionUrl: "/health?action=ppe",
+      actionUrl: "/app/health?action=ppe",
       status: "pending",
       basedOn: {
         incidents: ["inc-4"],
@@ -406,7 +406,7 @@ export function getMockRecommendations(): AIRecommendation[] {
       confidence: 78,
       priority: "moyenne",
       actionType: "update",
-      actionUrl: "/compliance?section=risk-assessment",
+      actionUrl: "/app/compliance?section=risk-assessment",
       status: "pending",
       basedOn: {
         historicalData: true,

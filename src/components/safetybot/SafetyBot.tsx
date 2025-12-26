@@ -58,6 +58,8 @@ export function SafetyBot({ showTrigger = true }: SafetyBotProps) {
     thinking,
     isThinking,
     setMode,
+    pendingActions,
+    clearPendingActions,
   } = useSafetyBot();
 
   // Fallback messages when AI is not configured
@@ -143,6 +145,9 @@ export function SafetyBot({ showTrigger = true }: SafetyBotProps) {
         onModeChange={setMode}
         thinking={thinking}
         isThinking={isThinking}
+        // Agent actions props
+        pendingActions={pendingActions}
+        onClearPendingActions={clearPendingActions}
       />
 
       {/* Floating Trigger Button - Hidden when panel is open */}

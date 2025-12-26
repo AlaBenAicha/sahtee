@@ -7,17 +7,16 @@
 
 import { useState } from "react";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   User,
   Calendar,
@@ -81,265 +80,263 @@ export function MedicalRecordDetail({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl">
-        <SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="xl" className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
               <User className="h-6 w-6 text-indigo-600" />
             </div>
-            <div className="flex-1">
-              <SheetTitle>{record.employeeName}</SheetTitle>
-              <SheetDescription>
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-xl">{record.employeeName}</DialogTitle>
+              <DialogDescription>
                 {record.jobTitle} • {record.departmentId}
-              </SheetDescription>
+              </DialogDescription>
             </div>
           </div>
-        </SheetHeader>
+        </DialogHeader>
 
-        <ScrollArea className="h-[calc(100vh-200px)] mt-6 pr-4">
-          <div className="space-y-6">
-            {/* Status Badge */}
-            <div className="flex items-center justify-between">
-              <Badge className={cn("flex items-center gap-1", statusConfig.color)}>
-                <StatusIcon className="h-3 w-3" />
-                {statusConfig.label}
-              </Badge>
-              {isPhysician && (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onEdit?.(record)}>
-                    <Edit className="h-4 w-4 mr-1" />
-                    Modifier
-                  </Button>
+        <div className="space-y-6 mt-4">
+          {/* Status Badge */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <Badge className={cn("flex items-center gap-1", statusConfig.color)}>
+              <StatusIcon className="h-3 w-3" />
+              {statusConfig.label}
+            </Badge>
+            {isPhysician && (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => onEdit?.(record)}>
+                  <Edit className="h-4 w-4 mr-1" />
+                  Modifier
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Next Visit */}
+          <div className="rounded-lg border p-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <Calendar className={cn("h-5 w-5", isOverdue ? "text-red-500" : "text-slate-400")} />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Prochaine visite médicale</p>
+                  <p className={cn("text-sm", isOverdue ? "text-red-600 font-medium" : "text-slate-500")}>
+                    {nextVisit ? nextVisit.toLocaleDateString("fr-FR") : "Non planifiée"}
+                  </p>
+                </div>
+              </div>
+              {isOverdue && <Badge variant="destructive">En retard</Badge>}
+            </div>
+            {isPhysician && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => onScheduleVisit?.(record)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Planifier une visite
+              </Button>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Tabs */}
+          <Tabs defaultValue="restrictions">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="restrictions">Restrictions</TabsTrigger>
+              <TabsTrigger value="exams">Examens</TabsTrigger>
+              <TabsTrigger value="vaccines">Vaccins</TabsTrigger>
+              <TabsTrigger value="exposures">Expositions</TabsTrigger>
+            </TabsList>
+
+            {/* Restrictions Tab */}
+            <TabsContent value="restrictions" className="mt-4">
+              {record.restrictions.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Aucune restriction médicale
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {record.restrictions.map((restriction) => (
+                    <div
+                      key={restriction.id}
+                      className="rounded-lg border bg-amber-50 p-3"
+                    >
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-slate-700">
+                            {restriction.description}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            Depuis le {restriction.startDate.toDate().toLocaleDateString("fr-FR")}
+                            {restriction.permanent && " • Permanent"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-            </div>
+            </TabsContent>
 
-            {/* Next Visit */}
-            <div className="rounded-lg border p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Calendar className={cn("h-5 w-5", isOverdue ? "text-red-500" : "text-slate-400")} />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">Prochaine visite médicale</p>
-                    <p className={cn("text-sm", isOverdue ? "text-red-600 font-medium" : "text-slate-500")}>
-                      {nextVisit ? nextVisit.toLocaleDateString("fr-FR") : "Non planifiée"}
-                    </p>
+            {/* Examinations Tab */}
+            <TabsContent value="exams" className="mt-4">
+              {record.examinations.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Aucun examen enregistré
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {record.examinations.map((exam) => (
+                    <div key={exam.id} className="rounded-lg border p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-indigo-500" />
+                          <span className="text-sm font-medium text-slate-700">
+                            {getExamTypeLabel(exam.type)}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {exam.result === "fit" ? "Apte" : "Non apte"}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">
+                        {exam.date.toDate().toLocaleDateString("fr-FR")} • {exam.conductedBy}
+                      </p>
+                      {exam.notes && (
+                        <p className="text-sm text-slate-600 mt-2">{exam.notes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Vaccinations Tab */}
+            <TabsContent value="vaccines" className="mt-4">
+              {record.vaccinations.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Aucune vaccination enregistrée
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {record.vaccinations.map((vaccine) => (
+                    <div key={vaccine.id} className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="flex items-center gap-2">
+                        <Syringe className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium text-slate-700">{vaccine.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500">
+                          {vaccine.date.toDate().toLocaleDateString("fr-FR")}
+                        </p>
+                        {vaccine.nextDoseDate && (
+                          <p className="text-xs text-amber-600">
+                            Rappel: {vaccine.nextDoseDate.toDate().toLocaleDateString("fr-FR")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Exposures Tab */}
+            <TabsContent value="exposures" className="mt-4">
+              {record.exposures.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Aucune exposition enregistrée
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {record.exposures.map((exposure) => (
+                    <div key={exposure.id} className="rounded-lg border p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className={cn(
+                          "h-4 w-4 mt-0.5",
+                          exposure.exposureLevel === "high" ? "text-red-500" :
+                          exposure.exposureLevel === "medium" ? "text-amber-500" : "text-green-500"
+                        )} />
+                        <div>
+                          <p className="text-sm font-medium text-slate-700">
+                            {exposure.substance || getHazardTypeLabel(exposure.hazardType)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Niveau: {getExposureLevelLabel(exposure.exposureLevel)} • 
+                            {exposure.frequency}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
+          <Separator />
+
+          {/* Accidents Summary */}
+          {record.accidents.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="h-5 w-5 text-red-600" />
+                <span className="font-medium text-red-700">
+                  Historique des accidents ({record.accidents.length})
+                </span>
+              </div>
+              <p className="text-sm text-red-600">
+                Total jours perdus: {record.accidents.reduce((sum, a) => sum + a.daysLost, 0)} jours
+              </p>
+            </div>
+          )}
+
+          {/* Delete Button */}
+          {isPhysician && (
+            <div className="pt-4">
+              {showDeleteConfirm ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm text-red-700 mb-3">
+                    Êtes-vous sûr de vouloir supprimer cette fiche médicale ?
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDelete}
+                      disabled={deleteRecord.isPending}
+                    >
+                      Confirmer la suppression
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDeleteConfirm(false)}
+                    >
+                      Annuler
+                    </Button>
                   </div>
                 </div>
-                {isOverdue && <Badge variant="destructive">En retard</Badge>}
-              </div>
-              {isPhysician && (
+              ) : (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="mt-3 w-full"
-                  onClick={() => onScheduleVisit?.(record)}
+                  className="text-red-600 hover:text-red-700"
+                  onClick={() => setShowDeleteConfirm(true)}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Planifier une visite
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Supprimer la fiche
                 </Button>
               )}
             </div>
-
-            <Separator />
-
-            {/* Tabs */}
-            <Tabs defaultValue="restrictions">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="restrictions">Restrictions</TabsTrigger>
-                <TabsTrigger value="exams">Examens</TabsTrigger>
-                <TabsTrigger value="vaccines">Vaccins</TabsTrigger>
-                <TabsTrigger value="exposures">Expositions</TabsTrigger>
-              </TabsList>
-
-              {/* Restrictions Tab */}
-              <TabsContent value="restrictions" className="mt-4">
-                {record.restrictions.length === 0 ? (
-                  <p className="text-sm text-slate-500 text-center py-4">
-                    Aucune restriction médicale
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {record.restrictions.map((restriction) => (
-                      <div
-                        key={restriction.id}
-                        className="rounded-lg border bg-amber-50 p-3"
-                      >
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">
-                              {restriction.description}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">
-                              Depuis le {restriction.startDate.toDate().toLocaleDateString("fr-FR")}
-                              {restriction.permanent && " • Permanent"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Examinations Tab */}
-              <TabsContent value="exams" className="mt-4">
-                {record.examinations.length === 0 ? (
-                  <p className="text-sm text-slate-500 text-center py-4">
-                    Aucun examen enregistré
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {record.examinations.map((exam) => (
-                      <div key={exam.id} className="rounded-lg border p-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-indigo-500" />
-                            <span className="text-sm font-medium text-slate-700">
-                              {getExamTypeLabel(exam.type)}
-                            </span>
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {exam.result === "fit" ? "Apte" : "Non apte"}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2">
-                          {exam.date.toDate().toLocaleDateString("fr-FR")} • {exam.conductedBy}
-                        </p>
-                        {exam.notes && (
-                          <p className="text-sm text-slate-600 mt-2">{exam.notes}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Vaccinations Tab */}
-              <TabsContent value="vaccines" className="mt-4">
-                {record.vaccinations.length === 0 ? (
-                  <p className="text-sm text-slate-500 text-center py-4">
-                    Aucune vaccination enregistrée
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {record.vaccinations.map((vaccine) => (
-                      <div key={vaccine.id} className="flex items-center justify-between rounded-lg border p-3">
-                        <div className="flex items-center gap-2">
-                          <Syringe className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium text-slate-700">{vaccine.name}</span>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-slate-500">
-                            {vaccine.date.toDate().toLocaleDateString("fr-FR")}
-                          </p>
-                          {vaccine.nextDoseDate && (
-                            <p className="text-xs text-amber-600">
-                              Rappel: {vaccine.nextDoseDate.toDate().toLocaleDateString("fr-FR")}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Exposures Tab */}
-              <TabsContent value="exposures" className="mt-4">
-                {record.exposures.length === 0 ? (
-                  <p className="text-sm text-slate-500 text-center py-4">
-                    Aucune exposition enregistrée
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {record.exposures.map((exposure) => (
-                      <div key={exposure.id} className="rounded-lg border p-3">
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle className={cn(
-                            "h-4 w-4 mt-0.5",
-                            exposure.exposureLevel === "high" ? "text-red-500" :
-                            exposure.exposureLevel === "medium" ? "text-amber-500" : "text-green-500"
-                          )} />
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">
-                              {exposure.substance || getHazardTypeLabel(exposure.hazardType)}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              Niveau: {getExposureLevelLabel(exposure.exposureLevel)} • 
-                              {exposure.frequency}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-
-            <Separator />
-
-            {/* Accidents Summary */}
-            {record.accidents.length > 0 && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-5 w-5 text-red-600" />
-                  <span className="font-medium text-red-700">
-                    Historique des accidents ({record.accidents.length})
-                  </span>
-                </div>
-                <p className="text-sm text-red-600">
-                  Total jours perdus: {record.accidents.reduce((sum, a) => sum + a.daysLost, 0)} jours
-                </p>
-              </div>
-            )}
-
-            {/* Delete Button */}
-            {isPhysician && (
-              <div className="pt-4">
-                {showDeleteConfirm ? (
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-                    <p className="text-sm text-red-700 mb-3">
-                      Êtes-vous sûr de vouloir supprimer cette fiche médicale ?
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleDelete}
-                        disabled={deleteRecord.isPending}
-                      >
-                        Confirmer la suppression
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowDeleteConfirm(false)}
-                      >
-                        Annuler
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700"
-                    onClick={() => setShowDeleteConfirm(true)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Supprimer la fiche
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </SheetContent>
-    </Sheet>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -380,4 +377,3 @@ function getExposureLevelLabel(level: string): string {
 }
 
 export default MedicalRecordDetail;
-

@@ -4,27 +4,7 @@
  * Modern glassmorphism design with refined interactions
  */
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  X,
-  Bot,
-  Sparkles,
-  Plus,
-  History,
-  Archive,
-  Wand2,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import ChatInterface from "./ChatInterface";
-import ChatInput from "./ChatInput";
-import { ThinkingDisplay } from "./ThinkingDisplay";
-import type {
-  SafetyBotMessage,
-  QuickSuggestion,
-  SuggestedAction,
-} from "@/types/safetybot";
-import type { AISessionSummary, SafetyBotMode } from "@/services/ai/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,8 +18,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import type { AISessionSummary, SafetyBotMode } from "@/services/ai/types";
+import type {
+  QuickSuggestion,
+  SafetyBotMessage,
+  SuggestedAction,
+} from "@/types/safetybot";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Archive, Bot, History, Plus, Wand2, X } from "lucide-react";
+import { useState } from "react";
+import ChatInput from "./ChatInput";
+import ChatInterface from "./ChatInterface";
+import { ThinkingDisplay } from "./ThinkingDisplay";
+import { AgentActionExecutor } from "./AgentActionExecutor";
+import type { AgentAction } from "@/types/agent";
 
 interface SafetyBotPanelProps {
   isOpen: boolean;
@@ -63,6 +57,9 @@ interface SafetyBotPanelProps {
   onModeChange?: (mode: SafetyBotMode) => void;
   thinking?: string;
   isThinking?: boolean;
+  // Agent actions
+  pendingActions?: AgentAction[];
+  onClearPendingActions?: () => void;
 }
 
 export function SafetyBotPanel({
@@ -87,6 +84,9 @@ export function SafetyBotPanel({
   onModeChange,
   thinking = "",
   isThinking = false,
+  // Agent actions props
+  pendingActions = [],
+  onClearPendingActions,
 }: SafetyBotPanelProps) {
   const [showSessionMenu, setShowSessionMenu] = useState(false);
 
@@ -117,53 +117,55 @@ export function SafetyBotPanel({
         )}
       >
         {/* Header - Modern design */}
-        <div className="relative px-6 py-5 border-b border-slate-200 bg-white">
+        <div className="relative px-4 py-4 border-b border-slate-200 bg-white">
           {/* Subtle gradient accent line at top */}
-          <div className={cn(
-            "absolute top-0 left-0 right-0 h-1",
-            mode === "agent"
-              ? "bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500"
-              : "bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500"
-          )} />
-          
-          <div className="flex items-center justify-between">
+          <div
+            className={cn(
+              "absolute top-0 left-0 right-0 h-1",
+              mode === "agent"
+                ? "bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500"
+                : "bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500"
+            )}
+          />
+
+          <div className="flex items-center justify-between gap-2">
             {/* Left: Title */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               {/* Icon */}
-              <div 
-                className="h-12 w-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md"
-                style={{ 
-                  background: mode === "agent" 
-                    ? "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)" 
-                    : "linear-gradient(135deg, #10b981 0%, #059669 100%)" 
+              <div
+                className="h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md"
+                style={{
+                  background:
+                    mode === "agent"
+                      ? "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+                      : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                 }}
               >
                 {mode === "agent" ? (
-                  <Wand2 className="h-6 w-6 text-white" />
+                  <Wand2 className="h-5 w-5 text-white" />
                 ) : (
-                  <Bot className="h-6 w-6 text-white" />
+                  <Bot className="h-5 w-5 text-white" />
                 )}
               </div>
 
               {/* Title block */}
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-slate-900 text-lg tracking-tight">
+                  <h2 className="font-semibold text-slate-900 text-base tracking-tight">
                     SafetyBot
                   </h2>
                   {mode === "agent" && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full flex-shrink-0">
                       Agent
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-slate-500 truncate max-w-[180px]">
-                  {currentSession 
-                    ? currentSession.title 
-                    : mode === "agent" 
-                      ? "Mode agent actif" 
-                      : "Nouvelle conversation"
-                  }
+                <p className="text-xs text-slate-500 truncate">
+                  {currentSession
+                    ? currentSession.title
+                    : mode === "agent"
+                    ? "Mode agent actif"
+                    : "Nouvelle conversation"}
                 </p>
               </div>
             </div>
@@ -214,15 +216,18 @@ export function SafetyBotPanel({
                                 : "hover:text-emerald-600 hover:bg-emerald-50"
                             )}
                           >
-                          <History className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      <p>Historique</p>
-                    </TooltipContent>
-                  </Tooltip>
-                    <DropdownMenuContent align="end" className="w-72 shadow-xl border-slate-200">
+                            <History className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p>Historique</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-72 shadow-xl border-slate-200"
+                    >
                       <div className="px-3 py-2 border-b border-slate-100">
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           Sessions récentes
@@ -316,9 +321,17 @@ export function SafetyBotPanel({
         {/* Thinking Display (Agent Mode) */}
         {mode === "agent" && (thinking || isThinking) && (
           <div className="px-4 pt-3">
-            <ThinkingDisplay
-              thinking={thinking}
-              isThinking={isThinking}
+            <ThinkingDisplay thinking={thinking} isThinking={isThinking} />
+          </div>
+        )}
+
+        {/* Agent Action Executor (Agent Mode) */}
+        {mode === "agent" && onClearPendingActions && (
+          <div className="px-4 pt-2">
+            <AgentActionExecutor
+              pendingActions={pendingActions}
+              onActionsClear={onClearPendingActions}
+              enabled={true}
             />
           </div>
         )}

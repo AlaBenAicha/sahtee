@@ -1,6 +1,6 @@
 /**
  * SafetyBot Service
- * 
+ *
  * Enhanced AI service with:
  * - Function calling (tools) for data access
  * - Session persistence in Firestore
@@ -10,41 +10,41 @@
  * - Thinking mode with reasoning display
  */
 
+import {
+  PLATFORM_MODULES,
+  searchFAQs,
+  searchModules,
+} from "@/data/platformKnowledge";
+import {
+  buildSafetyBotPrompt,
+  getSafetyBotGreeting,
+  getSuggestedQuestions,
+  SAFETYBOT_QUICK_RESPONSES,
+} from "@/prompts/safetyBot";
+import { GeminiClient, isGeminiEnabled } from "@/services/ai/geminiClient";
+import {
+  addMessageToSession,
+  archiveSession,
+  createSession,
+  deleteSession,
+  getSession,
+  getUserSessions,
+} from "@/services/ai/sessionService";
+import { getToolsForBot } from "@/services/ai/tools";
 import type {
+  AgentActionRequest,
   AIContext,
   AIMessage,
   AISession,
   AISessionSummary,
   SafetyBotMode,
-  AgentActionRequest,
   ThinkingCallback,
 } from "@/services/ai/types";
-import { GeminiClient, isGeminiEnabled } from "@/services/ai/geminiClient";
-import { getToolsForBot } from "@/services/ai/tools";
-import {
-  createSession,
-  getSession,
-  getUserSessions,
-  addMessageToSession,
-  archiveSession,
-  deleteSession,
-} from "@/services/ai/sessionService";
-import {
-  buildSafetyBotPrompt,
-  getSafetyBotGreeting,
-  SAFETYBOT_QUICK_RESPONSES,
-  getSuggestedQuestions,
-} from "@/prompts/safetyBot";
-import {
-  PLATFORM_MODULES,
-  searchModules,
-  searchFAQs,
-} from "@/data/platformKnowledge";
-import type { SuggestedAction, MessageSource } from "@/types/safetybot";
 import type { AgentAction } from "@/types/agent";
 import { createAction } from "@/types/agent";
+import type { MessageSource, SuggestedAction } from "@/types/safetybot";
 
-export type { SuggestedAction, MessageSource };
+export type { MessageSource, SuggestedAction };
 
 /**
  * Response from SafetyBot
@@ -158,11 +158,7 @@ export class SafetyBotService {
         enableThinking: mode === "agent",
       });
 
-      // Restart chat with current history would be ideal
-      // For now, just start fresh
-      if (mode === "agent") {
-        this.client.startThinkingChat([]);
-      }
+      // Start fresh chat (this will also start thinking chat if in agent mode)
       this.client.startChat([]);
     }
   }
@@ -201,10 +197,78 @@ export class SafetyBotService {
 
 Tu es maintenant en MODE AGENT. En plus de répondre aux questions, tu peux effectuer des actions dans l'application.
 
+### RÈGLE CRITIQUE : Agir comme un utilisateur humain
+Tu dois TOUJOURS interagir avec l'interface comme le ferait un utilisateur humain :
+1. **CLIQUE sur les liens de la barre latérale** pour naviguer (utilise navigate_to_page)
+2. **CLIQUE sur les boutons** pour ouvrir les formulaires (ex: "Déclarer un incident", "Nouvelle CAPA")
+3. **NE JAMAIS utiliser d'URL directes** - pas de paramètres comme "?action=new"
+4. **NE JAMAIS naviguer programmatiquement** - toujours cliquer sur des éléments visibles
+5. L'utilisateur doit pouvoir suivre visuellement chaque action que tu effectues
+6. Chaque navigation se fait en CLIQUANT sur un lien dans le menu latéral
+
+### FORMULAIRE D'INCIDENT - Wizard Multi-étapes IMPORTANT
+Le formulaire de création d'incident est un assistant multi-étapes avec 4 onglets. TU DOIS PASSER PAR TOUTES LES ÉTAPES.
+
+**Étape 1 - Type d'incident :**
+- Utilise select_incident_type pour choisir : accident, near_miss, unsafe_condition, unsafe_act
+- Utilise select_severity_level pour choisir : minor, moderate, severe, critical
+- Utilise incident_wizard_navigation (direction: "next") pour passer à l'étape suivante
+
+**Étape 2 - Lieu et moment :**
+- Utilise fill_incident_location pour saisir le lieu
+- Utilise fill_incident_datetime pour la date (format YYYY-MM-DD)
+- Utilise fill_incident_time pour l'heure (format HH:MM)
+- Utilise incident_wizard_navigation (direction: "next") pour continuer
+
+**Étape 3 - Description :**
+- Utilise fill_incident_description pour décrire ce qui s'est passé (MINIMUM 10 caractères)
+- Utilise fill_immediate_actions pour les actions immédiates (optionnel mais recommandé)
+- Utilise incident_wizard_navigation (direction: "next") pour ALLER À L'ÉTAPE 4
+
+**Étape 4 - Déclarant (OBLIGATOIRE avant soumission) :**
+- Utilise fill_reporter_name pour saisir le nom du déclarant (minimum 2 caractères)
+- OU utilise set_anonymous_reporting(anonymous: true) pour un signalement anonyme
+- **OBLIGATOIRE** : Tu DOIS appeler submit_incident_form pour soumettre
+
+### RÈGLE CRITIQUE : TOUJOURS APPELER submit_incident_form
+- Tu DOIS OBLIGATOIREMENT appeler submit_incident_form après fill_reporter_name
+- NE JAMAIS dire "l'incident a été créé/soumis" SANS avoir appelé submit_incident_form
+- Si tu n'appelles pas submit_incident_form, le formulaire NE SERA PAS soumis
+- L'étape fill_reporter_name NE SOUMET PAS le formulaire - elle remplit juste le champ nom
+- La séquence DOIT être : fill_reporter_name → submit_incident_form (les deux sont obligatoires)
+
+### Séquence d'actions COMPLÈTE pour créer un incident :
+1. navigate_to_page(page: "incidents") - aller sur la page Incidents
+2. wait(duration: 500) - attendre le chargement
+3. create_incident - cliquer sur "Déclarer un incident"
+4. wait(duration: 500) - attendre l'ouverture du modal
+5. select_incident_type(type: "near_miss") - choisir le type
+6. select_severity_level(severity: "moderate") - choisir la gravité
+7. incident_wizard_navigation(direction: "next") - aller à l'étape 2
+8. wait(duration: 300) - attendre la transition
+9. fill_incident_location(location: "Zone de production") - saisir le lieu
+10. fill_incident_datetime(date: "2024-12-26") - saisir la date
+11. fill_incident_time(time: "14:30") - saisir l'heure
+12. incident_wizard_navigation(direction: "next") - aller à l'étape 3
+13. wait(duration: 300) - attendre la transition
+14. fill_incident_description(description: "Un incident s'est produit...") - minimum 10 caractères
+15. fill_immediate_actions(actions: "Premiers secours administrés") - optionnel
+16. incident_wizard_navigation(direction: "next") - aller à l'étape 4 (OBLIGATOIRE)
+17. wait(duration: 300) - attendre la transition
+18. fill_reporter_name(name: "Jean Dupont") - saisir le nom (NE SOUMET PAS)
+19. submit_incident_form - **OBLIGATOIRE** - cliquer sur "Signaler l'incident" pour SOUMETTRE
+
+**ATTENTION** : L'étape 19 est OBLIGATOIRE. Sans submit_incident_form, l'incident N'EST PAS créé !
+
+### NE PAS utiliser ces outils génériques pour les incidents :
+- NE PAS utiliser fill_form_field - utilise les outils spécifiques (fill_incident_location, etc.)
+- NE PAS utiliser select_option - utilise select_incident_type ou select_severity_level
+- NE PAS utiliser submit_form - utilise submit_incident_form
+
 ### Capacités d'action
-- Naviguer vers les différentes pages (dashboard, incidents, capa, training, compliance, health, analytics)
-- Créer des incidents et des CAPA
-- Remplir des formulaires
+- Naviguer en cliquant sur les liens de la barre latérale
+- Créer des incidents et des CAPA en utilisant les outils dédiés
+- Remplir des formulaires avec les outils spécifiques à chaque module
 - Appliquer des filtres et effectuer des recherches
 - Cliquer sur des boutons et interagir avec l'interface
 
@@ -213,16 +277,21 @@ Tu es maintenant en MODE AGENT. En plus de répondre aux questions, tu peux effe
 - Tu ne peux PAS accéder aux paramètres (/app/settings)
 - Tu ne peux PAS déconnecter l'utilisateur
 - Tu dois respecter les permissions de l'utilisateur
+- Tu ne dois JAMAIS utiliser d'URL directes ou de navigation programmatique
+- Tu dois TOUJOURS cliquer sur des éléments visibles (liens, boutons, onglets)
+- NE JAMAIS générer d'action de type "navigate" avec une URL - utilise toujours "click" sur un lien
 
 ### Processus de réflexion
 Avant chaque action, explique ton raisonnement :
 1. Comprendre la demande de l'utilisateur
-2. Identifier les actions nécessaires
-3. Vérifier que les actions sont autorisées
-4. Exécuter les actions dans l'ordre approprié
+2. Vérifier sur quelle page l'utilisateur se trouve actuellement
+3. Naviguer vers la bonne page si nécessaire (en cliquant sur le lien)
+4. Identifier les boutons/éléments à cliquer
+5. Exécuter les actions dans l'ordre approprié
 
 ### Communication
 - Décris ce que tu vas faire AVANT de le faire
+- NE DIS PAS que l'action est terminée tant que le formulaire n'est pas vraiment soumis
 - Si l'utilisateur arrête l'exécution, confirme l'arrêt et propose de l'aide
 - En cas d'erreur, explique le problème et propose des alternatives`;
     }
@@ -309,14 +378,10 @@ Avant chaque action, explique ton raisonnement :
       return [];
     }
 
-    return getUserSessions(
-      this.context.userId,
-      this.context.organizationId,
-      {
-        botType: "safetybot",
-        includeArchived,
-      }
-    );
+    return getUserSessions(this.context.userId, this.context.organizationId, {
+      botType: "safetybot",
+      includeArchived,
+    });
   }
 
   /**
@@ -452,7 +517,19 @@ Avant chaque action, explique ton raisonnement :
     onThinking?: ThinkingCallback,
     onAgentAction?: (action: AgentAction) => void
   ): Promise<SafetyBotResponse> {
+    console.log("[SafetyBotService] streamAgentMessage called", {
+      messageLength: message.length,
+      messagePreview: message.substring(0, 100),
+      isInitialized: this.isInitialized,
+      hasContext: !!this.context,
+      hasOnThinking: !!onThinking,
+      hasOnAgentAction: !!onAgentAction,
+    });
+
     if (!this.isInitialized || !this.context) {
+      console.warn(
+        "[SafetyBotService] Not initialized or no context, returning offline response"
+      );
       const offlineResponse = this.getOfflineResponse(message);
       onChunk(offlineResponse.content);
       return offlineResponse;
@@ -464,12 +541,17 @@ Avant chaque action, explique ton raisonnement :
     try {
       // Create session if needed
       if (!this.currentSessionId) {
+        console.log("[SafetyBotService] Creating new session...");
         await this.createNewSession();
       }
 
       // Collect thinking and actions
       let fullThinking = "";
       const agentActions: AgentAction[] = [];
+
+      console.log(
+        "[SafetyBotService] Calling client.streamMessageWithThinking..."
+      );
 
       // Stream with thinking support
       const response = await this.client.streamMessageWithThinking(
@@ -495,6 +577,14 @@ Avant chaque action, explique ton raisonnement :
         }
       );
 
+      console.log("[SafetyBotService] streamMessageWithThinking completed", {
+        contentLength: response.content?.length || 0,
+        hasThinking: !!response.thinking,
+        hasFunctionCalls: !!response.functionCalls,
+        functionCallCount: response.functionCalls?.length || 0,
+        agentActionsCount: agentActions.length,
+      });
+
       // Save to session
       await this.saveMessage(message, response.content);
 
@@ -513,7 +603,12 @@ Avant chaque action, explique ton raisonnement :
         agentActions: agentActions.length > 0 ? agentActions : undefined,
       };
     } catch (error) {
-      console.error("SafetyBot agent streaming error:", error);
+      console.error("[SafetyBotService] Agent streaming error:", error);
+      console.error("[SafetyBotService] Error details:", {
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+      });
       const errorMsg = SAFETYBOT_QUICK_RESPONSES.error;
       onChunk(errorMsg);
       return { content: errorMsg, confidence: 0 };
@@ -523,7 +618,9 @@ Avant chaque action, explique ton raisonnement :
   /**
    * Convert an AgentActionRequest to an AgentAction
    */
-  private convertActionRequestToAction(request: AgentActionRequest): AgentAction {
+  private convertActionRequestToAction(
+    request: AgentActionRequest
+  ): AgentAction {
     return createAction(
       request.type as any,
       request.target,
@@ -584,7 +681,10 @@ Avant chaque action, explique ton raisonnement :
   /**
    * Save messages to session
    */
-  private async saveMessage(userMessage: string, assistantResponse: string): Promise<void> {
+  private async saveMessage(
+    userMessage: string,
+    assistantResponse: string
+  ): Promise<void> {
     if (!this.currentSessionId) return;
 
     // Save user message
@@ -621,7 +721,11 @@ Avant chaque action, explique ton raisonnement :
       if (modules.length > 0) {
         const module = modules[0];
         return {
-          content: `Pour accéder à **${module.nameFr}** :\n\n1. Cliquez sur "${module.nameFr}" dans le menu latéral\n2. Ou utilisez le lien direct\n\n**Description** : ${module.description}\n\n**Fonctionnalités** :\n${module.features.map((f) => `- ${f}`).join("\n")}`,
+          content: `Pour accéder à **${module.nameFr}** :\n\n1. Cliquez sur "${module.nameFr
+            }" dans le menu latéral\n2. Ou utilisez le lien direct\n\n**Description** : ${module.description
+            }\n\n**Fonctionnalités** :\n${module.features
+              .map((f) => `- ${f}`)
+              .join("\n")}`,
           suggestedActions: [
             {
               type: "navigate",
