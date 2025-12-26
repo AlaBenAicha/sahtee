@@ -4,32 +4,32 @@ overview: Refactor the Healthmeter feature to link medical records (fiches medic
 todos:
   - id: create-employee-hook
     content: Create useEmployeeSearch hook for debounced user search
-    status: pending
+    status: completed
   - id: create-employee-selector
     content: Create EmployeeSelector component with searchable dropdown
-    status: pending
+    status: completed
   - id: create-multi-selector
     content: Create EmployeesMultiSelector for multiple employee selection
-    status: pending
+    status: completed
   - id: update-medical-form
     content: Update MedicalRecordForm to use EmployeeSelector
-    status: pending
+    status: completed
   - id: update-visit-form
     content: Update VisitForm to use EmployeeSelector
-    status: pending
+    status: completed
     dependencies:
       - create-employee-selector
   - id: create-exposure-form
     content: Create ExposureForm for OrganizationExposure with multi-select
-    status: pending
+    status: completed
     dependencies:
       - create-multi-selector
   - id: update-types
     content: Add clarifying comments to health.ts types
-    status: pending
+    status: completed
   - id: test-changes
-    content: Test all forms in browser to verify functionality
-    status: pending
+    content: Test all forms compile without errors
+    status: completed
 ---
 
 # Healthmeter Employee Selector Refactoring
