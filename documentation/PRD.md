@@ -1392,32 +1392,32 @@ exports.generateReport = functions.https.onCall(async (data, context) => {
 - [x] QR code generation for incidents
 - [x] Training catalog and enrollment
 - [x] Equipment catalog
-- [ ] CAPA-AI integration (prioritization, suggestions)
+- [x] CAPA-AI integration (prioritization, suggestions)
 
 ### Phase 4: Conformity Room (Weeks 11-13)
-- [ ] Norm library (seed with ISO 45001, OSHA, etc.)
-- [ ] Requirement tracking
-- [ ] Audit scheduling and calendar
-- [ ] Audit execution and findings capture
-- [ ] Auto-CAPA creation from findings
-- [ ] Conformity-AI integration
+- [x] Norm library (seed with ISO 45001, OSHA, etc.)
+- [x] Requirement tracking
+- [x] Audit scheduling and calendar
+- [x] Audit execution and findings capture
+- [x] Auto-CAPA creation from findings
+- [x] Conformity-AI integration
 
 ### Phase 5: Healthmeter (Weeks 14-16)
-- [ ] Health dashboard (aggregate view)
-- [ ] Medical record management (physician only)
-- [ ] Visit scheduling and tracking
-- [ ] Exposure monitoring
-- [ ] Health alerts
-- [ ] Health-AI integration
+- [x] Health dashboard (aggregate view)
+- [x] Medical record management (physician only)
+- [x] Visit scheduling and tracking
+- [x] Exposure monitoring
+- [x] Health alerts
+- [x] Health-AI integration
 
 ### Phase 6: SafetyBot & Polish (Weeks 17-18)
-- [ ] SafetyBot chat interface
-- [ ] Context-aware responses
-- [ ] Platform navigation assistance
-- [ ] Optional modules placeholders (UI only)
-- [ ] Report generation (PDF/Excel)
-- [ ] Performance optimization
-- [ ] Testing and bug fixes
+- [x] SafetyBot chat interface
+- [x] Context-aware responses
+- [x] Platform navigation assistance
+- [x] Optional modules placeholders (UI only)
+- [x] Report generation (PDF/Excel)
+- [x] Performance optimization
+- [x] Testing and bug fixes
 
 ### Phase 7: Launch Prep (Weeks 19-20)
 - [ ] Security audit
