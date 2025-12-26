@@ -179,6 +179,7 @@ export function VisitCalendar({ onSelectVisit, onCreateVisit }: VisitCalendarPro
               month={currentMonth}
               onMonthChange={setCurrentMonth}
               locale={fr}
+              hideNavigation
               className="rounded-lg border p-3"
               modifiers={{
                 hasVisits: (date) => {
@@ -188,9 +189,6 @@ export function VisitCalendar({ onSelectVisit, onCreateVisit }: VisitCalendarPro
               }}
               modifiersClassNames={{
                 hasVisits: "font-bold",
-              }}
-              components={{
-                DayContent: ({ date }) => renderDay(date),
               }}
             />
             

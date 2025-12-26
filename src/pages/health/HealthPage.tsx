@@ -223,21 +223,22 @@ export default function HealthPage() {
 
       {/* Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
+        <TabsList className="w-full justify-start gap-1 overflow-x-auto">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <TabsTrigger
                 key={tab.id}
                 value={tab.id}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 flex-shrink-0 min-w-fit px-4"
+                title={tab.label}
               >
-                <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="text-xs sm:text-sm">{tab.label}</span>
                 {tab.badge !== undefined && tab.badge > 0 && (
                   <Badge
                     variant={tab.badgeVariant}
-                    className="ml-1 h-5 min-w-[20px] px-1 text-xs"
+                    className="h-5 min-w-[20px] px-1 text-xs shrink-0"
                   >
                     {tab.badge}
                   </Badge>

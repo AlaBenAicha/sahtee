@@ -228,20 +228,20 @@ export function VisitList({ onSelectVisit, onEditVisit, onCreateVisit }: VisitLi
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">
+          <TabsList className="flex w-full max-w-xl">
+            <TabsTrigger value="all" className="flex-1">
               Toutes ({allVisits?.length || 0})
             </TabsTrigger>
-            <TabsTrigger value="upcoming">
+            <TabsTrigger value="upcoming" className="flex-1">
               À venir ({upcomingVisits?.length || 0})
             </TabsTrigger>
-            <TabsTrigger value="overdue" className="relative">
+            <TabsTrigger value="overdue" className="flex-1 relative">
               En retard ({overdueVisits?.length || 0})
               {(overdueVisits?.length || 0) > 0 && (
                 <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="completed">
+            <TabsTrigger value="completed" className="flex-1">
               Effectuées
             </TabsTrigger>
           </TabsList>

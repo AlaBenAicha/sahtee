@@ -164,46 +164,46 @@ export function HealthTrendCharts({ className }: HealthTrendChartsProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <TrendCard
-            title="TMS"
-            value={trendData[trendData.length - 1].tms}
-            change={-12}
-            status="down"
-            subtitle="cas ce mois"
-          />
-          <TrendCard
-            title="RPS"
-            value={trendData[trendData.length - 1].rps}
-            change={5}
-            status="up"
-            subtitle="cas ce mois"
-          />
-          <TrendCard
-            title="Taux de conformité"
-            value={trendData[trendData.length - 1].compliance}
-            change={3}
-            status="up"
-            subtitle="%"
-          />
-          <TrendCard
-            title="Visites effectuées"
-            value={visitStats?.completed || 0}
-            change={0}
-            status="stable"
-            subtitle="ce mois"
-          />
-        </div>
-
-        {/* Tabbed Charts */}
+        {/* Tabbed Charts - Tabs on top */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="pathologies">Pathologies</TabsTrigger>
-            <TabsTrigger value="fitness">Aptitude</TabsTrigger>
-            <TabsTrigger value="exposures">Expositions</TabsTrigger>
-            <TabsTrigger value="visits">Visites</TabsTrigger>
+          <TabsList className="flex w-full">
+            <TabsTrigger value="pathologies" className="flex-1">Pathologies</TabsTrigger>
+            <TabsTrigger value="fitness" className="flex-1">Aptitude</TabsTrigger>
+            <TabsTrigger value="exposures" className="flex-1">Expositions</TabsTrigger>
+            <TabsTrigger value="visits" className="flex-1">Visites</TabsTrigger>
           </TabsList>
+
+          {/* Summary Cards - Below tabs */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+            <TrendCard
+              title="TMS"
+              value={trendData[trendData.length - 1].tms}
+              change={-12}
+              status="down"
+              subtitle="cas ce mois"
+            />
+            <TrendCard
+              title="RPS"
+              value={trendData[trendData.length - 1].rps}
+              change={5}
+              status="up"
+              subtitle="cas ce mois"
+            />
+            <TrendCard
+              title="Taux de conformité"
+              value={trendData[trendData.length - 1].compliance}
+              change={3}
+              status="up"
+              subtitle="%"
+            />
+            <TrendCard
+              title="Visites effectuées"
+              value={visitStats?.completed || 0}
+              change={0}
+              status="stable"
+              subtitle="ce mois"
+            />
+          </div>
 
           {/* Pathologies Chart */}
           <TabsContent value="pathologies" className="mt-4">

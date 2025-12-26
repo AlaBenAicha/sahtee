@@ -144,7 +144,7 @@ export function MedicalRecordDetail({
 
           {/* Tabs */}
           <Tabs defaultValue="restrictions">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="w-full">
               <TabsTrigger value="restrictions">Restrictions</TabsTrigger>
               <TabsTrigger value="exams">Examens</TabsTrigger>
               <TabsTrigger value="vaccines">Vaccins</TabsTrigger>
