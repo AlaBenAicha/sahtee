@@ -2751,7 +2751,7 @@ export function CAPARoom() {
               open={showIncidentModal}
               onOpenChange={setShowIncidentModal}
             >
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogContent size="xl">
                 <DialogHeader>
                   <DialogTitle>
                     Déclaration d'Incident - Formulaire 1

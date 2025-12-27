@@ -1,0 +1,432 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Helper function to get user data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Helper function to check if user belongs to an organization
+    function belongsToOrg(orgId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserData().organizationId == orgId;
+    }
+    
+    // Helper function to check user role
+    function hasRole(role) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserData().role == role;
+    }
+    
+    // Helper function to check if user is org_admin or super_admin
+    function isOrgAdminOrSuperAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (getUserData().role in ['org_admin', 'super_admin'] || getUserData().isOrgAdmin == true);
+    }
+    
+    // Helper function to check if user is super_admin
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserData().role == 'super_admin';
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isOwner(userId);
+      
+      // Users can create their own profile during signup
+      allow create: if isOwner(userId);
+      
+      // Users can update their own profile
+      allow update: if isOwner(userId);
+      
+      // Only org_admin or super_admin can delete users
+      allow delete: if isOrgAdminOrSuperAdmin();
+      
+      // Org admins can read all users in their organization
+      allow read: if isOrgAdminOrSuperAdmin() && 
+        resource.data.organizationId == getUserData().organizationId;
+      
+      // Org admins can update users in their organization (for role changes)
+      allow update: if isOrgAdminOrSuperAdmin() && 
+        resource.data.organizationId == getUserData().organizationId;
+    }
+
+    // Organizations collection
+    match /organizations/{orgId} {
+      // Allow anyone to get org by ID (needed for invitation acceptance)
+      // but restrict listing to members only
+      allow get: if true;
+      allow list: if isAuthenticated() && belongsToOrg(orgId);
+      
+      // Authenticated users can create organizations (during signup/onboarding)
+      allow create: if isAuthenticated();
+      
+      // Only org_admin/super_admin can update organization
+      allow update: if belongsToOrg(orgId) && isOrgAdminOrSuperAdmin();
+      
+      // Only super_admin can delete organization
+      allow delete: if isSuperAdmin();
+    }
+
+    // Roles collection (custom roles per organization)
+    match /roles/{roleId} {
+      // Allow anyone to get role by ID (needed for invitation acceptance)
+      // but restrict listing to organization members
+      allow get: if true;
+      allow list: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      
+      // Authenticated users can create roles (during signup - template roles)
+      allow create: if isAuthenticated();
+      
+      // Only org_admin can update roles in their organization
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
+      
+      // Only org_admin can delete roles in their organization
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
+    }
+
+    // Invitations collection
+    match /invitations/{invitationId} {
+      // Anyone can read invitations by token (for accepting)
+      // This is needed for the invitation acceptance flow
+      // Split into get and list for explicit permissions
+      allow get: if true;
+      allow list: if true;
+      
+      // Org admins can create invitations for their organization
+      allow create: if isAuthenticated() && 
+        isOrgAdminOrSuperAdmin();
+      
+      // Allow updates for invitation acceptance during signup
+      // The invitation status is updated when a user accepts and creates their account
+      allow update: if true;
+      
+      // Org admins can delete/cancel invitations in their organization
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
+    }
+
+    // Sites collection (sub-collection of organizations)
+    match /organizations/{orgId}/sites/{siteId} {
+      allow read: if belongsToOrg(orgId);
+      allow write: if belongsToOrg(orgId) && isOrgAdminOrSuperAdmin();
+    }
+    
+    // Departments collection
+    match /departments/{departmentId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated() && isOrgAdminOrSuperAdmin();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        isOrgAdminOrSuperAdmin();
+    }
+
+    // Incidents collection
+    match /incidents/{incidentId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Action Plans collection
+    match /actionPlans/{planId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Training Plans collection
+    match /trainingPlans/{planId} {
+      // Allow list if user is authenticated (query filters by organization)
+      allow list: if isAuthenticated();
+      allow get: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Training Records collection (individual training completion records)
+    match /trainingRecords/{recordId} {
+      allow list: if isAuthenticated();
+      allow get: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Conformity Checks collection
+    match /conformityChecks/{checkId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Audits collection
+    match /audits/{auditId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Norms collection (Regulatory frameworks and requirements)
+    match /norms/{normId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // AI Analyses collection (Conformity-AI analysis history)
+    match /aiAnalyses/{analysisId} {
+      // Allow list if user is authenticated and query filters by their organization
+      allow list: if isAuthenticated();
+      // Allow get if document belongs to user's organization
+      allow get: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // CAPA AI History collection
+    match /capaAIHistory/{entryId} {
+      // Allow list if user is authenticated (query filters by organization)
+      allow list: if isAuthenticated();
+      // Allow get if document belongs to user's organization
+      allow get: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Users can create history entries
+      allow create: if isAuthenticated();
+      // Users can update entries in their organization
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Only org_admin can delete history entries
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // ==========================================================================
+    // Healthmeter Module Collections
+    // ==========================================================================
+
+    // Health Records collection (PHI - Physician Only for write, restricted read)
+    // Medical records contain Protected Health Information (PHI)
+    match /healthRecords/{recordId} {
+      // Helper to check if user has health management permissions
+      function canManageHealthRecords() {
+        return getUserData().roleName == 'Médecin du travail' || 
+               getUserData().role == 'physician' ||
+               getUserData().featurePermissions.health.delete == true ||
+               isOrgAdminOrSuperAdmin();
+      }
+      
+      // Physicians and QHSE can read medical records (QHSE sees aggregate only in app)
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Physicians, org admins, and users with health permissions can create/update/delete
+      allow create: if isAuthenticated() && canManageHealthRecords();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && canManageHealthRecords();
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && canManageHealthRecords();
+    }
+
+    // Medical Visits collection
+    match /medicalVisits/{visitId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Physicians can create/update/delete visits
+      allow create: if isAuthenticated() && 
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isOrgAdminOrSuperAdmin());
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) &&
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isOrgAdminOrSuperAdmin());
+      allow delete: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) &&
+        (getUserData().roleName == 'Médecin du travail' || 
+         getUserData().role == 'physician' ||
+         isOrgAdminOrSuperAdmin());
+    }
+
+    // Exposures collection (organization-level exposure monitoring)
+    match /exposures/{exposureId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Measurements collection (exposure measurements - separate from exposures)
+    match /measurements/{measurementId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Health Alerts collection
+    match /healthAlerts/{alertId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Health Stats collection (aggregate, non-PHI data for dashboard)
+    match /healthStats/{statsId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Stats can be created/updated by authenticated org members
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if false; // Stats should not be deleted
+    }
+
+    // ==========================================================================
+    // AI Sessions Collection (SafetyBot, CAPA-AI, Conformity-AI, Health-AI)
+    // ==========================================================================
+
+    // AI Sessions - User owns their own sessions within their organization
+    match /aiSessions/{sessionId} {
+      // Users can read their own sessions
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        belongsToOrg(resource.data.organizationId);
+      
+      // Users can create sessions (organizationId validated in app)
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own sessions (add messages, archive, etc.)
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own sessions
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Safety Inspections collection
+    match /safetyInspections/{inspectionId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // ==========================================================================
+    // 360° Board Dashboard Collections
+    // ==========================================================================
+
+    // Dashboard Metrics collection (aggregated KPIs)
+    // Written by Cloud Functions, read by authenticated org members
+    match /dashboardMetrics/{orgId} {
+      allow read: if isAuthenticated() && belongsToOrg(orgId);
+      // Only Cloud Functions can write (enforced by service account)
+      allow write: if false;
+    }
+
+    // Alerts collection
+    match /alerts/{alertId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated() && isOrgAdminOrSuperAdmin();
+      // Users can only update readBy and dismissedBy fields
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId) && 
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['readBy', 'dismissedBy']);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // KPI History collection (for trend data)
+    match /kpiHistory/{historyId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Only Cloud Functions can write
+      allow write: if false;
+    }
+
+    // Risk Assessments collection (for risk matrix)
+    match /riskAssessments/{assessmentId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // AI Recommendations collection (for dashboard AI suggestions)
+    match /aiRecommendations/{recommendationId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Cloud Functions create recommendations
+      allow create: if isAuthenticated();
+      // Users can update status (accept/dismiss)
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+  }
+}
