@@ -8,9 +8,9 @@
  * - Conformity-AI analysis
  */
 
-import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { Shield, Plus } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Shield, Plus, AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -42,10 +42,21 @@ import type { NormWithRequirements, NormRequirement, Audit, Finding } from "@/ty
 
 export default function CompliancePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { canCreate, canUpdate } = useFeaturePermissions("compliance");
+
+  // Get risk filter from query params (from dashboard risk matrix click)
+  const riskSeverity = searchParams.get("severity");
+  const riskLikelihood = searchParams.get("likelihood");
+  const hasRiskFilter = riskSeverity && riskLikelihood;
 
   // State for modals
   const [selectedNorm, setSelectedNorm] = useState<NormWithRequirements | null>(null);
+  
+  // Clear filter function
+  const clearRiskFilter = useCallback(() => {
+    setSearchParams({});
+  }, [setSearchParams]);
   const [normModalOpen, setNormModalOpen] = useState(false);
   const [normFormOpen, setNormFormOpen] = useState(false);
   const [selectedAudit, setSelectedAudit] = useState<Audit | null>(null);
@@ -152,6 +163,32 @@ export default function CompliancePage() {
           </Tooltip>
         </TooltipProvider>
       </div>
+
+      {/* Risk Filter Banner (from dashboard) */}
+      {hasRiskFilter && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <div>
+              <p className="font-medium text-amber-800">
+                Filtrage par niveau de risque
+              </p>
+              <p className="text-sm text-amber-600">
+                Affichage des risques avec gravité {riskSeverity} et probabilité {riskLikelihood}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearRiskFilter}
+            className="border-amber-300 text-amber-700 hover:bg-amber-100"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Effacer le filtre
+          </Button>
+        </div>
+      )}
 
       {/* KPI Tiles */}
       <ComplianceStatusTiles />

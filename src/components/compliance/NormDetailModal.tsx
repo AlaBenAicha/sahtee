@@ -196,7 +196,6 @@ export function NormDetailModal({
           description: newRequirement.description.trim(),
           status: "pending_review",
           evidenceRequired: false,
-          notes: undefined,
         },
       });
       setNewRequirement({ clause: "", title: "", description: "" });

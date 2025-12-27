@@ -34,7 +34,8 @@ const THOUSAND = 1_000;
 const INCIDENTS_COLLECTION = "incidents";
 const ACTION_PLANS_COLLECTION = "actionPlans";
 const TRAINING_PLANS_COLLECTION = "trainingPlans";
-const CONFORMITY_CHECKS_COLLECTION = "conformityChecks";
+const TRAINING_RECORDS_COLLECTION = "trainingRecords";
+const NORMS_COLLECTION = "norms";
 
 // =============================================================================
 // KPI Calculation Functions
@@ -42,54 +43,54 @@ const CONFORMITY_CHECKS_COLLECTION = "conformityChecks";
 
 /**
  * Calculate all KPIs for an organization
+ * Returns real data from Firestore - zeros if no data exists
  */
 export async function calculateAllKPIs(
   orgId: string,
   periodMonths: number = 12
 ): Promise<DashboardKPI[]> {
-  try {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - periodMonths);
-
-    // Fetch all required data in parallel
-    const [
-      incidentData,
-      capaData,
-      trainingData,
-      complianceData,
-    ] = await Promise.all([
-      getIncidentData(orgId, startDate, endDate),
-      getCAPAData(orgId),
-      getTrainingData(orgId),
-      getComplianceData(orgId),
-    ]);
-
-    const now = Timestamp.now();
-
-    // Assume average hours worked per employee per year: 1800 hours
-    // This should come from organization settings in production
-    const estimatedEmployees = 100;
-    const hoursWorkedPerYear = estimatedEmployees * 1800;
-    const hoursWorked = (hoursWorkedPerYear * periodMonths) / 12;
-
-    // Calculate KPIs
-    const kpis: DashboardKPI[] = [
-      calculateTauxFrequence(incidentData, hoursWorked, now),
-      calculateTauxGravite(incidentData, hoursWorked, now),
-      calculateTauxConformite(complianceData, now),
-      calculateTauxClotureCapa(capaData, now),
-      calculateTauxFormation(trainingData, now),
-      calculateJoursSansAccident(incidentData, now),
-      calculateNearMissRatio(incidentData, now),
-    ];
-
-    return kpis;
-  } catch (error) {
-    // Handle permission errors gracefully - return mock KPIs for development
-    console.warn("Error calculating KPIs (using mock data):", error);
+  if (!orgId) {
+    console.warn("No organization ID provided for KPI calculation");
     return getMockKPIs();
   }
+
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - periodMonths);
+
+  // Fetch all required data in parallel - each function handles its own errors
+  const [
+    incidentData,
+    capaData,
+    trainingData,
+    complianceData,
+  ] = await Promise.all([
+    getIncidentData(orgId, startDate, endDate),
+    getCAPAData(orgId),
+    getTrainingData(orgId),
+    getComplianceData(orgId),
+  ]);
+
+  const now = Timestamp.now();
+
+  // Assume average hours worked per employee per year: 1800 hours
+  // This should come from organization settings in production
+  const estimatedEmployees = 100;
+  const hoursWorkedPerYear = estimatedEmployees * 1800;
+  const hoursWorked = (hoursWorkedPerYear * periodMonths) / 12;
+
+  // Calculate KPIs based on real data
+  const kpis: DashboardKPI[] = [
+    calculateTauxFrequence(incidentData, hoursWorked, now),
+    calculateTauxGravite(incidentData, hoursWorked, now),
+    calculateTauxConformite(complianceData, now),
+    calculateTauxClotureCapa(capaData, now),
+    calculateTauxFormation(trainingData, now),
+    calculateJoursSansAccident(incidentData, now),
+    calculateNearMissRatio(incidentData, now),
+  ];
+
+  return kpis;
 }
 
 /**
@@ -572,18 +573,19 @@ async function getIncidentData(
       previousNearMisses: previousIncidents.filter(i => i.severity === "near_miss" || i.type === "near_miss").length,
       previousDaysLost: previousIncidents.reduce((sum, i) => sum + (i.daysLost || 0), 0),
     };
-  } catch {
-    // Return mock data if Firestore query fails
+  } catch (error) {
+    console.warn("Error fetching incident data:", error);
+    // Return zeros instead of mock data - real data only
     return {
-      totalIncidents: 25,
-      lostTimeIncidents: 5,
-      nearMisses: 12,
-      daysLost: 45,
-      daysSinceLastLTI: 45,
-      previousTotalIncidents: 30,
-      previousLostTimeIncidents: 7,
-      previousNearMisses: 10,
-      previousDaysLost: 60,
+      totalIncidents: 0,
+      lostTimeIncidents: 0,
+      nearMisses: 0,
+      daysLost: 0,
+      daysSinceLastLTI: 0,
+      previousTotalIncidents: 0,
+      previousLostTimeIncidents: 0,
+      previousNearMisses: 0,
+      previousDaysLost: 0,
     };
   }
 }
@@ -612,6 +614,17 @@ async function getCAPAData(orgId: string): Promise<CAPAData> {
       c.dueDate.toDate() < new Date()
     ).length;
 
+    // If no data found, return zeros (not mock data)
+    if (totalCapas === 0) {
+      return {
+        totalCapas: 0,
+        closedOnTime: 0,
+        overdue: 0,
+        previousTotalCapas: 0,
+        previousClosedOnTime: 0,
+      };
+    }
+
     return {
       totalCapas,
       closedOnTime,
@@ -619,32 +632,70 @@ async function getCAPAData(orgId: string): Promise<CAPAData> {
       previousTotalCapas: Math.floor(totalCapas * 0.9),
       previousClosedOnTime: Math.floor(closedOnTime * 0.85),
     };
-  } catch {
+  } catch (error) {
+    console.warn("Error fetching CAPA data:", error);
     return {
-      totalCapas: 50,
-      closedOnTime: 46,
-      overdue: 2,
-      previousTotalCapas: 45,
-      previousClosedOnTime: 38,
+      totalCapas: 0,
+      closedOnTime: 0,
+      overdue: 0,
+      previousTotalCapas: 0,
+      previousClosedOnTime: 0,
     };
   }
 }
 
 /**
  * Fetch training data for KPI calculations
+ * Uses both training plans and individual training records
  */
 async function getTrainingData(orgId: string): Promise<TrainingData> {
   try {
-    const q = query(
+    // First try to get training plans with completion status
+    const plansQuery = query(
       collection(db, TRAINING_PLANS_COLLECTION),
       where("organizationId", "==", orgId)
     );
 
-    const querySnapshot = await getDocs(q);
-    const trainings = querySnapshot.docs.map(doc => doc.data());
+    const plansSnapshot = await getDocs(plansQuery);
+    const plans = plansSnapshot.docs.map(doc => doc.data());
 
-    const plannedTrainings = trainings.length;
-    const completedTrainings = trainings.filter(t => t.status === "completed").length;
+    let plannedTrainings = 0;
+    let completedTrainings = 0;
+
+    // Calculate from training plans' completion status
+    for (const plan of plans) {
+      if (plan.completionStatus) {
+        plannedTrainings += plan.completionStatus.total || 0;
+        completedTrainings += plan.completionStatus.completed || 0;
+      } else {
+        // If no completion status, count assigned employees
+        plannedTrainings += (plan.assignedEmployees?.length || 0);
+      }
+    }
+
+    // If no plans found, try training records directly
+    if (plannedTrainings === 0) {
+      const recordsQuery = query(
+        collection(db, TRAINING_RECORDS_COLLECTION),
+        where("organizationId", "==", orgId)
+      );
+
+      const recordsSnapshot = await getDocs(recordsQuery);
+      const records = recordsSnapshot.docs.map(doc => doc.data());
+
+      plannedTrainings = records.length;
+      completedTrainings = records.filter(r => r.status === "completed").length;
+    }
+
+    // If still no data, return zeros (not mock)
+    if (plannedTrainings === 0) {
+      return {
+        plannedTrainings: 0,
+        completedTrainings: 0,
+        previousPlannedTrainings: 0,
+        previousCompletedTrainings: 0,
+      };
+    }
 
     return {
       plannedTrainings,
@@ -652,44 +703,76 @@ async function getTrainingData(orgId: string): Promise<TrainingData> {
       previousPlannedTrainings: Math.floor(plannedTrainings * 0.9),
       previousCompletedTrainings: Math.floor(completedTrainings * 0.85),
     };
-  } catch {
+  } catch (error) {
+    console.warn("Error fetching training data:", error);
     return {
-      plannedTrainings: 100,
-      completedTrainings: 78,
-      previousPlannedTrainings: 90,
-      previousCompletedTrainings: 65,
+      plannedTrainings: 0,
+      completedTrainings: 0,
+      previousPlannedTrainings: 0,
+      previousCompletedTrainings: 0,
     };
   }
 }
 
 /**
  * Fetch compliance data for KPI calculations
+ * Uses the norms collection which contains requirements with compliance status
  */
 async function getComplianceData(orgId: string): Promise<ComplianceData> {
   try {
     const q = query(
-      collection(db, CONFORMITY_CHECKS_COLLECTION),
-      where("organizationId", "==", orgId)
+      collection(db, NORMS_COLLECTION),
+      where("organizationId", "==", orgId),
+      where("isActive", "==", true)
     );
 
     const querySnapshot = await getDocs(q);
-    const checks = querySnapshot.docs.map(doc => doc.data());
+    const norms = querySnapshot.docs.map(doc => doc.data());
 
-    const totalItems = checks.length;
-    const compliantItems = checks.filter(c => c.status === "compliant" || c.status === "conforme").length;
+    // Count requirements from all norms
+    let totalItems = 0;
+    let compliantItems = 0;
+    let partiallyCompliantItems = 0;
+
+    for (const norm of norms) {
+      const requirements = norm.requirements || [];
+      for (const req of requirements) {
+        totalItems++;
+        if (req.status === "compliant") {
+          compliantItems++;
+        } else if (req.status === "partially_compliant") {
+          partiallyCompliantItems++;
+        }
+      }
+    }
+
+    // Count partially compliant as 0.5 for KPI purposes
+    const effectiveCompliant = compliantItems + (partiallyCompliantItems * 0.5);
+
+    // If no data found, return zeros (not mock data)
+    if (totalItems === 0) {
+      return {
+        totalItems: 0,
+        compliantItems: 0,
+        previousTotalItems: 0,
+        previousCompliantItems: 0,
+      };
+    }
 
     return {
       totalItems,
-      compliantItems,
+      compliantItems: effectiveCompliant,
       previousTotalItems: Math.floor(totalItems * 0.95),
-      previousCompliantItems: Math.floor(compliantItems * 0.9),
+      previousCompliantItems: Math.floor(effectiveCompliant * 0.9),
     };
-  } catch {
+  } catch (error) {
+    console.warn("Error fetching compliance data:", error);
+    // Return zeros instead of mock data
     return {
-      totalItems: 200,
-      compliantItems: 174,
-      previousTotalItems: 190,
-      previousCompliantItems: 152,
+      totalItems: 0,
+      compliantItems: 0,
+      previousTotalItems: 0,
+      previousCompliantItems: 0,
     };
   }
 }

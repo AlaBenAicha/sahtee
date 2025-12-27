@@ -80,14 +80,14 @@ export function TrendChart({
     value: {
       label: kpi?.name || "Valeur",
       color: kpi?.status === "good" 
-        ? "hsl(var(--chart-1))" 
+        ? "var(--chart-1)" 
         : kpi?.status === "warning"
-        ? "hsl(var(--chart-4))"
-        : "hsl(var(--chart-5))",
+        ? "var(--chart-4)"
+        : "var(--chart-5)",
     },
     target: {
       label: "Objectif",
-      color: "hsl(var(--chart-2))",
+      color: "var(--chart-2)",
     },
   };
 
@@ -248,10 +248,10 @@ export function MultiTrendChart({
   // Build chart config for selected KPIs
   const chartConfig: ChartConfig = {};
   const colors = [
-    "hsl(var(--chart-1))",
-    "hsl(var(--chart-2))",
-    "hsl(var(--chart-3))",
-    "hsl(var(--chart-4))",
+    "var(--chart-1)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--chart-4)",
   ];
 
   selectedKPIs.forEach((kpiId, index) => {
@@ -328,26 +328,32 @@ export function MultiTrendChart({
       </CardHeader>
       <CardContent>
         {/* KPI Selector */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {kpis.map((kpi) => (
-            <Button
-              key={kpi.id}
-              variant={selectedKPIs.includes(kpi.id) ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleKPI(kpi.id)}
-              className={cn(
-                "text-xs h-7",
-                selectedKPIs.includes(kpi.id) && {
-                  "bg-[hsl(var(--chart-1))]": selectedKPIs.indexOf(kpi.id) === 0,
-                  "bg-[hsl(var(--chart-2))]": selectedKPIs.indexOf(kpi.id) === 1,
-                  "bg-[hsl(var(--chart-3))]": selectedKPIs.indexOf(kpi.id) === 2,
-                  "bg-[hsl(var(--chart-4))]": selectedKPIs.indexOf(kpi.id) === 3,
-                }
-              )}
-            >
-              {kpi.shortName || kpi.name}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center justify-start gap-2 mb-4">
+          {kpis.map((kpi) => {
+            const isSelected = selectedKPIs.includes(kpi.id);
+            const selectedIndex = selectedKPIs.indexOf(kpi.id);
+            
+            // Chart colors for selected buttons
+            const chartColors = ["#1f4993", "#3a70b7", "#5a8fd1", "#7ba8e5"];
+            const bgColor = isSelected ? chartColors[selectedIndex % chartColors.length] : undefined;
+
+            return (
+              <Button
+                key={kpi.id}
+                variant="outline"
+                size="sm"
+                onClick={() => toggleKPI(kpi.id)}
+                className="text-xs h-7"
+                style={isSelected ? {
+                  backgroundColor: bgColor,
+                  color: "#ffffff",
+                  borderColor: bgColor,
+                } : undefined}
+              >
+                {kpi.shortName || kpi.name}
+              </Button>
+            );
+          })}
         </div>
 
         <ChartContainer config={chartConfig} className="h-48 w-full">

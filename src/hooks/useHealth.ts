@@ -63,6 +63,10 @@ import {
   getVisitStats,
   getExposureStats,
   calculateHealthStats,
+  getPathologyTrends,
+  getVisitTrends,
+  getAptitudeTrends,
+  getExposureTrends,
 } from "@/services/healthService";
 import type {
   HealthRecord,
@@ -1126,5 +1130,69 @@ export function useIsPhysician() {
                       session?.featurePermissions?.health?.delete === true; // Full health access indicator
   
   return isPhysician;
+}
+
+// =============================================================================
+// Trend Data Hooks (for Dashboard Charts)
+// =============================================================================
+
+/**
+ * Hook to fetch pathology trends over the last 12 months
+ */
+export function usePathologyTrends() {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: [...healthKeys.stats(orgId || ""), "pathologyTrends"],
+    queryFn: () => getPathologyTrends(orgId!),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch visit trends over the last 12 months
+ */
+export function useVisitTrends() {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: [...healthKeys.stats(orgId || ""), "visitTrends"],
+    queryFn: () => getVisitTrends(orgId!),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch aptitude (fitness) trends
+ */
+export function useAptitudeTrends() {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: [...healthKeys.stats(orgId || ""), "aptitudeTrends"],
+    queryFn: () => getAptitudeTrends(orgId!),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch exposure trends
+ */
+export function useExposureTrends() {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: [...healthKeys.stats(orgId || ""), "exposureTrends"],
+    queryFn: () => getExposureTrends(orgId!),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
 }
 

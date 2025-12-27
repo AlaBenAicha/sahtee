@@ -219,8 +219,8 @@ export const getAuditsTool: AITool = {
       framework: audit.framework,
       status: audit.status,
       scope: audit.scope,
-      plannedStartDate: audit.plannedStartDate.toDate().toISOString(),
-      plannedEndDate: audit.plannedEndDate.toDate().toISOString(),
+      plannedStartDate: audit.plannedStartDate?.toDate?.()?.toISOString() ?? null,
+      plannedEndDate: audit.plannedEndDate?.toDate?.()?.toISOString() ?? null,
       findingsCount: audit.findings?.length || 0,
       leadAuditor: audit.leadAuditor?.name,
     }));
@@ -284,11 +284,11 @@ export const getUpcomingAuditsTool: AITool = {
       title: audit.title,
       type: audit.type,
       framework: audit.framework,
-      plannedStartDate: audit.plannedStartDate.toDate().toISOString(),
+      plannedStartDate: audit.plannedStartDate?.toDate?.()?.toISOString() ?? null,
       scope: audit.scope,
-      daysUntilStart: Math.ceil(
-        (audit.plannedStartDate.toMillis() - now.getTime()) / (1000 * 60 * 60 * 24)
-      ),
+      daysUntilStart: audit.plannedStartDate?.toMillis
+        ? Math.ceil((audit.plannedStartDate.toMillis() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : null,
     }));
   },
 };

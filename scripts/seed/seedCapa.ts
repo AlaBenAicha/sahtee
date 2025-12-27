@@ -10,8 +10,6 @@ import {
   generateReference,
   toTimestamp,
   daysAgo,
-  daysFromNow,
-  randomItem,
 } from "./utils";
 import type { ComplianceResult } from "./seedCompliance";
 
@@ -25,22 +23,28 @@ interface IncidentResult {
   daysAgo: number;
 }
 
+// Priority mapping: our config uses French labels as required by ActionPlan type
+type ActionPriority = "critique" | "haute" | "moyenne" | "basse";
+type ActionCategory = "correctif" | "preventif";
+type ActionStatus = "draft" | "pending_approval" | "approved" | "in_progress" | "blocked" | "completed" | "verified" | "closed";
+type SourceType = "incident" | "audit" | "risk_assessment" | "observation" | "ai_suggestion" | "manual";
+
 // CAPA configurations
 interface CapaConfig {
   title: string;
   description: string;
-  type: "corrective" | "preventive";
-  priority: "low" | "medium" | "high" | "critical";
-  status: "pending" | "in_progress" | "completed" | "cancelled" | "overdue";
-  source: "incident" | "audit" | "observation" | "management_review" | "risk_assessment" | "other";
+  category: ActionCategory;
+  priority: ActionPriority;
+  status: ActionStatus;
+  sourceType: SourceType;
   sourceDescription: string;
   actionSteps: string[];
   responsibleRole: string;
   daysAgoCreated: number;
   dueDaysFromCreation: number;
-  linkedToIncidentIndex?: number; // Index in incidents array
-  linkedToAuditIndex?: number; // Index in audits array
-  linkedToExposure?: string; // Exposure name
+  linkedToIncidentIndex?: number;
+  linkedToAuditIndex?: number;
+  linkedToExposure?: string;
 }
 
 const CAPA_DATA: CapaConfig[] = [
@@ -48,10 +52,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Installation de bacs de rétention zone hydraulique",
     description: "Installer des bacs de rétention sous tous les équipements hydrauliques de la zone de production A pour prévenir les fuites d'huile.",
-    type: "corrective",
-    priority: "high",
+    category: "correctif",
+    priority: "haute",
     status: "completed",
-    source: "incident",
+    sourceType: "incident",
     sourceDescription: "Suite à l'accident de chute sur flaque d'huile",
     actionSteps: [
       "Identifier tous les équipements hydrauliques",
@@ -68,10 +72,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Renforcement de la politique EPI - Gants de protection",
     description: "Renforcer le contrôle du port des gants de protection lors de la manipulation de pièces métalliques.",
-    type: "corrective",
-    priority: "medium",
+    category: "correctif",
+    priority: "moyenne",
     status: "in_progress",
-    source: "incident",
+    sourceType: "incident",
     sourceDescription: "Suite à la coupure lors de manipulation de pièces",
     actionSteps: [
       "Rappel des consignes par affichage",
@@ -87,10 +91,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Amélioration de la circulation zone de chargement",
     description: "Redéfinir les zones de circulation piétons et engins dans la zone de chargement pour éviter les croisements dangereux.",
-    type: "preventive",
-    priority: "high",
+    category: "preventif",
+    priority: "haute",
     status: "in_progress",
-    source: "incident",
+    sourceType: "incident",
     sourceDescription: "Suite au presqu'accident chariot élévateur",
     actionSteps: [
       "Audit des flux de circulation actuels",
@@ -108,10 +112,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Campagne anti-tabac renforcée",
     description: "Renforcer l'interdiction de fumer dans les ateliers et installer des zones fumeurs dédiées.",
-    type: "preventive",
-    priority: "medium",
+    category: "preventif",
+    priority: "moyenne",
     status: "completed",
-    source: "incident",
+    sourceType: "incident",
     sourceDescription: "Suite au début d'incendie dans l'atelier électrique",
     actionSteps: [
       "Affichage renforcé interdiction de fumer",
@@ -129,10 +133,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Documentation du processus d'évaluation des risques",
     description: "Rédiger et formaliser la procédure d'évaluation des risques SST conformément au §6.1.2 de l'ISO 45001.",
-    type: "corrective",
-    priority: "high",
+    category: "correctif",
+    priority: "haute",
     status: "in_progress",
-    source: "audit",
+    sourceType: "audit",
     sourceDescription: "Non-conformité majeure audit ISO 45001",
     actionSteps: [
       "Rédaction de la procédure PR-SST-01",
@@ -150,10 +154,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Mise à jour du registre des formations",
     description: "Compléter le registre des formations avec les dates de validité manquantes.",
-    type: "corrective",
-    priority: "medium",
+    category: "correctif",
+    priority: "moyenne",
     status: "completed",
-    source: "audit",
+    sourceType: "audit",
     sourceDescription: "Non-conformité mineure audit ISO 45001",
     actionSteps: [
       "Inventaire des formations sans date de validité",
@@ -169,10 +173,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Amélioration du suivi des actions correctives",
     description: "Mettre en place un tableau de bord de suivi des actions correctives avec indicateurs de délai.",
-    type: "preventive",
-    priority: "low",
-    status: "pending",
-    source: "audit",
+    category: "preventif",
+    priority: "basse",
+    status: "approved",
+    sourceType: "audit",
     sourceDescription: "Observation audit ISO 45001",
     actionSteps: [
       "Définir les indicateurs de suivi",
@@ -190,10 +194,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Réduction du bruit - Encoffrement machines",
     description: "Installer des capots acoustiques sur les machines les plus bruyantes de l'atelier mécanique.",
-    type: "preventive",
-    priority: "high",
+    category: "preventif",
+    priority: "haute",
     status: "in_progress",
-    source: "risk_assessment",
+    sourceType: "risk_assessment",
     sourceDescription: "Dépassement des limites d'exposition au bruit",
     actionSteps: [
       "Étude acoustique détaillée",
@@ -210,10 +214,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Amélioration ventilation zone peinture",
     description: "Installer un système de ventilation mécanique renforcé dans la zone peinture pour réduire l'exposition aux solvants.",
-    type: "corrective",
-    priority: "critical",
+    category: "correctif",
+    priority: "critique",
     status: "in_progress",
-    source: "risk_assessment",
+    sourceType: "risk_assessment",
     sourceDescription: "Dépassement des VLE solvants en zone peinture",
     actionSteps: [
       "Étude technique du système de ventilation",
@@ -233,10 +237,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Plan de formation SST 2025",
     description: "Élaborer et déployer le plan de formation SST annuel incluant les recyclages obligatoires.",
-    type: "preventive",
-    priority: "medium",
-    status: "pending",
-    source: "management_review",
+    category: "preventif",
+    priority: "moyenne",
+    status: "approved",
+    sourceType: "manual",
     sourceDescription: "Revue de direction annuelle",
     actionSteps: [
       "Identification des besoins de formation",
@@ -252,10 +256,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Révision du plan d'urgence",
     description: "Mettre à jour le plan d'urgence et d'évacuation et organiser un exercice d'évacuation.",
-    type: "preventive",
-    priority: "medium",
+    category: "preventif",
+    priority: "moyenne",
     status: "in_progress",
-    source: "observation",
+    sourceType: "observation",
     sourceDescription: "Mise à jour annuelle requise",
     actionSteps: [
       "Révision du document plan d'urgence",
@@ -271,10 +275,10 @@ const CAPA_DATA: CapaConfig[] = [
   {
     title: "Audit fournisseurs EPI",
     description: "Évaluer les fournisseurs d'EPI actuels et améliorer la qualité des équipements fournis.",
-    type: "preventive",
-    priority: "low",
-    status: "pending",
-    source: "observation",
+    category: "preventif",
+    priority: "basse",
+    status: "approved",
+    sourceType: "observation",
     sourceDescription: "Retours utilisateurs sur la qualité des gants",
     actionSteps: [
       "Collecte des retours utilisateurs",
@@ -322,25 +326,23 @@ export async function seedCapa(
     const capaRef = db.collection(COLLECTIONS.actionPlans).doc();
     const reference = generateReference("CAPA");
 
-    // Get responsible user
-    const responsible = usersByRole[capaData.responsibleRole] || qhseUser;
+    // Get assignee user (responsible for the action)
+    const assignee = usersByRole[capaData.responsibleRole] || qhseUser;
 
     // Determine linked entity
-    let linkedIncidentId = "";
-    let linkedIncidentRef = "";
-    let linkedAuditId = "";
+    let sourceIncidentId = "";
+    let sourceAuditId = "";
     let linkedExposureInfo = "";
 
     if (capaData.linkedToIncidentIndex !== undefined && incidents[capaData.linkedToIncidentIndex]) {
       const incident = incidents[capaData.linkedToIncidentIndex];
-      linkedIncidentId = incident.id;
-      linkedIncidentRef = incident.reference;
+      sourceIncidentId = incident.id;
       linkedExposureInfo = `Incident: ${incident.reference}`;
     }
 
     if (capaData.linkedToAuditIndex !== undefined && compliance.audits[capaData.linkedToAuditIndex]) {
       const audit = compliance.audits[capaData.linkedToAuditIndex];
-      linkedAuditId = audit.id;
+      sourceAuditId = audit.id;
       linkedExposureInfo = `Audit: ${audit.title}`;
     }
 
@@ -361,82 +363,105 @@ export async function seedCapa(
     let completedAt = null;
 
     switch (capaData.status) {
-      case "pending":
+      case "draft":
+      case "pending_approval":
+      case "approved":
         progress = 0;
         break;
       case "in_progress":
         progress = 30 + Math.floor(Math.random() * 40); // 30-70%
         break;
       case "completed":
+      case "verified":
+      case "closed":
         progress = 100;
         completedAt = toTimestamp(daysAgo(Math.max(0, capaData.daysAgoCreated - capaData.dueDaysFromCreation + 5)));
         break;
-      case "overdue":
+      case "blocked":
         progress = 20 + Math.floor(Math.random() * 30); // 20-50%
         break;
     }
 
-    // Create action steps/checklist
-    const checklist = capaData.actionSteps.map((step, idx) => {
-      const isCompleted = capaData.status === "completed" || 
+    // Create checklistItems matching the ChecklistItem interface
+    const checklistItems = capaData.actionSteps.map((step, idx) => {
+      const isCompleted = capaData.status === "completed" || capaData.status === "verified" || capaData.status === "closed" || 
         (capaData.status === "in_progress" && idx < Math.floor(capaData.actionSteps.length * (progress / 100)));
       
       return {
         id: `step-${capaRef.id}-${idx}`,
-        text: step,
+        description: step,
         completed: isCompleted,
         completedAt: isCompleted ? toTimestamp(daysAgo(capaData.daysAgoCreated - idx * 3)) : null,
-        completedBy: isCompleted ? responsible.userId : null,
+        completedBy: isCompleted ? assignee.userId : undefined,
+        order: idx,
       };
     });
 
+    // Build the ActionPlan document matching the interface exactly
     const capa = {
       organizationId,
+      
+      // Basic info
       reference,
       title: capaData.title,
       description: capaData.description,
-      type: capaData.type,
+      
+      // Classification
+      category: capaData.category,
       priority: capaData.priority,
       status: capaData.status,
-      source: capaData.source,
-      sourceDescription: capaData.sourceDescription,
-      linkedIncidentId,
-      linkedIncidentRef,
-      linkedAuditId,
-      linkedFindingId: "",
-      responsibleId: responsible.userId,
-      responsibleName: responsible.displayName,
-      verifierId: qhseUser?.userId || "",
-      verifierName: qhseUser?.displayName || "",
+      
+      // Assignment (using correct field names from ActionPlan interface)
+      assigneeId: assignee.userId,
+      assigneeName: assignee.displayName,
+      departmentId: "",
+      reviewerId: qhseUser?.userId || "",
+      
+      // Timeline
       dueDate,
       completedAt,
-      verifiedAt: capaData.status === "completed" ? completedAt : null,
+      verifiedAt: (capaData.status === "completed" || capaData.status === "verified") ? completedAt : null,
+      
+      // Progress
       progress,
-      checklist,
-      rootCauseAnalysis: capaData.type === "corrective" ? {
-        method: "5 Pourquoi",
-        findings: "Analyse en cours...",
-        contributingFactors: ["Facteur humain", "Facteur organisationnel"],
-      } : null,
-      effectivenessReview: capaData.status === "completed" ? {
-        isEffective: true,
+      checklistItems,
+      
+      // Source
+      sourceType: capaData.sourceType,
+      sourceIncidentId: sourceIncidentId || undefined,
+      sourceAuditId: sourceAuditId || undefined,
+      sourceFindingId: undefined,
+      
+      // Linked items (required arrays)
+      linkedTrainingIds: [] as string[],
+      linkedEquipmentIds: [] as string[],
+      linkedDocumentIds: [] as string[],
+      
+      // AI integration
+      aiGenerated: false,
+      aiConfidence: 0,
+      aiSuggestions: undefined,
+      
+      // Completion
+      completionProof: undefined,
+      effectivenessReview: capaData.status === "verified" ? {
         reviewDate: completedAt,
         reviewedBy: qhseUser?.userId || "",
+        effective: true,
         notes: "Action efficace - Pas de récurrence observée",
-      } : null,
-      attachments: [],
-      comments: [],
-      history: [
-        {
-          action: "created",
-          timestamp: createdAt,
-          userId: qhseUser?.userId || "",
-          userName: qhseUser?.displayName || "",
-          details: "Action créée",
-        },
-      ],
-      createdAt,
-      updatedAt: timestamp,
+        followUpRequired: false,
+      } : undefined,
+      
+      // Comments (required array)
+      comments: [] as Array<{
+        id: string;
+        userId: string;
+        userName: string;
+        content: string;
+        createdAt: ReturnType<typeof toTimestamp>;
+      }>,
+      
+      // Audit info
       audit: {
         createdBy: qhseUser?.userId || "",
         createdAt,
@@ -448,10 +473,10 @@ export async function seedCapa(
     await capaRef.set(capa);
 
     // Update linked incident if applicable
-    if (linkedIncidentId) {
-      await db.collection(COLLECTIONS.incidents).doc(linkedIncidentId).update({
+    if (sourceIncidentId) {
+      await db.collection(COLLECTIONS.incidents).doc(sourceIncidentId).update({
         linkedCapaIds: [capaRef.id],
-        status: capaData.status === "completed" ? "closed" : "action_plan_created",
+        status: capaData.status === "completed" || capaData.status === "verified" ? "closed" : "action_plan_created",
       });
     }
 
@@ -468,4 +493,3 @@ export async function seedCapa(
 
   return results;
 }
-

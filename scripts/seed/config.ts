@@ -19,6 +19,9 @@ if (!admin.apps.length) {
 }
 
 export const db = admin.firestore();
+
+// Enable ignoreUndefinedProperties to handle optional fields
+db.settings({ ignoreUndefinedProperties: true });
 export const auth = admin.auth();
 
 // Collection names (matching the app's Firestore structure)

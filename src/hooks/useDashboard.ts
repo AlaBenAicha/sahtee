@@ -21,7 +21,10 @@ import {
   dismissAlert,
   getRiskMapData,
   getTrendData,
-  getMockAlerts,
+  getAIRecommendations,
+  subscribeToAIRecommendations,
+  updateRecommendationStatus,
+  acceptRecommendation,
 } from "@/services/dashboardService";
 import { calculateAllKPIs, getKPIsByCategory } from "@/services/kpiService";
 import type {
@@ -31,8 +34,10 @@ import type {
   RiskMapViewMode,
 } from "@/types/dashboard";
 
+import type { AIRecommendation } from "@/types/dashboard";
+
 // Re-export for use by consumers
-export type { DashboardKPI, DashboardAlert, DashboardMetrics, RiskMapViewMode } from "@/types/dashboard";
+export type { DashboardKPI, DashboardAlert, DashboardMetrics, RiskMapViewMode, AIRecommendation } from "@/types/dashboard";
 
 // Query keys for caching
 export const dashboardKeys = {
@@ -46,6 +51,7 @@ export const dashboardKeys = {
   alerts: (orgId: string) => [...dashboardKeys.all, "alerts", orgId] as const,
   trends: (orgId: string, kpiId: string, period: string) =>
     [...dashboardKeys.all, "trends", orgId, kpiId, period] as const,
+  recommendations: (orgId: string) => [...dashboardKeys.all, "recommendations", orgId] as const,
 };
 
 // =============================================================================
@@ -165,7 +171,7 @@ export function useRefreshKPIs() {
 // =============================================================================
 
 /**
- * Hook to fetch risk map data
+ * Hook to fetch risk map data with support for initial/residual view modes
  */
 export function useRiskMap(viewMode: RiskMapViewMode = "residual") {
   const { userProfile } = useAuth();
@@ -175,7 +181,8 @@ export function useRiskMap(viewMode: RiskMapViewMode = "residual") {
     queryKey: dashboardKeys.riskMap(orgId || "", viewMode),
     queryFn: () => getRiskMapData(orgId!, viewMode),
     enabled: !!orgId,
-    staleTime: 10 * 60 * 1000, // 10 minutes - risk data changes less frequently
+    staleTime: 5 * 60 * 1000, // 5 minutes - refetch more often for dashboard freshness
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -185,6 +192,7 @@ export function useRiskMap(viewMode: RiskMapViewMode = "residual") {
 
 /**
  * Hook to fetch alerts with options
+ * Returns real data only - no mock fallback
  */
 export function useAlerts(options: AlertFetchOptions = {}) {
   const { userProfile } = useAuth();
@@ -194,20 +202,17 @@ export function useAlerts(options: AlertFetchOptions = {}) {
     queryKey: [...dashboardKeys.alerts(orgId || ""), options],
     queryFn: async () => {
       if (!orgId) return [];
-      try {
-        return await getAlerts(orgId, options);
-      } catch {
-        // Return mock data on error
-        return getMockAlerts(orgId);
-      }
+      return await getAlerts(orgId, options);
     },
     enabled: !!orgId,
     staleTime: 1 * 60 * 1000, // 1 minute - alerts should be more fresh
+    refetchOnWindowFocus: true,
   });
 }
 
 /**
  * Hook for real-time alert updates
+ * Uses real Firestore data - no mock fallback
  */
 export function useRealtimeAlerts(options: AlertFetchOptions = {}) {
   const { userProfile, user } = useAuth();
@@ -221,10 +226,7 @@ export function useRealtimeAlerts(options: AlertFetchOptions = {}) {
   useEffect(() => {
     if (!orgId || !userId) {
       setIsLoading(false);
-      // Return mock alerts when not authenticated
-      if (!orgId) {
-        setAlerts(getMockAlerts("demo"));
-      }
+      setAlerts([]);
       return;
     }
 
@@ -244,8 +246,7 @@ export function useRealtimeAlerts(options: AlertFetchOptions = {}) {
     } catch (err) {
       setError(err as Error);
       setIsLoading(false);
-      // Fallback to mock alerts
-      setAlerts(getMockAlerts(orgId));
+      setAlerts([]);
     }
   }, [orgId, userId, queryClient, JSON.stringify(options)]);
 
@@ -354,6 +355,124 @@ export function useTrendData(
 }
 
 // =============================================================================
+// AI Recommendations Hooks
+// =============================================================================
+
+/**
+ * Hook to fetch AI recommendations
+ */
+export function useAIRecommendations(limit: number = 10) {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: dashboardKeys.recommendations(orgId || ""),
+    queryFn: () => getAIRecommendations(orgId!, limit),
+    enabled: !!orgId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Hook for real-time AI recommendations
+ */
+export function useRealtimeAIRecommendations(limit: number = 10) {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+  const queryClient = useQueryClient();
+  const [recommendations, setRecommendations] = useState<AIRecommendation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!orgId) {
+      setIsLoading(false);
+      setRecommendations([]);
+      return;
+    }
+
+    setIsLoading(true);
+
+    const unsubscribe = subscribeToAIRecommendations(orgId, (newRecs) => {
+      setRecommendations(newRecs);
+      setIsLoading(false);
+      
+      // Update React Query cache
+      queryClient.setQueryData(dashboardKeys.recommendations(orgId), newRecs);
+    }, limit);
+
+    return () => unsubscribe();
+  }, [orgId, limit, queryClient]);
+
+  return { recommendations, isLoading };
+}
+
+/**
+ * Hook to accept an AI recommendation
+ */
+export function useAcceptRecommendation() {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (recommendationId: string) => {
+      return await acceptRecommendation(recommendationId, true);
+    },
+    onSuccess: () => {
+      if (orgId) {
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.recommendations(orgId) });
+      }
+    },
+  });
+}
+
+/**
+ * Hook to dismiss an AI recommendation
+ */
+export function useDismissRecommendation() {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (recommendationId: string) => {
+      await updateRecommendationStatus(recommendationId, "dismissed");
+    },
+    onMutate: async (recommendationId) => {
+      // Optimistic update
+      if (orgId) {
+        await queryClient.cancelQueries({ queryKey: dashboardKeys.recommendations(orgId) });
+        
+        const previousRecs = queryClient.getQueryData<AIRecommendation[]>(
+          dashboardKeys.recommendations(orgId)
+        );
+        
+        if (previousRecs) {
+          queryClient.setQueryData(
+            dashboardKeys.recommendations(orgId),
+            previousRecs.filter(rec => rec.id !== recommendationId)
+          );
+        }
+        
+        return { previousRecs };
+      }
+    },
+    onError: (_err, _recId, context) => {
+      // Rollback on error
+      if (orgId && context?.previousRecs) {
+        queryClient.setQueryData(dashboardKeys.recommendations(orgId), context.previousRecs);
+      }
+    },
+    onSettled: () => {
+      if (orgId) {
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.recommendations(orgId) });
+      }
+    },
+  });
+}
+
+// =============================================================================
 // Aggregate Hooks
 // =============================================================================
 
@@ -361,10 +480,10 @@ export function useTrendData(
  * Hook that combines all dashboard data into a single object
  * Useful for the main dashboard page
  */
-export function useDashboardData() {
+export function useDashboardData(riskMapViewMode: RiskMapViewMode = "residual") {
   const metricsQuery = useDashboardMetrics();
   const kpisQuery = useKPIs();
-  const riskMapQuery = useRiskMap();
+  const riskMapQuery = useRiskMap(riskMapViewMode);
   const alertsQuery = useAlerts({ limit: 10 });
 
   const isLoading =

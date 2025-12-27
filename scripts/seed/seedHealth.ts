@@ -69,140 +69,153 @@ const HEALTH_RECORD_CONFIGS = [
   },
 ];
 
-// Medical visit configurations
-const MEDICAL_VISIT_DATA = [
+// Medical visit configurations matching ExaminationType and MedicalVisitStatus
+type ExaminationType = "pre_employment" | "periodic" | "return_to_work" | "special_surveillance" | "exit";
+type MedicalVisitStatus = "scheduled" | "completed" | "cancelled" | "no_show" | "overdue";
+
+const MEDICAL_VISIT_DATA: Array<{
+  type: ExaminationType;
+  status: MedicalVisitStatus;
+  daysAgoScheduled: number;
+  daysAgoCompleted: number | null;
+  conclusion: string | null;
+}> = [
   {
-    type: "embauche" as const,
-    status: "completed" as const,
+    type: "pre_employment",
+    status: "completed",
     daysAgoScheduled: 180,
     daysAgoCompleted: 180,
     conclusion: "Apte au poste sans restriction",
   },
   {
-    type: "periodique" as const,
-    status: "completed" as const,
+    type: "periodic",
+    status: "completed",
     daysAgoScheduled: 60,
     daysAgoCompleted: 58,
     conclusion: "Apte au poste - Surveillance audiométrique recommandée",
   },
   {
-    type: "periodique" as const,
-    status: "scheduled" as const,
+    type: "periodic",
+    status: "scheduled",
     daysAgoScheduled: -15, // 15 days in future
     daysAgoCompleted: null,
     conclusion: null,
   },
   {
-    type: "reprise" as const,
-    status: "completed" as const,
+    type: "return_to_work",
+    status: "completed",
     daysAgoScheduled: 40,
     daysAgoCompleted: 40,
     conclusion: "Apte au poste avec restriction temporaire - Pas de port de charges > 15 kg pendant 6 mois",
   },
   {
-    type: "a_demande" as const,
-    status: "completed" as const,
+    type: "periodic",
+    status: "completed",
     daysAgoScheduled: 25,
     daysAgoCompleted: 25,
     conclusion: "Pas de contre-indication particulière - Fatigue visuelle à surveiller",
   },
   {
-    type: "periodique" as const,
-    status: "missed" as const,
+    type: "periodic",
+    status: "no_show",
     daysAgoScheduled: 30,
     daysAgoCompleted: null,
     conclusion: null,
   },
   {
-    type: "periodique" as const,
-    status: "scheduled" as const,
+    type: "periodic",
+    status: "scheduled",
     daysAgoScheduled: -7,
     daysAgoCompleted: null,
     conclusion: null,
   },
   {
-    type: "surveillance_speciale" as const,
-    status: "completed" as const,
+    type: "special_surveillance",
+    status: "completed",
     daysAgoScheduled: 45,
     daysAgoCompleted: 44,
     conclusion: "Surveillance trimestrielle maintenue pour exposition au bruit",
   },
   {
-    type: "periodique" as const,
-    status: "scheduled" as const,
+    type: "periodic",
+    status: "scheduled",
     daysAgoScheduled: -30,
     daysAgoCompleted: null,
     conclusion: null,
   },
   {
-    type: "embauche" as const,
-    status: "completed" as const,
+    type: "pre_employment",
+    status: "completed",
     daysAgoScheduled: 365,
     daysAgoCompleted: 365,
     conclusion: "Apte au poste - Formation sécurité obligatoire",
   },
 ];
 
-// Exposure data for the organization
+// Exposure data for the organization (matches OrganizationExposure interface)
 const EXPOSURE_DATA = [
   {
-    name: "Bruit",
-    hazardCategory: "physical" as const,
-    description: "Exposition au bruit dans les zones de production",
-    riskLevel: "medium" as const,
-    exposedDepartments: ["Production", "Maintenance"],
+    agent: "Bruit industriel > 80 dB",
+    hazardType: "physical" as const,
+    area: "Zone Production A - Atelier Mécanique",
+    regulatoryLimit: 80,
+    unit: "dB(A)",
+    regulatoryReference: "VLEP 8h - Code du Travail Art. R4431-2",
+    lastMeasurement: 85,
     exposedCount: 85,
+    monitoringFrequency: "quarterly" as const,
     measurements: [
-      { value: 82, unit: "dB(A)", daysAgo: 90, location: "Zone Production A", status: "above_limit" as const },
-      { value: 78, unit: "dB(A)", daysAgo: 60, location: "Zone Production B", status: "compliant" as const },
-      { value: 85, unit: "dB(A)", daysAgo: 30, location: "Atelier Mécanique", status: "above_limit" as const },
+      { value: 82, unit: "dB(A)", daysAgo: 90, location: "Zone Production A", compliant: false },
+      { value: 78, unit: "dB(A)", daysAgo: 60, location: "Zone Production B", compliant: true },
+      { value: 85, unit: "dB(A)", daysAgo: 30, location: "Atelier Mécanique", compliant: false },
     ],
-    legalLimit: 80,
-    actionLimit: 85,
     controlMeasures: ["Port de protections auditives obligatoire", "Encoffrement des machines bruyantes", "Rotation des postes"],
   },
   {
-    name: "Poussières métalliques",
-    hazardCategory: "chemical" as const,
-    description: "Exposition aux poussières lors des opérations d'usinage",
-    riskLevel: "medium" as const,
-    exposedDepartments: ["Production", "Maintenance", "Qualité"],
+    agent: "Poussières métalliques (Fe, Al)",
+    hazardType: "chemical" as const,
+    area: "Atelier Mécanique - Zone Usinage",
+    regulatoryLimit: 5,
+    unit: "mg/m³",
+    regulatoryReference: "VLEP 8h - Code du Travail",
+    lastMeasurement: 4.8,
     exposedCount: 45,
+    monitoringFrequency: "monthly" as const,
     measurements: [
-      { value: 3.2, unit: "mg/m³", daysAgo: 45, location: "Atelier Mécanique", status: "compliant" as const },
-      { value: 4.8, unit: "mg/m³", daysAgo: 15, location: "Zone Production A", status: "near_limit" as const },
+      { value: 3.2, unit: "mg/m³", daysAgo: 45, location: "Atelier Mécanique", compliant: true },
+      { value: 4.8, unit: "mg/m³", daysAgo: 15, location: "Zone Production A", compliant: true },
     ],
-    legalLimit: 5,
-    actionLimit: 4,
     controlMeasures: ["Aspiration à la source", "Port de masques FFP2", "Nettoyage quotidien"],
   },
   {
-    name: "Vibrations main-bras",
-    hazardCategory: "physical" as const,
-    description: "Exposition aux vibrations lors de l'utilisation d'outils portatifs",
-    riskLevel: "low" as const,
-    exposedDepartments: ["Maintenance"],
+    agent: "Vibrations main-bras",
+    hazardType: "physical" as const,
+    area: "Atelier Maintenance - Outils portatifs",
+    regulatoryLimit: 5,
+    unit: "m/s²",
+    regulatoryReference: "Décret 2005-746",
+    lastMeasurement: 2.1,
     exposedCount: 12,
+    monitoringFrequency: "annually" as const,
     measurements: [
-      { value: 2.1, unit: "m/s²", daysAgo: 60, location: "Atelier Maintenance", status: "compliant" as const },
+      { value: 2.1, unit: "m/s²", daysAgo: 60, location: "Atelier Maintenance", compliant: true },
     ],
-    legalLimit: 5,
-    actionLimit: 2.5,
     controlMeasures: ["Outils anti-vibrations", "Rotation des tâches", "Gants anti-vibrations"],
   },
   {
-    name: "Solvants organiques",
-    hazardCategory: "chemical" as const,
-    description: "Exposition aux solvants dans le laboratoire qualité et zone peinture",
-    riskLevel: "high" as const,
-    exposedDepartments: ["Qualité", "Production"],
+    agent: "Solvants organiques (Toluène, Xylène)",
+    hazardType: "chemical" as const,
+    area: "Zone Peinture - Cabine",
+    regulatoryLimit: 100,
+    unit: "ppm",
+    regulatoryReference: "VLEP 8h - Arrêté du 30/06/2004",
+    lastMeasurement: 120,
     exposedCount: 18,
+    monitoringFrequency: "monthly" as const,
     measurements: [
-      { value: 45, unit: "ppm", daysAgo: 30, location: "Laboratoire Qualité", status: "compliant" as const },
-      { value: 120, unit: "ppm", daysAgo: 30, location: "Zone Peinture", status: "above_limit" as const },
+      { value: 45, unit: "ppm", daysAgo: 30, location: "Laboratoire Qualité", compliant: true },
+      { value: 120, unit: "ppm", daysAgo: 30, location: "Zone Peinture", compliant: false },
     ],
-    legalLimit: 100,
-    actionLimit: 80,
     controlMeasures: ["Ventilation mécanique", "Port de masques à cartouche", "Stockage ventilé", "Surveillance biologique"],
   },
 ];
@@ -287,6 +300,7 @@ async function seedHealthRecords(
 async function seedMedicalVisits(
   organizationId: string,
   users: { userId: string; roleName: string; displayName: string }[],
+  departmentIds: Record<string, string>,
   creatorId: string
 ): Promise<number> {
   log("Creating medical visits...");
@@ -295,11 +309,19 @@ async function seedMedicalVisits(
 
   const doctor = users.find((u) => u.roleName === "Médecin du travail");
   const doctorName = doctor?.displayName || "Dr. Leila Mansouri";
+  const doctorId = doctor?.userId || "";
 
   // Distribute visits among employees
   const employees = users.filter((u) => 
     ["Employé", "Chef de département", "QHSE"].includes(u.roleName)
   );
+
+  // Map role to department for consistency
+  const roleToDeptMap: Record<string, string> = {
+    "Employé": "Production",
+    "Chef de département": "Production",
+    "QHSE": "Qualité",
+  };
 
   for (let i = 0; i < MEDICAL_VISIT_DATA.length; i++) {
     const visitData = MEDICAL_VISIT_DATA[i];
@@ -312,34 +334,45 @@ async function seedMedicalVisits(
 
     const completedDate = visitData.daysAgoCompleted !== null
       ? toTimestamp(daysAgo(visitData.daysAgoCompleted))
-      : null;
+      : undefined;
 
     // Determine reason based on visit type
     let reason = "";
-    if (visitData.type === "reprise") {
+    if (visitData.type === "return_to_work") {
       reason = "Reprise suite à accident du travail";
-    } else if (visitData.type === "a_demande") {
-      reason = "Demande du salarié - Fatigue";
-    } else if (visitData.type === "surveillance_speciale") {
+    } else if (visitData.type === "special_surveillance") {
       reason = "Surveillance spéciale exposition au bruit";
+    } else if (visitData.type === "pre_employment") {
+      reason = "Visite d'embauche obligatoire";
     }
+
+    // Get department info
+    const deptName = roleToDeptMap[employee.roleName] || "Production";
+    const departmentId = departmentIds[deptName] || "";
 
     const visit = {
       organizationId,
+      healthRecordId: "", // Can be linked later
       employeeId: employee.userId,
       employeeName: employee.displayName,
+      departmentId,
+      departmentName: deptName,
       type: visitData.type,
       status: visitData.status,
       scheduledDate,
+      scheduledTime: "09:00",
       completedDate,
-      doctorName,
-      doctorId: doctor?.userId || "",
+      physicianId: doctorId,
+      physicianName: doctorName,
       location: "Infirmerie TechManuf",
       reason,
       conclusion: visitData.conclusion || "",
+      fitnessDecision: visitData.status === "completed" ? "fit" : undefined,
+      restrictions: [],
       nextVisitDate: visitData.status === "completed" 
         ? toTimestamp(daysFromNow(365))
-        : null,
+        : undefined,
+      nextVisitType: "periodic" as const,
       documents: [],
       notes: "",
       createdAt: timestamp,
@@ -371,22 +404,43 @@ async function seedExposures(
   for (const expData of EXPOSURE_DATA) {
     const exposureRef = db.collection(COLLECTIONS.exposures).doc();
 
+    // Calculate percentOfLimit and alertLevel
+    const percentOfLimit = (expData.lastMeasurement / expData.regulatoryLimit) * 100;
+    const alertLevel = percentOfLimit >= 100 ? "critical" as const :
+                       percentOfLimit >= 80 ? "elevated" as const :
+                       percentOfLimit >= 50 ? "moderate" as const : "low" as const;
+    
+    // Count exceedances
+    const exceedanceCount = expData.measurements.filter(m => !m.compliant).length;
+
     const exposure = {
       organizationId,
-      name: expData.name,
-      hazardCategory: expData.hazardCategory,
-      description: expData.description,
-      riskLevel: expData.riskLevel,
-      exposedDepartmentIds: expData.exposedDepartments.map((d) => departmentIds[d] || ""),
-      exposedDepartments: expData.exposedDepartments,
-      exposedEmployeeCount: expData.exposedCount,
-      legalLimit: expData.legalLimit,
-      actionLimit: expData.actionLimit,
-      unit: expData.measurements[0]?.unit || "",
-      controlMeasures: expData.controlMeasures,
+      // Exposure identification
+      hazardType: expData.hazardType,
+      agent: expData.agent,
+      // Location
+      area: expData.area,
+      // Regulatory limits
+      regulatoryLimit: expData.regulatoryLimit,
+      unit: expData.unit,
+      regulatoryReference: expData.regulatoryReference,
+      // Current measurement
+      lastMeasurement: expData.lastMeasurement,
       lastMeasurementDate: toTimestamp(daysAgo(expData.measurements[0]?.daysAgo || 30)),
-      nextMeasurementDate: toTimestamp(daysFromNow(90)),
-      measurementIds: [],
+      percentOfLimit,
+      // Status
+      alertLevel,
+      exceedanceCount,
+      // Affected employees
+      exposedEmployeeCount: expData.exposedCount,
+      exposedEmployeeIds: [], // Would be populated with actual employee IDs
+      // Control measures
+      controlMeasures: expData.controlMeasures,
+      linkedCapaIds: [],
+      // Monitoring schedule
+      monitoringFrequency: expData.monitoringFrequency,
+      nextMeasurementDue: toTimestamp(daysFromNow(90)),
+      // Timestamps and audit
       createdAt: timestamp,
       updatedAt: timestamp,
       audit: createAuditInfo(creatorId),
@@ -396,38 +450,37 @@ async function seedExposures(
     exposureCount++;
 
     // Create measurements
+    const measurementIds: string[] = [];
     for (const mData of expData.measurements) {
       const measurementRef = db.collection(COLLECTIONS.measurements).doc();
 
       const measurement = {
         organizationId,
         exposureId: exposureRef.id,
-        exposureName: expData.name,
+        // Measurement data
+        date: toTimestamp(daysAgo(mData.daysAgo)),
         value: mData.value,
         unit: mData.unit,
-        measurementDate: toTimestamp(daysAgo(mData.daysAgo)),
-        location: mData.location,
-        status: mData.status,
         measuredBy: "Laboratoire COTUTELLE",
-        method: "Méthode normalisée",
-        notes: mData.status === "above_limit" 
+        method: "Méthode normalisée NF EN 689",
+        location: mData.location,
+        // Compliance
+        compliant: mData.compliant,
+        notes: !mData.compliant 
           ? "Dépassement détecté - Action corrective requise"
           : "",
+        // Timestamps and audit
         createdAt: timestamp,
         updatedAt: timestamp,
         audit: createAuditInfo(creatorId),
       };
 
       await measurementRef.set(measurement);
+      measurementIds.push(measurementRef.id);
       measurementCount++;
-
-      // Update exposure with measurement ID
-      await exposureRef.update({
-        measurementIds: [...exposure.measurementIds, measurementRef.id],
-      });
     }
 
-    log(`Created exposure: ${expData.name} (${expData.measurements.length} measurements)`, "success");
+    log(`Created exposure: ${expData.agent} (${expData.measurements.length} measurements)`, "success");
   }
 
   return { exposureCount, measurementCount };
@@ -445,7 +498,7 @@ export async function seedHealth(
   const creatorId = doctor?.userId || users[0].userId;
 
   const healthRecordCount = await seedHealthRecords(organizationId, users, departmentIds, creatorId);
-  const medicalVisitCount = await seedMedicalVisits(organizationId, users, creatorId);
+  const medicalVisitCount = await seedMedicalVisits(organizationId, users, departmentIds, creatorId);
   const { exposureCount, measurementCount } = await seedExposures(organizationId, departmentIds, creatorId);
 
   return {

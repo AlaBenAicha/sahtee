@@ -38,6 +38,8 @@ import type {
 const DASHBOARD_METRICS_COLLECTION = "dashboardMetrics";
 const ALERTS_COLLECTION = "alerts";
 const KPI_HISTORY_COLLECTION = "kpiHistory";
+const RISK_ASSESSMENTS_COLLECTION = "riskAssessments";
+const AI_RECOMMENDATIONS_COLLECTION = "aiRecommendations";
 
 // =============================================================================
 // Dashboard Metrics Operations
@@ -242,27 +244,134 @@ export async function createAlert(
 // Risk Map Operations
 // =============================================================================
 
+/** Risk assessment document structure */
+interface RiskAssessment {
+  id: string;
+  organizationId: string;
+  title: string;
+  description?: string;
+  category: "physical" | "chemical" | "mechanical" | "ergonomic" | "psychosocial";
+  // Initial risk assessment (before controls)
+  initialLikelihood: 1 | 2 | 3 | 4 | 5;
+  initialSeverity: 1 | 2 | 3 | 4 | 5;
+  // Residual risk (after controls applied)
+  residualLikelihood: 1 | 2 | 3 | 4 | 5;
+  residualSeverity: 1 | 2 | 3 | 4 | 5;
+  status: "active" | "mitigated" | "closed";
+  controls?: string[];
+}
+
 /**
  * Get risk map data for an organization
+ * Fetches from riskAssessments collection and aggregates into 5x5 matrix
  */
 export async function getRiskMapData(
   orgId: string,
-  _viewMode: "initial" | "residual" = "residual"
+  viewMode: "initial" | "residual" = "residual"
 ): Promise<RiskMapCell[][]> {
   try {
+    // First try to fetch from riskAssessments collection
+    const q = query(
+      collection(db, RISK_ASSESSMENTS_COLLECTION),
+      where("organizationId", "==", orgId),
+      where("status", "in", ["active", "mitigated"])
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      // Build matrix from real risk assessments
+      const risks = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as RiskAssessment[];
+      
+      return buildRiskMatrix(risks, viewMode);
+    }
+    
+    // Fallback: check dashboardMetrics for cached matrix
     const metricsDocRef = doc(db, DASHBOARD_METRICS_COLLECTION, orgId);
     const docSnap = await getDoc(metricsDocRef);
     
-    if (!docSnap.exists() || !docSnap.data().riskMatrix) {
-      return getMockRiskMatrix();
+    if (docSnap.exists() && docSnap.data().riskMatrix) {
+      return docSnap.data().riskMatrix as RiskMapCell[][];
     }
     
-    return docSnap.data().riskMatrix as RiskMapCell[][];
+    // No data available - return empty matrix with proper structure
+    return getEmptyRiskMatrix();
   } catch (error) {
-    // Handle permission errors gracefully - return mock data for development
-    console.warn("Error fetching risk map data (using mock data):", error);
-    return getMockRiskMatrix();
+    console.warn("Error fetching risk map data:", error);
+    // Return empty matrix on error instead of mock
+    return getEmptyRiskMatrix();
   }
+}
+
+/**
+ * Build a 5x5 risk matrix from risk assessments
+ */
+function buildRiskMatrix(
+  risks: RiskAssessment[],
+  viewMode: "initial" | "residual"
+): RiskMapCell[][] {
+  // Initialize empty 5x5 matrix
+  const matrix: RiskMapCell[][] = [];
+  
+  for (let severity = 5; severity >= 1; severity--) {
+    const row: RiskMapCell[] = [];
+    for (let likelihood = 1; likelihood <= 5; likelihood++) {
+      row.push({
+        likelihood: likelihood as 1 | 2 | 3 | 4 | 5,
+        severity: severity as 1 | 2 | 3 | 4 | 5,
+        count: 0,
+        risks: [],
+      });
+    }
+    matrix.push(row);
+  }
+  
+  // Populate matrix with risk data
+  for (const risk of risks) {
+    const likelihood = viewMode === "initial" ? risk.initialLikelihood : risk.residualLikelihood;
+    const severity = viewMode === "initial" ? risk.initialSeverity : risk.residualSeverity;
+    
+    // Matrix row index: severity 5 is row 0, severity 1 is row 4
+    const rowIndex = 5 - severity;
+    // Matrix col index: likelihood 1 is col 0, likelihood 5 is col 4
+    const colIndex = likelihood - 1;
+    
+    if (rowIndex >= 0 && rowIndex < 5 && colIndex >= 0 && colIndex < 5) {
+      matrix[rowIndex][colIndex].count++;
+      matrix[rowIndex][colIndex].risks.push({
+        id: risk.id,
+        title: risk.title,
+        category: risk.category,
+      });
+    }
+  }
+  
+  return matrix;
+}
+
+/**
+ * Get an empty risk matrix structure
+ */
+function getEmptyRiskMatrix(): RiskMapCell[][] {
+  const matrix: RiskMapCell[][] = [];
+  
+  for (let severity = 5; severity >= 1; severity--) {
+    const row: RiskMapCell[] = [];
+    for (let likelihood = 1; likelihood <= 5; likelihood++) {
+      row.push({
+        likelihood: likelihood as 1 | 2 | 3 | 4 | 5,
+        severity: severity as 1 | 2 | 3 | 4 | 5,
+        count: 0,
+        risks: [],
+      });
+    }
+    matrix.push(row);
+  }
+  
+  return matrix;
 }
 
 // =============================================================================
@@ -271,6 +380,7 @@ export async function getRiskMapData(
 
 /**
  * Get trend data for a specific KPI
+ * Tries to fetch real historical data, generates mock data if none exists
  */
 export async function getTrendData(
   orgId: string,
@@ -301,7 +411,8 @@ export async function getTrendData(
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      // Return mock trend data
+      // If no historical data exists, generate mock data with trend toward current value
+      console.info(`No historical data for KPI ${kpiId}, using generated data`);
       return getMockTrendData(kpiId, days);
     }
     
@@ -311,10 +422,195 @@ export async function getTrendData(
       label: doc.data().label as string | undefined,
     }));
   } catch (error) {
-    // Handle permission errors gracefully - return mock data for development
-    console.warn("Error fetching trend data (using mock data):", error);
+    // Handle permission errors gracefully - generate mock data
+    console.warn("Error fetching trend data:", error);
     return getMockTrendData(kpiId, days);
   }
+}
+
+/**
+ * Save a KPI snapshot to history for trend tracking
+ * This should be called periodically (e.g., daily via Cloud Function)
+ */
+export async function saveKPISnapshot(
+  orgId: string,
+  kpiId: string,
+  value: number
+): Promise<void> {
+  const now = new Date();
+  const docId = `${orgId}_${kpiId}_${now.toISOString().split('T')[0]}`;
+  
+  const docRef = doc(db, KPI_HISTORY_COLLECTION, docId);
+  
+  await setDoc(docRef, {
+    organizationId: orgId,
+    kpiId,
+    value,
+    date: Timestamp.now(),
+    label: now.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }),
+  });
+}
+
+/**
+ * Save all current KPIs to history
+ */
+export async function saveAllKPISnapshots(
+  orgId: string,
+  kpis: DashboardKPI[]
+): Promise<void> {
+  const promises = kpis.map(kpi => 
+    saveKPISnapshot(orgId, kpi.id, kpi.value)
+  );
+  await Promise.all(promises);
+}
+
+// =============================================================================
+// AI Recommendations Operations
+// =============================================================================
+
+import type { AIRecommendation, RecommendationType, Priority } from "@/types/dashboard";
+
+/**
+ * Get AI recommendations for dashboard
+ */
+export async function getAIRecommendations(
+  orgId: string,
+  limit: number = 10
+): Promise<AIRecommendation[]> {
+  try {
+    const q = query(
+      collection(db, AI_RECOMMENDATIONS_COLLECTION),
+      where("organizationId", "==", orgId),
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc"),
+      firestoreLimit(limit)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      // Return empty array - no mock data
+      return [];
+    }
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as AIRecommendation[];
+  } catch (error) {
+    console.warn("Error fetching AI recommendations:", error);
+    return [];
+  }
+}
+
+/**
+ * Subscribe to real-time AI recommendations
+ */
+export function subscribeToAIRecommendations(
+  orgId: string,
+  callback: (recommendations: AIRecommendation[]) => void,
+  limit: number = 10
+): Unsubscribe {
+  const q = query(
+    collection(db, AI_RECOMMENDATIONS_COLLECTION),
+    where("organizationId", "==", orgId),
+    where("status", "==", "pending"),
+    orderBy("createdAt", "desc"),
+    firestoreLimit(limit)
+  );
+  
+  return onSnapshot(
+    q,
+    (querySnapshot) => {
+      const recommendations = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as AIRecommendation[];
+      
+      callback(recommendations);
+    },
+    (error) => {
+      console.warn("AI recommendations subscription error:", error);
+      callback([]);
+    }
+  );
+}
+
+/**
+ * Update recommendation status (accept/dismiss)
+ */
+export async function updateRecommendationStatus(
+  recommendationId: string,
+  status: "accepted" | "rejected" | "dismissed"
+): Promise<void> {
+  const docRef = doc(db, AI_RECOMMENDATIONS_COLLECTION, recommendationId);
+  
+  await updateDoc(docRef, {
+    status,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Accept a recommendation and optionally execute its action
+ */
+export async function acceptRecommendation(
+  recommendationId: string,
+  executeAction: boolean = true
+): Promise<{ success: boolean; message: string; createdEntityId?: string }> {
+  try {
+    const docRef = doc(db, AI_RECOMMENDATIONS_COLLECTION, recommendationId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      return { success: false, message: "Recommandation non trouvée" };
+    }
+    
+    const recommendation = docSnap.data() as AIRecommendation;
+    
+    // Update status to accepted
+    await updateDoc(docRef, {
+      status: "accepted",
+      updatedAt: serverTimestamp(),
+    });
+    
+    // If executeAction is true and there's an actionPayload, we would execute it
+    // This would typically create a CAPA, schedule training, etc.
+    if (executeAction && recommendation.actionPayload) {
+      // The actual execution would depend on the action type
+      // For now, we just return success
+      return { 
+        success: true, 
+        message: "Recommandation acceptée avec succès",
+      };
+    }
+    
+    return { success: true, message: "Recommandation acceptée" };
+  } catch (error) {
+    console.error("Error accepting recommendation:", error);
+    return { success: false, message: "Erreur lors de l'acceptation" };
+  }
+}
+
+/**
+ * Create a new AI recommendation (typically called by AI services)
+ */
+export async function createAIRecommendation(
+  orgId: string,
+  recommendation: Omit<AIRecommendation, "id" | "createdAt" | "status">
+): Promise<AIRecommendation> {
+  const docRef = doc(collection(db, AI_RECOMMENDATIONS_COLLECTION));
+  
+  const newRec: Omit<AIRecommendation, "id"> = {
+    ...recommendation,
+    organizationId: orgId,
+    status: "pending",
+    createdAt: Timestamp.now(),
+  };
+  
+  await setDoc(docRef, newRec);
+  
+  return { id: docRef.id, ...newRec } as AIRecommendation;
 }
 
 // =============================================================================

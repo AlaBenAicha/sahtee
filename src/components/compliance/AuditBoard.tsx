@@ -97,8 +97,10 @@ const FRAMEWORK_LABELS: Record<RegulatoryFramework, string> = {
   custom: "Personnalisé",
 };
 
-function formatDate(timestamp: { toDate: () => Date } | Date): string {
-  const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
+function formatDate(timestamp: { toDate: () => Date } | Date | undefined | null): string {
+  if (!timestamp) return "-";
+  const date = timestamp instanceof Date ? timestamp : timestamp.toDate?.();
+  if (!date) return "-";
   return date.toLocaleDateString("fr-FR", {
     day: "2-digit",
     month: "short",
@@ -138,6 +140,9 @@ export function AuditBoard({ onAuditClick, onCreateAudit }: AuditBoardProps) {
     if (!audits) return {};
     
     return audits.reduce((acc, audit) => {
+      // Skip audits without a valid plannedStartDate
+      if (!audit.plannedStartDate?.toDate) return acc;
+      
       const date = audit.plannedStartDate.toDate();
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       if (!acc[monthKey]) {
@@ -378,10 +383,10 @@ export function AuditBoard({ onAuditClick, onCreateAudit }: AuditBoardProps) {
                           >
                             <div className="flex-shrink-0 w-12 text-center">
                               <p className="text-2xl font-bold">
-                                {audit.plannedStartDate.toDate().getDate()}
+                                {audit.plannedStartDate?.toDate?.().getDate() ?? "-"}
                               </p>
                               <p className="text-xs text-muted-foreground uppercase">
-                                {audit.plannedStartDate.toDate().toLocaleDateString("fr-FR", { weekday: "short" })}
+                                {audit.plannedStartDate?.toDate?.().toLocaleDateString("fr-FR", { weekday: "short" }) ?? "-"}
                               </p>
                             </div>
                             <div className="flex-1 min-w-0">

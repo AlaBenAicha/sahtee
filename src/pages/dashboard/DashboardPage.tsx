@@ -40,13 +40,15 @@ import {
   useRealtimeAlerts,
   useMarkAlertRead,
   useDismissAlert,
+  useRealtimeAIRecommendations,
+  useAcceptRecommendation,
+  useDismissRecommendation,
 } from "@/hooks/useDashboard";
 
-// Services
-import { getMockAlerts } from "@/services/dashboardService";
+// Services - removed mock alerts import, using real data only
 
 // Types
-import type { DashboardKPI, RiskMapCell, RiskMapViewMode } from "@/types/dashboard";
+import type { DashboardKPI, RiskMapCell, RiskMapViewMode, AIRecommendation } from "@/types/dashboard";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -54,8 +56,12 @@ export default function DashboardPage() {
   const { userProfile, user } = useAuth();
   const userId = user?.uid;
 
-  // Dashboard data hooks
-  const { kpis, riskMap, isLoading, error, refetch } = useDashboardData();
+  // Local state for risk map view mode (before data hooks)
+  const [riskMapViewMode, setRiskMapViewMode] = useState<RiskMapViewMode>("residual");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Dashboard data hooks - pass viewMode to get correct risk map data
+  const { kpis, riskMap, isLoading, error, refetch } = useDashboardData(riskMapViewMode);
   
   // Real-time alerts
   const { 
@@ -67,25 +73,33 @@ export default function DashboardPage() {
   const markAlertRead = useMarkAlertRead();
   const dismissAlert = useDismissAlert();
 
-  // Local state
-  const [riskMapViewMode, setRiskMapViewMode] = useState<RiskMapViewMode>("residual");
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // AI recommendations - real data from Firestore
+  const { 
+    recommendations: realRecommendations, 
+    isLoading: recommendationsLoading 
+  } = useRealtimeAIRecommendations(10);
+  
+  // AI recommendation actions
+  const acceptRecommendation = useAcceptRecommendation();
+  const dismissRecommendation = useDismissRecommendation();
+  
+  // Use real recommendations, or mock if empty (for demo purposes)
+  const recommendations = realRecommendations.length > 0 
+    ? realRecommendations 
+    : getMockRecommendations();
 
-  // Get mock recommendations (would come from AI service in production)
-  const recommendations = getMockRecommendations();
-
-  // Use mock alerts if no real alerts
-  const displayAlerts = alerts.length > 0 ? alerts : getMockAlerts(userProfile?.organizationId || "demo");
+  // Use real alerts only - no mock fallback
+  const displayAlerts = alerts;
 
   // Handle KPI click - navigate to detailed analytics
   const handleKPIClick = (kpi: DashboardKPI) => {
-    navigate(`/analytics?kpi=${kpi.id}`);
+    navigate(`/app/analytics?kpi=${kpi.id}`);
   };
 
   // Handle risk cell click - filter risks by cell
   const handleRiskCellClick = (cell: RiskMapCell) => {
     if (cell.count > 0) {
-      navigate(`/compliance?severity=${cell.severity}&likelihood=${cell.likelihood}`);
+      navigate(`/app/compliance?severity=${cell.severity}&likelihood=${cell.likelihood}`);
     }
   };
 
@@ -237,16 +251,14 @@ export default function DashboardPage() {
             <QuickActions variant="grid" />
           </Section>
 
-          {/* Risk Map - only show if there's data */}
-          {riskMap && riskMap.length > 0 && riskMap.some(row => row.some(cell => cell.count > 0)) && (
-            <RiskMap
-              data={riskMap}
-              viewMode={riskMapViewMode}
-              onViewModeChange={setRiskMapViewMode}
-              onCellClick={handleRiskCellClick}
-              loading={isLoading}
-            />
-          )}
+          {/* Risk Map - always show (with empty state if no data) */}
+          <RiskMap
+            data={riskMap || []}
+            viewMode={riskMapViewMode}
+            onViewModeChange={setRiskMapViewMode}
+            onCellClick={handleRiskCellClick}
+            loading={isLoading}
+          />
         </MainContent>
 
         <Sidebar>
@@ -267,18 +279,57 @@ export default function DashboardPage() {
           {/* AI Insights */}
           <AIInsightsPanel
             recommendations={recommendations}
-            loading={false}
+            loading={recommendationsLoading}
             onAccept={(id) => {
-              console.log("Accept recommendation:", id);
-              // Would integrate with AI service
+              acceptRecommendation.mutate(id, {
+                onSuccess: (result) => {
+                  if (result.success) {
+                    toast.success(result.message);
+                  } else {
+                    toast.error(result.message);
+                  }
+                },
+                onError: () => {
+                  toast.error("Erreur lors de l'acceptation de la recommandation");
+                },
+              });
             }}
             onDismiss={(id) => {
-              console.log("Dismiss recommendation:", id);
-              // Would integrate with AI service
+              dismissRecommendation.mutate(id, {
+                onSuccess: () => {
+                  toast.info("Recommandation ignorée");
+                },
+                onError: () => {
+                  toast.error("Erreur lors de l'ignorance de la recommandation");
+                },
+              });
             }}
-            onViewDetails={(rec) => {
-              console.log("View details:", rec);
-              // Would open modal or navigate
+            onViewDetails={(rec: AIRecommendation) => {
+              // Navigate to the action URL if available
+              if (rec.actionUrl) {
+                navigate(rec.actionUrl);
+              } else {
+                // Navigate based on recommendation type
+                switch (rec.type) {
+                  case "capa":
+                    navigate("/app/capa");
+                    break;
+                  case "training":
+                    navigate("/app/training");
+                    break;
+                  case "compliance":
+                    navigate("/app/compliance");
+                    break;
+                  case "health":
+                    navigate("/app/health");
+                    break;
+                  case "equipment":
+                    navigate("/app/equipment");
+                    break;
+                  default:
+                    toast.info(`Détails: ${rec.title}`);
+                }
+              }
             }}
           />
         </Sidebar>

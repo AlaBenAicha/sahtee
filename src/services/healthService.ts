@@ -1325,6 +1325,352 @@ export async function getExposureStats(organizationId: string): Promise<{
   return stats;
 }
 
+/**
+ * Get monthly trend data for pathologies from health records
+ */
+export async function getPathologyTrends(organizationId: string): Promise<{
+  monthlyData: Array<{
+    month: string;
+    tms: number;
+    rps: number;
+    respiratory: number;
+  }>;
+  currentMonth: {
+    tms: number;
+    rps: number;
+    respiratory: number;
+    other: number;
+  };
+  changes: {
+    tms: number;
+    rps: number;
+    respiratory: number;
+  };
+}> {
+  const records = await getHealthRecords(organizationId, {}, 1000);
+  
+  // Get last 12 months
+  const now = new Date();
+  const months: string[] = [];
+  const monthLabels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+  
+  for (let i = 11; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+  }
+  
+  // Initialize monthly data
+  const monthlyData = months.map((month, index) => {
+    const monthIndex = new Date(parseInt(month.split("-")[0]), parseInt(month.split("-")[1]) - 1, 1).getMonth();
+    return {
+      month: monthLabels[monthIndex],
+      tms: 0,
+      rps: 0,
+      respiratory: 0,
+    };
+  });
+  
+  // Count pathologies from health records restrictions
+  const currentMonth = { tms: 0, rps: 0, respiratory: 0, other: 0 };
+  const previousMonth = { tms: 0, rps: 0, respiratory: 0, other: 0 };
+  
+  const currentMonthStr = months[months.length - 1];
+  const previousMonthStr = months[months.length - 2];
+  
+  for (const record of records) {
+    // Count by restriction type
+    for (const restriction of record.restrictions || []) {
+      const restrictionType = restriction.type.toLowerCase();
+      const startDate = restriction.startDate.toDate();
+      const monthStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}`;
+      const monthIndex = months.indexOf(monthStr);
+      
+      // Categorize pathology
+      let category: "tms" | "rps" | "respiratory" | "other" = "other";
+      if (restrictionType.includes("musculo") || restrictionType.includes("squelettique") || 
+          restrictionType.includes("ergonomique") || restrictionType.includes("dos") ||
+          restrictionType.includes("tms") || restrictionType.includes("posture")) {
+        category = "tms";
+      } else if (restrictionType.includes("psycho") || restrictionType.includes("stress") || 
+                 restrictionType.includes("rps") || restrictionType.includes("burn") ||
+                 restrictionType.includes("anxiété") || restrictionType.includes("dépression")) {
+        category = "rps";
+      } else if (restrictionType.includes("respir") || restrictionType.includes("pulmon") || 
+                 restrictionType.includes("asthme") || restrictionType.includes("bpco")) {
+        category = "respiratory";
+      }
+      
+      // Add to monthly data
+      if (monthIndex >= 0 && category !== "other") {
+        monthlyData[monthIndex][category]++;
+      }
+      
+      // Count for current and previous month
+      if (monthStr === currentMonthStr) {
+        currentMonth[category]++;
+      } else if (monthStr === previousMonthStr) {
+        previousMonth[category]++;
+      }
+    }
+    
+    // Also count based on fitness status for TMS/RPS
+    if (record.fitnessStatus === "fit_with_restrictions" || 
+        record.fitnessStatus === "temporarily_unfit") {
+      // Count active restrictions as cases
+      const recordDate = record.updatedAt?.toDate() || record.createdAt?.toDate();
+      if (recordDate) {
+        const monthStr = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, "0")}`;
+        if (monthStr === currentMonthStr) {
+          currentMonth.tms++; // Default to TMS for employees with restrictions
+        }
+      }
+    }
+  }
+  
+  // Calculate percentage changes
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+  };
+  
+  return {
+    monthlyData,
+    currentMonth,
+    changes: {
+      tms: calculateChange(currentMonth.tms, previousMonth.tms),
+      rps: calculateChange(currentMonth.rps, previousMonth.rps),
+      respiratory: calculateChange(currentMonth.respiratory, previousMonth.respiratory),
+    },
+  };
+}
+
+/**
+ * Get monthly visit trends for the last 12 months
+ */
+export async function getVisitTrends(organizationId: string): Promise<{
+  monthlyData: Array<{
+    month: string;
+    scheduled: number;
+    completed: number;
+    compliance: number;
+  }>;
+  currentMonth: {
+    scheduled: number;
+    completed: number;
+    overdue: number;
+    compliance: number;
+  };
+  changes: {
+    completed: number;
+    compliance: number;
+  };
+}> {
+  const visits = await getMedicalVisits(organizationId, {}, 1000);
+  
+  // Get last 12 months
+  const now = new Date();
+  const months: string[] = [];
+  const monthLabels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+  
+  for (let i = 11; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+  }
+  
+  // Initialize monthly data
+  const monthlyStats: Record<string, { scheduled: number; completed: number }> = {};
+  for (const month of months) {
+    monthlyStats[month] = { scheduled: 0, completed: 0 };
+  }
+  
+  // Count visits by month
+  for (const visit of visits) {
+    const visitDate = visit.scheduledDate.toDate();
+    const monthStr = `${visitDate.getFullYear()}-${String(visitDate.getMonth() + 1).padStart(2, "0")}`;
+    
+    if (monthlyStats[monthStr]) {
+      monthlyStats[monthStr].scheduled++;
+      if (visit.status === "completed") {
+        monthlyStats[monthStr].completed++;
+      }
+    }
+  }
+  
+  // Build monthly data array
+  const monthlyData = months.map((month) => {
+    const monthIndex = parseInt(month.split("-")[1]) - 1;
+    const stats = monthlyStats[month];
+    const compliance = stats.scheduled > 0 
+      ? Math.round((stats.completed / stats.scheduled) * 100) 
+      : 100;
+    
+    return {
+      month: monthLabels[monthIndex],
+      scheduled: stats.scheduled,
+      completed: stats.completed,
+      compliance,
+    };
+  });
+  
+  // Current month stats
+  const currentMonthStr = months[months.length - 1];
+  const previousMonthStr = months[months.length - 2];
+  const currentStats = monthlyStats[currentMonthStr];
+  const previousStats = monthlyStats[previousMonthStr];
+  
+  const currentCompliance = currentStats.scheduled > 0 
+    ? Math.round((currentStats.completed / currentStats.scheduled) * 100) 
+    : 100;
+  const previousCompliance = previousStats.scheduled > 0 
+    ? Math.round((previousStats.completed / previousStats.scheduled) * 100) 
+    : 100;
+  
+  // Calculate overdue for current month
+  const overdueVisits = visits.filter(v => {
+    const visitDate = v.scheduledDate.toDate();
+    const monthStr = `${visitDate.getFullYear()}-${String(visitDate.getMonth() + 1).padStart(2, "0")}`;
+    return monthStr === currentMonthStr && v.status === "scheduled" && visitDate < now;
+  });
+  
+  return {
+    monthlyData,
+    currentMonth: {
+      scheduled: currentStats.scheduled,
+      completed: currentStats.completed,
+      overdue: overdueVisits.length,
+      compliance: currentCompliance,
+    },
+    changes: {
+      completed: currentStats.completed - previousStats.completed,
+      compliance: currentCompliance - previousCompliance,
+    },
+  };
+}
+
+/**
+ * Get aptitude (fitness) trends over the last 12 months
+ */
+export async function getAptitudeTrends(organizationId: string): Promise<{
+  currentDistribution: Record<FitnessStatus, number>;
+  totalEmployees: number;
+  withRestrictions: number;
+  pending: number;
+  changes: {
+    fit: number;
+    withRestrictions: number;
+  };
+}> {
+  const records = await getHealthRecords(organizationId, {}, 1000);
+  
+  const distribution: Record<FitnessStatus, number> = {
+    fit: 0,
+    fit_with_restrictions: 0,
+    temporarily_unfit: 0,
+    permanently_unfit: 0,
+    pending_examination: 0,
+  };
+  
+  for (const record of records) {
+    distribution[record.fitnessStatus] = (distribution[record.fitnessStatus] || 0) + 1;
+  }
+  
+  const totalEmployees = records.length;
+  const withRestrictions = distribution.fit_with_restrictions + 
+                          distribution.temporarily_unfit + 
+                          distribution.permanently_unfit;
+  
+  return {
+    currentDistribution: distribution,
+    totalEmployees,
+    withRestrictions,
+    pending: distribution.pending_examination,
+    changes: {
+      fit: 0, // Would need historical data
+      withRestrictions: 0,
+    },
+  };
+}
+
+/**
+ * Get exposure trends over the last 12 months
+ */
+export async function getExposureTrends(organizationId: string): Promise<{
+  byHazardType: Array<{ type: string; count: number; critical: number }>;
+  totalExposed: number;
+  criticalCount: number;
+  withinLimitsPercent: number;
+  changes: {
+    exposed: number;
+    critical: number;
+  };
+}> {
+  const exposures = await getExposures(organizationId, {}, 1000);
+  
+  // Group by hazard type
+  const byType: Record<string, { count: number; critical: number }> = {};
+  let totalExposed = 0;
+  let criticalCount = 0;
+  let withinLimitsCount = 0;
+  
+  const uniqueEmployees = new Set<string>();
+  
+  for (const exposure of exposures) {
+    // Initialize type if needed
+    if (!byType[exposure.hazardType]) {
+      byType[exposure.hazardType] = { count: 0, critical: 0 };
+    }
+    
+    byType[exposure.hazardType].count++;
+    
+    if (exposure.alertLevel === "critical" || exposure.alertLevel === "elevated") {
+      byType[exposure.hazardType].critical++;
+      criticalCount++;
+    } else {
+      withinLimitsCount++;
+    }
+    
+    for (const empId of exposure.exposedEmployeeIds) {
+      uniqueEmployees.add(empId);
+    }
+  }
+  
+  totalExposed = uniqueEmployees.size;
+  
+  const withinLimitsPercent = exposures.length > 0 
+    ? Math.round((withinLimitsCount / exposures.length) * 100) 
+    : 100;
+  
+  // Convert to array with labels
+  const hazardLabels: Record<string, string> = {
+    physical: "Physique",
+    chemical: "Chimique",
+    biological: "Biologique",
+    ergonomic: "Ergonomique",
+    psychosocial: "Psychosocial",
+    mechanical: "Mécanique",
+    electrical: "Électrique",
+    thermal: "Thermique",
+    environmental: "Environnemental",
+  };
+  
+  const byHazardType = Object.entries(byType).map(([type, data]) => ({
+    type: hazardLabels[type] || type,
+    count: data.count,
+    critical: data.critical,
+  }));
+  
+  return {
+    byHazardType,
+    totalExposed,
+    criticalCount,
+    withinLimitsPercent,
+    changes: {
+      exposed: 0, // Would need historical data
+      critical: 0,
+    },
+  };
+}
+
 // =============================================================================
 // Check for Overdue Visits (for scheduled jobs)
 // =============================================================================

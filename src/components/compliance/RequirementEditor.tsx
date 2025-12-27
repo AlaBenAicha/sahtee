@@ -45,10 +45,21 @@ export function RequirementEditor({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      onSave({
-        status,
-        notes: notes.trim() || undefined,
-      });
+      // Build update data, excluding undefined/empty values to avoid Firebase errors
+      const updateData: Partial<NormRequirement> = { status };
+      
+      // Only include notes if it has content, otherwise omit to keep existing value
+      // or use empty string to clear it
+      const trimmedNotes = notes.trim();
+      if (trimmedNotes) {
+        updateData.notes = trimmedNotes;
+      } else if (requirement.notes) {
+        // If there were previous notes and now they're cleared, set to empty string
+        updateData.notes = "";
+      }
+      // If both are empty/undefined, don't include notes at all
+      
+      onSave(updateData);
     } finally {
       setIsSaving(false);
     }

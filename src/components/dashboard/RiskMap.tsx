@@ -98,7 +98,7 @@ function RiskMapCellComponent({ cell, onClick }: RiskMapCellComponentProps) {
       <TooltipTrigger asChild>
         <button
           className={cn(
-            "w-full aspect-square flex items-center justify-center",
+            "w-full h-full min-h-[40px] flex items-center justify-center",
             "text-sm font-semibold rounded transition-all duration-150",
             "border border-white/20",
             colorClass,
@@ -225,15 +225,21 @@ export function RiskMap({
 
           {/* Matrix with labels */}
           <div className="flex-1">
-            <div className="grid grid-cols-6 gap-1">
+            <div 
+              className="grid gap-1"
+              style={{ 
+                gridTemplateColumns: 'auto repeat(5, minmax(40px, 1fr))',
+                gridTemplateRows: 'auto repeat(5, minmax(40px, 1fr))'
+              }}
+            >
               {/* Empty corner cell */}
-              <div className="aspect-square" />
+              <div />
 
               {/* X-axis labels */}
               {likelihoodLabels.map((label) => (
                 <div
                   key={label.value}
-                  className="aspect-square flex items-center justify-center text-[10px] text-slate-500 font-medium text-center leading-tight p-1"
+                  className="flex items-center justify-center text-[10px] text-slate-500 font-medium text-center leading-tight p-1 min-h-[40px]"
                 >
                   {label.label}
                 </div>
@@ -243,7 +249,7 @@ export function RiskMap({
               {data.map((row, rowIndex) => (
                 <React.Fragment key={rowIndex}>
                   {/* Y-axis label for this row */}
-                  <div className="aspect-square flex items-center justify-center text-[10px] text-slate-500 font-medium text-center leading-tight p-1">
+                  <div className="flex items-center justify-center text-[10px] text-slate-500 font-medium text-center leading-tight p-1 min-w-[70px]">
                     {severityLabels[rowIndex]?.label}
                   </div>
 

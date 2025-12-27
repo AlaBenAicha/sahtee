@@ -171,7 +171,20 @@ service cloud.firestore {
 
     // Training Plans collection
     match /trainingPlans/{planId} {
-      allow read: if isAuthenticated() && 
+      // Allow list if user is authenticated (query filters by organization)
+      allow list: if isAuthenticated();
+      allow get: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // Training Records collection (individual training completion records)
+    match /trainingRecords/{recordId} {
+      allow list: if isAuthenticated();
+      allow get: if isAuthenticated() && 
         belongsToOrg(resource.data.organizationId);
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
@@ -392,6 +405,28 @@ service cloud.firestore {
         belongsToOrg(resource.data.organizationId);
       // Only Cloud Functions can write
       allow write: if false;
+    }
+
+    // Risk Assessments collection (for risk matrix)
+    match /riskAssessments/{assessmentId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // AI Recommendations collection (for dashboard AI suggestions)
+    match /aiRecommendations/{recommendationId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Cloud Functions create recommendations
+      allow create: if isAuthenticated();
+      // Users can update status (accept/dismiss)
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
   }
 }

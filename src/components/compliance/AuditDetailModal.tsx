@@ -88,8 +88,10 @@ const FRAMEWORK_LABELS: Record<string, string> = {
   custom: "Personnalisé",
 };
 
-function formatDate(timestamp: { toDate: () => Date } | Date): string {
-  const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
+function formatDate(timestamp: { toDate: () => Date } | Date | undefined | null): string {
+  if (!timestamp) return "-";
+  const date = timestamp instanceof Date ? timestamp : timestamp.toDate?.();
+  if (!date) return "-";
   return date.toLocaleDateString("fr-FR", {
     day: "2-digit",
     month: "long",
@@ -114,7 +116,7 @@ export function AuditDetailModal({
   if (!audit) return null;
 
   const statusConfig = STATUS_CONFIG[audit.status];
-  const calculatedSummary = calculateAuditSummary(audit.findings);
+  const calculatedSummary = calculateAuditSummary(audit.findings ?? []);
 
   const handleStartAudit = async () => {
     try {
@@ -184,7 +186,7 @@ export function AuditDetailModal({
                 value="findings"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
               >
-                Écarts ({audit.findings.length})
+                Écarts ({audit.findings?.length ?? 0})
               </TabsTrigger>
               <TabsTrigger 
                 value="summary"
@@ -196,7 +198,7 @@ export function AuditDetailModal({
                 value="documents"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
               >
-                Documents ({audit.documents.length})
+                Documents ({audit.documents?.length ?? 0})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -231,7 +233,7 @@ export function AuditDetailModal({
                   <p className="text-xs text-muted-foreground">Écarts détectés</p>
                   <p className="font-medium flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                    {audit.findings.length}
+                    {audit.findings?.length ?? 0}
                   </p>
                 </div>
               </div>
@@ -248,7 +250,7 @@ export function AuditDetailModal({
               </div>
 
               {/* Auditors */}
-              {audit.auditors.length > 0 && (
+              {(audit.auditors?.length ?? 0) > 0 && (
                 <>
                   <Separator />
                   <div className="space-y-2">
@@ -257,7 +259,7 @@ export function AuditDetailModal({
                       Équipe d'audit
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                      {audit.auditors.map((auditor, index) => (
+                      {(audit.auditors ?? []).map((auditor, index) => (
                         <Badge key={index} variant="secondary">
                           {auditor.name}
                           {auditor.role === "lead" && " (Lead)"}
@@ -311,7 +313,7 @@ export function AuditDetailModal({
             <TabsContent value="findings" className="p-6 mt-0">
               <FindingsCapture
                 auditId={audit.id}
-                findings={audit.findings}
+                findings={audit.findings ?? []}
                 canEdit={canUpdate && audit.status !== "completed" && audit.status !== "cancelled"}
                 onFindingAdded={onFindingAdded}
                 onCreateCapa={onCreateCapa}
@@ -421,7 +423,7 @@ export function AuditDetailModal({
 
             {/* Documents Tab */}
             <TabsContent value="documents" className="p-6 mt-0">
-              {audit.documents.length === 0 ? (
+              {(audit.documents?.length ?? 0) === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-8 w-8 mx-auto mb-2" />
                   <p>Aucun document attaché</p>
@@ -434,7 +436,7 @@ export function AuditDetailModal({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {audit.documents.map((doc) => (
+                  {(audit.documents ?? []).map((doc) => (
                     <div
                       key={doc.id}
                       className="flex items-center justify-between p-3 border rounded-lg"

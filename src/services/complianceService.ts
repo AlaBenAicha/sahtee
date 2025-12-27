@@ -573,13 +573,18 @@ export async function getAudits(
       const start = filters.dateRange.start.getTime();
       const end = filters.dateRange.end.getTime();
       audits = audits.filter(a => {
+        if (!a.plannedStartDate?.toMillis) return false;
         const plannedTime = a.plannedStartDate.toMillis();
         return plannedTime >= start && plannedTime <= end;
       });
     }
     
-    // Sort by planned start date descending
-    audits.sort((a, b) => b.plannedStartDate.toMillis() - a.plannedStartDate.toMillis());
+    // Sort by planned start date descending (handle missing dates)
+    audits.sort((a, b) => {
+      const aTime = a.plannedStartDate?.toMillis?.() ?? 0;
+      const bTime = b.plannedStartDate?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    });
     
     return audits;
   } catch (error) {
@@ -953,7 +958,7 @@ export async function getComplianceMetrics(
   
   // Count audits
   const upcomingAudits = audits.filter(
-    a => a.status === "planned" && a.plannedStartDate.toMillis() > now
+    a => a.status === "planned" && a.plannedStartDate?.toMillis?.() && a.plannedStartDate.toMillis() > now
   ).length;
   
   const startOfYear = new Date(new Date().getFullYear(), 0, 1).getTime();
@@ -1222,8 +1227,12 @@ export async function getAIAnalyses(
       ...doc.data(),
     })) as AIAnalysis[];
     
-    // Sort client-side
-    analyses.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+    // Sort client-side (handle missing createdAt)
+    analyses.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() ?? 0;
+      const bTime = b.createdAt?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    });
     
     return applyAIAnalysisFilters(analyses, filters);
   }
@@ -1247,6 +1256,7 @@ function applyAIAnalysisFilters(
     const start = filters.dateRange.start.getTime();
     const end = filters.dateRange.end.getTime();
     filtered = filtered.filter(a => {
+      if (!a.createdAt?.toMillis) return false;
       const createdTime = a.createdAt.toMillis();
       return createdTime >= start && createdTime <= end;
     });
@@ -1297,8 +1307,12 @@ export function subscribeToAIAnalyses(
       ...doc.data(),
     })) as AIAnalysis[];
     
-    // Sort client-side by createdAt descending
-    analyses.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+    // Sort client-side by createdAt descending (handle missing createdAt)
+    analyses.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() ?? 0;
+      const bTime = b.createdAt?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    });
     
     callback(analyses);
   });

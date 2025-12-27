@@ -135,8 +135,8 @@ export function AuditForm({ open, onOpenChange, audit, normFramework, onSuccess 
           type: audit.type,
           framework: audit.framework,
           scope: audit.scope,
-          plannedStartDate: audit.plannedStartDate.toDate(),
-          plannedEndDate: audit.plannedEndDate.toDate(),
+          plannedStartDate: audit.plannedStartDate?.toDate?.(),
+          plannedEndDate: audit.plannedEndDate?.toDate?.(),
           leadAuditorName: audit.leadAuditorName || "",
         });
       } else if (normFramework) {
