@@ -107,4 +107,6 @@ Fix prod bug  → git checkout -b hotfix/SAH-XX-name main
 Link ticket   → "References SAH-XX" in PR description
 Close ticket  → "Fixes SAH-XX" in PR description
 ```
-
+if you need to login to the app to test something (check if you're already logged in first), use the following credentials:
+email: ala.ben.aicha23@gmail.com
+password: 12345678

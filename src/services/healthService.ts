@@ -1,0 +1,2222 @@
+/**
+ * Health Firestore Service
+ *
+ * Handles all health-related database operations including:
+ * - Health record CRUD operations (physician-only for PHI)
+ * - Medical visit scheduling and tracking
+ * - Exposure monitoring
+ * - Health alerts management
+ * - Aggregate statistics for dashboard
+ */
+
+import { db } from "@/config/firebase";
+import type { AuditInfo } from "@/types/common";
+import type {
+  ExaminationType,
+  ExposureMeasurement,
+  FitnessStatus,
+  HazardCategory,
+  HealthAlert,
+  HealthAlertSeverity,
+  HealthAlertStatus,
+  HealthAlertType,
+  HealthRecord,
+  HealthStats,
+  MedicalVisit,
+  MedicalVisitStatus,
+  OrganizationExposure,
+} from "@/types/health";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  limit as firestoreLimit,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  Timestamp,
+  Unsubscribe,
+  updateDoc,
+  where,
+  writeBatch,
+} from "firebase/firestore";
+
+// Collection names
+const HEALTH_RECORDS_COLLECTION = "healthRecords";
+const MEDICAL_VISITS_COLLECTION = "medicalVisits";
+const HEALTH_ALERTS_COLLECTION = "healthAlerts";
+const EXPOSURES_COLLECTION = "exposures";
+const MEASUREMENTS_COLLECTION = "measurements";
+const HEALTH_STATS_COLLECTION = "healthStats";
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Create audit info for a new document
+ */
+function createAuditInfo(userId: string): AuditInfo {
+  const now = Timestamp.now();
+  return {
+    createdBy: userId,
+    createdAt: now,
+    updatedBy: userId,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Generate a unique reference for a medical visit
+ */
+export async function generateVisitReference(
+  organizationId: string
+): Promise<string> {
+  const year = new Date().getFullYear();
+  const month = (new Date().getMonth() + 1).toString().padStart(2, "0");
+  const prefix = `VIS-${year}${month}`;
+
+  const q = query(
+    collection(db, MEDICAL_VISITS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("createdAt", "desc"),
+    firestoreLimit(1)
+  );
+
+  try {
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      return `${prefix}-001`;
+    }
+
+    const lastId = snapshot.docs[0].id;
+    const lastNumber = parseInt(lastId.split("-").pop() || "0", 10);
+    const nextNumber = (lastNumber + 1).toString().padStart(3, "0");
+
+    return `${prefix}-${nextNumber}`;
+  } catch {
+    const timestamp = Date.now().toString(36).toUpperCase();
+    return `${prefix}-${timestamp}`;
+  }
+}
+
+// =============================================================================
+// Health Record CRUD Operations (Physician-Only for PHI)
+// =============================================================================
+
+/**
+ * Check if an employee already has a health record
+ */
+export async function employeeHasHealthRecord(
+  organizationId: string,
+  employeeId: string
+): Promise<boolean> {
+  const existing = await getHealthRecordByEmployee(organizationId, employeeId);
+  return existing !== null;
+}
+
+/**
+ * Create a new health record
+ * Note: Only physicians should be able to create health records
+ * Throws error if employee already has a health record (one per employee)
+ */
+export async function createHealthRecord(
+  data: Omit<HealthRecord, "id" | "createdAt" | "updatedAt" | "audit">,
+  userId: string
+): Promise<HealthRecord> {
+  // Check if employee already has a health record
+  const existingRecord = await getHealthRecordByEmployee(
+    data.organizationId,
+    data.employeeId
+  );
+  if (existingRecord) {
+    throw new Error("EMPLOYEE_ALREADY_HAS_RECORD");
+  }
+
+  const docRef = doc(collection(db, HEALTH_RECORDS_COLLECTION));
+  const now = Timestamp.now();
+
+  const healthRecord: Omit<HealthRecord, "id"> = {
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+    audit: createAuditInfo(userId),
+  };
+
+  await setDoc(docRef, healthRecord);
+
+  return { id: docRef.id, ...healthRecord };
+}
+
+/**
+ * Get a single health record by ID
+ * Note: Access should be restricted to physicians only
+ */
+export async function getHealthRecord(
+  recordId: string
+): Promise<HealthRecord | null> {
+  const docRef = doc(db, HEALTH_RECORDS_COLLECTION, recordId);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    return null;
+  }
+
+  return { id: docSnap.id, ...docSnap.data() } as HealthRecord;
+}
+
+/**
+ * Get health record by employee ID
+ */
+export async function getHealthRecordByEmployee(
+  organizationId: string,
+  employeeId: string
+): Promise<HealthRecord | null> {
+  const q = query(
+    collection(db, HEALTH_RECORDS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("employeeId", "==", employeeId),
+    firestoreLimit(1)
+  );
+
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  return {
+    id: snapshot.docs[0].id,
+    ...snapshot.docs[0].data(),
+  } as HealthRecord;
+}
+
+/**
+ * Update an existing health record
+ */
+export async function updateHealthRecord(
+  recordId: string,
+  data: Partial<
+    Omit<HealthRecord, "id" | "createdAt" | "audit" | "organizationId">
+  >,
+  userId: string
+): Promise<void> {
+  const docRef = doc(db, HEALTH_RECORDS_COLLECTION, recordId);
+
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+}
+
+/**
+ * Delete a health record
+ */
+export async function deleteHealthRecord(recordId: string): Promise<void> {
+  const docRef = doc(db, HEALTH_RECORDS_COLLECTION, recordId);
+  await deleteDoc(docRef);
+}
+
+/**
+ * Get all health records for an organization (physician only)
+ */
+export async function getHealthRecords(
+  organizationId: string,
+  filters: {
+    fitnessStatus?: FitnessStatus[];
+    departmentId?: string;
+    searchQuery?: string;
+  } = {},
+  limit = 100
+): Promise<HealthRecord[]> {
+  const q = query(
+    collection(db, HEALTH_RECORDS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("updatedAt", "desc"),
+    firestoreLimit(limit)
+  );
+
+  const snapshot = await getDocs(q);
+  let records = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as HealthRecord[];
+
+  // Client-side filtering
+  if (filters.fitnessStatus && filters.fitnessStatus.length > 0) {
+    records = records.filter((r) =>
+      filters.fitnessStatus!.includes(r.fitnessStatus)
+    );
+  }
+  if (filters.departmentId) {
+    records = records.filter((r) => r.departmentId === filters.departmentId);
+  }
+  if (filters.searchQuery) {
+    const searchLower = filters.searchQuery.toLowerCase();
+    records = records.filter(
+      (r) =>
+        r.employeeName.toLowerCase().includes(searchLower) ||
+        r.jobTitle.toLowerCase().includes(searchLower)
+    );
+  }
+
+  return records;
+}
+
+/**
+ * Subscribe to real-time health record updates
+ */
+export function subscribeToHealthRecords(
+  organizationId: string,
+  callback: (records: HealthRecord[]) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, HEALTH_RECORDS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("updatedAt", "desc")
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const records = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as HealthRecord[];
+
+      callback(records);
+    },
+    (error) => {
+      console.error("Health records subscription error:", error);
+      callback([]);
+    }
+  );
+}
+
+// =============================================================================
+// Medical Visit Operations
+// =============================================================================
+
+/**
+ * Create a new medical visit
+ */
+export async function createMedicalVisit(
+  data: Omit<MedicalVisit, "id" | "createdAt" | "updatedAt" | "audit">,
+  userId: string
+): Promise<MedicalVisit> {
+  const docRef = doc(collection(db, MEDICAL_VISITS_COLLECTION));
+  const now = Timestamp.now();
+
+  const visit: Omit<MedicalVisit, "id"> = {
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+    audit: createAuditInfo(userId),
+  };
+
+  await setDoc(docRef, visit);
+
+  return { id: docRef.id, ...visit };
+}
+
+/**
+ * Get a single medical visit by ID
+ */
+export async function getMedicalVisit(
+  visitId: string
+): Promise<MedicalVisit | null> {
+  const docRef = doc(db, MEDICAL_VISITS_COLLECTION, visitId);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    return null;
+  }
+
+  return { id: docSnap.id, ...docSnap.data() } as MedicalVisit;
+}
+
+/**
+ * Update a medical visit
+ */
+export async function updateMedicalVisit(
+  visitId: string,
+  data: Partial<
+    Omit<MedicalVisit, "id" | "createdAt" | "audit" | "organizationId">
+  >,
+  userId: string
+): Promise<void> {
+  const docRef = doc(db, MEDICAL_VISITS_COLLECTION, visitId);
+
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+}
+
+/**
+ * Delete a medical visit
+ */
+export async function deleteMedicalVisit(visitId: string): Promise<void> {
+  const docRef = doc(db, MEDICAL_VISITS_COLLECTION, visitId);
+  await deleteDoc(docRef);
+}
+
+/**
+ * Get medical visits for an organization with filters
+ */
+export async function getMedicalVisits(
+  organizationId: string,
+  filters: {
+    status?: MedicalVisitStatus[];
+    type?: ExaminationType[];
+    physicianId?: string;
+    employeeId?: string;
+    departmentId?: string;
+    dateRange?: { start: Date; end: Date };
+  } = {},
+  limit = 100
+): Promise<MedicalVisit[]> {
+  const q = query(
+    collection(db, MEDICAL_VISITS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("scheduledDate", "desc"),
+    firestoreLimit(limit)
+  );
+
+  const snapshot = await getDocs(q);
+  let visits = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as MedicalVisit[];
+
+  // Client-side filtering
+  if (filters.status && filters.status.length > 0) {
+    visits = visits.filter((v) => filters.status!.includes(v.status));
+  }
+  if (filters.type && filters.type.length > 0) {
+    visits = visits.filter((v) => filters.type!.includes(v.type));
+  }
+  if (filters.physicianId) {
+    visits = visits.filter((v) => v.physicianId === filters.physicianId);
+  }
+  if (filters.employeeId) {
+    visits = visits.filter((v) => v.employeeId === filters.employeeId);
+  }
+  if (filters.departmentId) {
+    visits = visits.filter((v) => v.departmentId === filters.departmentId);
+  }
+  if (filters.dateRange) {
+    const start = filters.dateRange.start.getTime();
+    const end = filters.dateRange.end.getTime();
+    visits = visits.filter((v) => {
+      const scheduledTime = v.scheduledDate.toMillis();
+      return scheduledTime >= start && scheduledTime <= end;
+    });
+  }
+
+  return visits;
+}
+
+/**
+ * Get medical visits linked to a specific health record
+ */
+export async function getMedicalVisitsByHealthRecord(
+  healthRecordId: string,
+  organizationId: string
+): Promise<MedicalVisit[]> {
+  const q = query(
+    collection(db, MEDICAL_VISITS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("healthRecordId", "==", healthRecordId),
+    orderBy("scheduledDate", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as MedicalVisit[];
+}
+
+/**
+ * Get upcoming visits (scheduled in the future)
+ */
+export async function getUpcomingVisits(
+  organizationId: string,
+  limit = 10
+): Promise<MedicalVisit[]> {
+  const now = Timestamp.now();
+
+  const q = query(
+    collection(db, MEDICAL_VISITS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("status", "==", "scheduled"),
+    where("scheduledDate", ">=", now),
+    orderBy("scheduledDate", "asc"),
+    firestoreLimit(limit)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as MedicalVisit[];
+}
+
+/**
+ * Get overdue visits
+ */
+export async function getOverdueVisits(
+  organizationId: string
+): Promise<MedicalVisit[]> {
+  const now = Timestamp.now();
+
+  const q = query(
+    collection(db, MEDICAL_VISITS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("status", "==", "scheduled"),
+    where("scheduledDate", "<", now),
+    orderBy("scheduledDate", "asc")
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as MedicalVisit[];
+}
+
+/**
+ * Complete a medical visit with findings
+ */
+export async function completeMedicalVisit(
+  visitId: string,
+  findings: {
+    findings: string;
+    recommendations?: string[];
+    fitnessDecision: FitnessStatus;
+    nextVisitRecommended?: Timestamp;
+    nextVisitType?: ExaminationType;
+  },
+  userId: string
+): Promise<void> {
+  const docRef = doc(db, MEDICAL_VISITS_COLLECTION, visitId);
+
+  await updateDoc(docRef, {
+    ...findings,
+    status: "completed",
+    completedDate: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+}
+
+/**
+ * Subscribe to real-time visit updates
+ */
+export function subscribeToMedicalVisits(
+  organizationId: string,
+  callback: (visits: MedicalVisit[]) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, MEDICAL_VISITS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("scheduledDate", "desc")
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const visits = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as MedicalVisit[];
+
+      callback(visits);
+    },
+    (error) => {
+      console.error("Medical visits subscription error:", error);
+      callback([]);
+    }
+  );
+}
+
+// =============================================================================
+// Exposure Monitoring Operations
+// =============================================================================
+
+/**
+ * Create a new exposure record
+ */
+export async function createExposure(
+  data: Omit<OrganizationExposure, "id" | "createdAt" | "updatedAt" | "audit">,
+  userId: string
+): Promise<OrganizationExposure> {
+  const docRef = doc(collection(db, EXPOSURES_COLLECTION));
+  const now = Timestamp.now();
+
+  const exposure: Omit<OrganizationExposure, "id"> = {
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+    audit: createAuditInfo(userId),
+  };
+
+  await setDoc(docRef, exposure);
+
+  return { id: docRef.id, ...exposure };
+}
+
+/**
+ * Get a single exposure record
+ */
+export async function getExposure(
+  exposureId: string
+): Promise<OrganizationExposure | null> {
+  const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    return null;
+  }
+
+  return { id: docSnap.id, ...docSnap.data() } as OrganizationExposure;
+}
+
+/**
+ * Update an exposure record
+ */
+export async function updateExposure(
+  exposureId: string,
+  data: Partial<
+    Omit<OrganizationExposure, "id" | "createdAt" | "audit" | "organizationId">
+  >,
+  userId: string
+): Promise<void> {
+  const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
+
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+}
+
+/**
+ * Delete an exposure record
+ */
+export async function deleteExposure(exposureId: string): Promise<void> {
+  const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
+  await deleteDoc(docRef);
+}
+
+/**
+ * Get all exposures for an organization
+ */
+export async function getExposures(
+  organizationId: string,
+  filters: {
+    hazardType?: HazardCategory[];
+    alertLevel?: ("low" | "moderate" | "elevated" | "critical")[];
+    siteId?: string;
+    departmentId?: string;
+  } = {},
+  limit = 100
+): Promise<OrganizationExposure[]> {
+  const q = query(
+    collection(db, EXPOSURES_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("lastMeasurementDate", "desc"),
+    firestoreLimit(limit)
+  );
+
+  const snapshot = await getDocs(q);
+  let exposures = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as OrganizationExposure[];
+
+  // Client-side filtering
+  if (filters.hazardType && filters.hazardType.length > 0) {
+    exposures = exposures.filter((e) =>
+      filters.hazardType!.includes(e.hazardType)
+    );
+  }
+  if (filters.alertLevel && filters.alertLevel.length > 0) {
+    exposures = exposures.filter((e) =>
+      filters.alertLevel!.includes(e.alertLevel)
+    );
+  }
+  if (filters.siteId) {
+    exposures = exposures.filter((e) => e.siteId === filters.siteId);
+  }
+  if (filters.departmentId) {
+    exposures = exposures.filter(
+      (e) => e.departmentId === filters.departmentId
+    );
+  }
+
+  return exposures;
+}
+
+/**
+ * Get critical exposures (exceeding limits)
+ */
+export async function getCriticalExposures(
+  organizationId: string
+): Promise<OrganizationExposure[]> {
+  const q = query(
+    collection(db, EXPOSURES_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("alertLevel", "in", ["elevated", "critical"]),
+    orderBy("percentOfLimit", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as OrganizationExposure[];
+}
+
+// =============================================================================
+// Measurement Functions (Separate Collection)
+// =============================================================================
+
+/**
+ * Create a new measurement in the measurements collection
+ */
+export async function createMeasurement(
+  measurementData: Omit<ExposureMeasurement, "id" | "createdAt" | "updatedAt">,
+  userId: string
+): Promise<ExposureMeasurement> {
+  const now = Timestamp.now();
+
+  const docRef = await addDoc(collection(db, MEASUREMENTS_COLLECTION), {
+    ...measurementData,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: userId,
+  });
+
+  // Update the parent exposure with latest measurement data
+  await updateExposureFromMeasurement(
+    measurementData.exposureId,
+    measurementData,
+    userId
+  );
+
+  return {
+    id: docRef.id,
+    ...measurementData,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: userId,
+  } as ExposureMeasurement;
+}
+
+/**
+ * Get all measurements for a specific exposure, ordered by date descending
+ */
+export async function getMeasurementsByExposure(
+  exposureId: string
+): Promise<ExposureMeasurement[]> {
+  const q = query(
+    collection(db, MEASUREMENTS_COLLECTION),
+    where("exposureId", "==", exposureId),
+    orderBy("date", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as ExposureMeasurement[];
+}
+
+/**
+ * Get latest measurement for an exposure
+ */
+export async function getLatestMeasurement(
+  exposureId: string
+): Promise<ExposureMeasurement | null> {
+  const q = query(
+    collection(db, MEASUREMENTS_COLLECTION),
+    where("exposureId", "==", exposureId),
+    orderBy("date", "desc"),
+    firestoreLimit(1)
+  );
+
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+
+  const doc = snapshot.docs[0];
+  return {
+    id: doc.id,
+    ...doc.data(),
+  } as ExposureMeasurement;
+}
+
+/**
+ * Update parent exposure with latest measurement data
+ */
+async function updateExposureFromMeasurement(
+  exposureId: string,
+  measurement: Omit<ExposureMeasurement, "id" | "createdAt" | "updatedAt">,
+  userId: string
+): Promise<void> {
+  const exposure = await getExposure(exposureId);
+  if (!exposure) throw new Error("Exposure record not found");
+
+  const percentOfLimit = (measurement.value / exposure.regulatoryLimit) * 100;
+
+  // Determine alert level
+  let alertLevel: "low" | "moderate" | "elevated" | "critical";
+  if (percentOfLimit >= 100) {
+    alertLevel = "critical";
+  } else if (percentOfLimit >= 80) {
+    alertLevel = "elevated";
+  } else if (percentOfLimit >= 50) {
+    alertLevel = "moderate";
+  } else {
+    alertLevel = "low";
+  }
+
+  const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
+  await updateDoc(docRef, {
+    lastMeasurement: measurement.value,
+    lastMeasurementDate: measurement.date,
+    percentOfLimit,
+    alertLevel,
+    exceedanceCount: measurement.withinLimits
+      ? exposure.exceedanceCount
+      : (exposure.exceedanceCount || 0) + 1,
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+
+  // Create alert if threshold exceeded
+  if (!measurement.withinLimits) {
+    await createHealthAlert(
+      {
+        organizationId: exposure.organizationId,
+        type: "exposure_threshold",
+        severity: alertLevel === "critical" ? "critical" : "warning",
+        title: `Dépassement de limite d'exposition: ${exposure.agent}`,
+        description: `Le niveau d'exposition à ${exposure.agent} (${measurement.value} ${measurement.unit}) dépasse la limite réglementaire (${exposure.regulatoryLimit} ${exposure.unit}).`,
+        affectedDepartments: exposure.departmentId
+          ? [exposure.departmentId]
+          : undefined,
+        affectedEmployeeCount: exposure.exposedEmployeeCount,
+        siteId: exposure.siteId,
+        status: "active",
+        sourceType: "exposure",
+        sourceId: exposureId,
+      },
+      userId
+    );
+  }
+}
+
+/**
+ * @deprecated Use createMeasurement instead. This function is kept for backwards compatibility.
+ * Add a new measurement to an exposure record (legacy - updates embedded array)
+ */
+export async function addExposureMeasurement(
+  exposureId: string,
+  measurement: ExposureMeasurement,
+  userId: string
+): Promise<void> {
+  // Use the new createMeasurement function
+  await createMeasurement(
+    {
+      exposureId,
+      organizationId: "", // Will be fetched from exposure
+      date: measurement.date,
+      value: measurement.value,
+      unit: measurement.unit,
+      measuredBy: measurement.measuredBy,
+      method: measurement.method,
+      duration: measurement.duration,
+      withinLimits: measurement.withinLimits,
+      notes: measurement.notes,
+      createdBy: userId,
+    },
+    userId
+  );
+}
+
+/**
+ * Subscribe to real-time exposure updates
+ */
+export function subscribeToExposures(
+  organizationId: string,
+  callback: (exposures: OrganizationExposure[]) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, EXPOSURES_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("lastMeasurementDate", "desc")
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const exposures = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as OrganizationExposure[];
+
+      callback(exposures);
+    },
+    (error) => {
+      console.error("Exposures subscription error:", error);
+      callback([]);
+    }
+  );
+}
+
+/**
+ * Get multiple exposure records by their IDs
+ */
+export async function getExposuresByIds(
+  exposureIds: string[]
+): Promise<OrganizationExposure[]> {
+  if (exposureIds.length === 0) return [];
+
+  const exposures: OrganizationExposure[] = [];
+
+  // Firestore 'in' query supports max 30 items, so we batch if needed
+  const batchSize = 30;
+  for (let i = 0; i < exposureIds.length; i += batchSize) {
+    const batch = exposureIds.slice(i, i + batchSize);
+    const q = query(
+      collection(db, EXPOSURES_COLLECTION),
+      where("__name__", "in", batch)
+    );
+
+    const snapshot = await getDocs(q);
+    snapshot.docs.forEach((doc) => {
+      exposures.push({ id: doc.id, ...doc.data() } as OrganizationExposure);
+    });
+  }
+
+  return exposures;
+}
+
+/**
+ * Link an employee to an exposure record
+ * Adds the employee's ID to the exposure's exposedEmployeeIds array
+ */
+export async function linkEmployeeToExposure(
+  exposureId: string,
+  employeeId: string,
+  userId: string
+): Promise<void> {
+  const exposure = await getExposure(exposureId);
+  if (!exposure) throw new Error("Exposure record not found");
+
+  // Check if employee is already linked
+  if (exposure.exposedEmployeeIds.includes(employeeId)) {
+    return; // Already linked, nothing to do
+  }
+
+  const updatedEmployeeIds = [...exposure.exposedEmployeeIds, employeeId];
+
+  const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
+  await updateDoc(docRef, {
+    exposedEmployeeIds: updatedEmployeeIds,
+    exposedEmployeeCount: updatedEmployeeIds.length,
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+}
+
+/**
+ * Unlink an employee from an exposure record
+ * Removes the employee's ID from the exposure's exposedEmployeeIds array
+ */
+export async function unlinkEmployeeFromExposure(
+  exposureId: string,
+  employeeId: string,
+  userId: string
+): Promise<void> {
+  const exposure = await getExposure(exposureId);
+  if (!exposure) throw new Error("Exposure record not found");
+
+  const updatedEmployeeIds = exposure.exposedEmployeeIds.filter(
+    (id) => id !== employeeId
+  );
+
+  const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
+  await updateDoc(docRef, {
+    exposedEmployeeIds: updatedEmployeeIds,
+    exposedEmployeeCount: updatedEmployeeIds.length,
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+}
+
+/**
+ * Sync employee-exposure links when updating a health record's exposureIds
+ * Handles adding and removing the employee from the relevant OrganizationExposure documents
+ */
+export async function syncHealthRecordExposures(
+  healthRecordId: string,
+  employeeId: string,
+  previousExposureIds: string[],
+  newExposureIds: string[],
+  userId: string
+): Promise<void> {
+  // Find exposures to add (in new but not in previous)
+  const toAdd = newExposureIds.filter(
+    (id) => !previousExposureIds.includes(id)
+  );
+  // Find exposures to remove (in previous but not in new)
+  const toRemove = previousExposureIds.filter(
+    (id) => !newExposureIds.includes(id)
+  );
+
+  // Link employee to new exposures
+  for (const exposureId of toAdd) {
+    await linkEmployeeToExposure(exposureId, employeeId, userId);
+  }
+
+  // Unlink employee from removed exposures
+  for (const exposureId of toRemove) {
+    await unlinkEmployeeFromExposure(exposureId, employeeId, userId);
+  }
+}
+
+// =============================================================================
+// Health Alert Operations
+// =============================================================================
+
+/**
+ * Create a new health alert
+ */
+export async function createHealthAlert(
+  data: Omit<HealthAlert, "id" | "createdAt" | "updatedAt">,
+  userId: string
+): Promise<HealthAlert> {
+  const docRef = doc(collection(db, HEALTH_ALERTS_COLLECTION));
+  const now = Timestamp.now();
+
+  // Build alert object, filtering out undefined values (Firestore doesn't accept undefined)
+  const alertData: Record<string, unknown> = {
+    organizationId: data.organizationId,
+    type: data.type,
+    severity: data.severity,
+    title: data.title,
+    description: data.description,
+    status: data.status,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // Add optional fields only if they have values
+  if (data.affectedDepartments !== undefined) {
+    alertData.affectedDepartments = data.affectedDepartments;
+  }
+  if (data.affectedEmployeeCount !== undefined) {
+    alertData.affectedEmployeeCount = data.affectedEmployeeCount;
+  }
+  if (data.siteId !== undefined) {
+    alertData.siteId = data.siteId;
+  }
+  if (data.acknowledgedAt !== undefined) {
+    alertData.acknowledgedAt = data.acknowledgedAt;
+  }
+  if (data.acknowledgedBy !== undefined) {
+    alertData.acknowledgedBy = data.acknowledgedBy;
+  }
+  if (data.resolvedAt !== undefined) {
+    alertData.resolvedAt = data.resolvedAt;
+  }
+  if (data.resolvedBy !== undefined) {
+    alertData.resolvedBy = data.resolvedBy;
+  }
+  if (data.resolutionNotes !== undefined) {
+    alertData.resolutionNotes = data.resolutionNotes;
+  }
+  if (data.linkedCapaId !== undefined) {
+    alertData.linkedCapaId = data.linkedCapaId;
+  }
+  if (data.linkedVisitIds !== undefined) {
+    alertData.linkedVisitIds = data.linkedVisitIds;
+  }
+  if (data.sourceType !== undefined) {
+    alertData.sourceType = data.sourceType;
+  }
+  if (data.sourceId !== undefined) {
+    alertData.sourceId = data.sourceId;
+  }
+
+  console.log("[createHealthAlert] Creating alert:", {
+    docId: docRef.id,
+    alertData: JSON.stringify(alertData, null, 2),
+  });
+
+  await setDoc(docRef, alertData);
+
+  const alert = alertData as Omit<HealthAlert, "id">;
+  return { id: docRef.id, ...alert };
+}
+
+/**
+ * Get a single health alert
+ */
+export async function getHealthAlert(
+  alertId: string
+): Promise<HealthAlert | null> {
+  const docRef = doc(db, HEALTH_ALERTS_COLLECTION, alertId);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    return null;
+  }
+
+  return { id: docSnap.id, ...docSnap.data() } as HealthAlert;
+}
+
+/**
+ * Get health alerts for an organization
+ */
+export async function getHealthAlerts(
+  organizationId: string,
+  filters: {
+    status?: HealthAlertStatus[];
+    severity?: HealthAlertSeverity[];
+    type?: HealthAlertType[];
+  } = {},
+  limit = 50
+): Promise<HealthAlert[]> {
+  console.log("[getHealthAlerts] Fetching alerts", {
+    organizationId,
+    filters,
+    limit,
+    collection: HEALTH_ALERTS_COLLECTION,
+  });
+
+  try {
+    const q = query(
+      collection(db, HEALTH_ALERTS_COLLECTION),
+      where("organizationId", "==", organizationId),
+      orderBy("createdAt", "desc"),
+      firestoreLimit(limit)
+    );
+
+    console.log("[getHealthAlerts] Query built, executing getDocs...");
+    const snapshot = await getDocs(q);
+    console.log("[getHealthAlerts] getDocs completed", {
+      empty: snapshot.empty,
+      size: snapshot.size,
+    });
+
+    let alerts = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      console.log("[getHealthAlerts] Raw doc data:", {
+        id: doc.id,
+        data: JSON.stringify(data, null, 2),
+      });
+      return {
+        id: doc.id,
+        ...data,
+      };
+    }) as HealthAlert[];
+
+    console.log("[getHealthAlerts] Mapped alerts before filtering:", {
+      count: alerts.length,
+      alertSummaries: alerts.map((a) => ({
+        id: a.id,
+        title: a.title,
+        status: a.status,
+        severity: a.severity,
+        type: a.type,
+      })),
+    });
+
+    // Client-side filtering
+    if (filters.status && filters.status.length > 0) {
+      const beforeCount = alerts.length;
+      alerts = alerts.filter((a) => filters.status!.includes(a.status));
+      console.log("[getHealthAlerts] After status filter:", {
+        beforeCount,
+        afterCount: alerts.length,
+      });
+    }
+    if (filters.severity && filters.severity.length > 0) {
+      const beforeCount = alerts.length;
+      alerts = alerts.filter((a) => filters.severity!.includes(a.severity));
+      console.log("[getHealthAlerts] After severity filter:", {
+        beforeCount,
+        afterCount: alerts.length,
+      });
+    }
+    if (filters.type && filters.type.length > 0) {
+      const beforeCount = alerts.length;
+      alerts = alerts.filter((a) => filters.type!.includes(a.type));
+      console.log("[getHealthAlerts] After type filter:", {
+        beforeCount,
+        afterCount: alerts.length,
+      });
+    }
+
+    console.log("[getHealthAlerts] Final result:", { count: alerts.length });
+    return alerts;
+  } catch (error) {
+    console.error("[getHealthAlerts] Error:", {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorCode: (error as { code?: string })?.code,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Get active health alerts
+ */
+export async function getActiveHealthAlerts(
+  organizationId: string
+): Promise<HealthAlert[]> {
+  const q = query(
+    collection(db, HEALTH_ALERTS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("status", "==", "active"),
+    orderBy("severity", "desc"),
+    orderBy("createdAt", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as HealthAlert[];
+}
+
+/**
+ * Acknowledge a health alert
+ */
+export async function acknowledgeHealthAlert(
+  alertId: string,
+  userId: string
+): Promise<void> {
+  const docRef = doc(db, HEALTH_ALERTS_COLLECTION, alertId);
+
+  await updateDoc(docRef, {
+    status: "acknowledged",
+    acknowledgedAt: Timestamp.now(),
+    acknowledgedBy: userId,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Resolve a health alert
+ */
+export async function resolveHealthAlert(
+  alertId: string,
+  resolutionNotes: string,
+  linkedCapaId: string | undefined,
+  userId: string
+): Promise<void> {
+  const docRef = doc(db, HEALTH_ALERTS_COLLECTION, alertId);
+
+  await updateDoc(docRef, {
+    status: "resolved",
+    resolvedAt: Timestamp.now(),
+    resolvedBy: userId,
+    resolutionNotes,
+    linkedCapaId,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Subscribe to real-time health alert updates
+ */
+export function subscribeToHealthAlerts(
+  organizationId: string,
+  callback: (alerts: HealthAlert[]) => void
+): Unsubscribe {
+  console.log("[subscribeToHealthAlerts] Setting up subscription", {
+    organizationId,
+    collection: HEALTH_ALERTS_COLLECTION,
+  });
+
+  const q = query(
+    collection(db, HEALTH_ALERTS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("createdAt", "desc")
+  );
+
+  console.log(
+    "[subscribeToHealthAlerts] Query built, setting up onSnapshot listener..."
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      console.log("[subscribeToHealthAlerts] Snapshot received", {
+        empty: snapshot.empty,
+        size: snapshot.size,
+        fromCache: snapshot.metadata.fromCache,
+        hasPendingWrites: snapshot.metadata.hasPendingWrites,
+      });
+
+      const alerts = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        console.log("[subscribeToHealthAlerts] Raw doc data:", {
+          id: doc.id,
+          data: JSON.stringify(data, null, 2),
+        });
+        return {
+          id: doc.id,
+          ...data,
+        };
+      }) as HealthAlert[];
+
+      console.log("[subscribeToHealthAlerts] Processed alerts:", {
+        count: alerts.length,
+        alertSummaries: alerts.map((a) => ({
+          id: a.id,
+          title: a.title,
+          status: a.status,
+          severity: a.severity,
+          type: a.type,
+        })),
+      });
+
+      callback(alerts);
+    },
+    (error) => {
+      console.error("[subscribeToHealthAlerts] Subscription error:", {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorCode: (error as { code?: string })?.code,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      callback([]);
+    }
+  );
+}
+
+// =============================================================================
+// Aggregate Statistics (for Dashboard - non-PHI)
+// =============================================================================
+
+/**
+ * Get aggregate health statistics for dashboard
+ * This returns non-PHI aggregate data suitable for QHSE/HR view
+ */
+export async function getHealthStats(
+  organizationId: string
+): Promise<HealthStats | null> {
+  // Try to get cached stats first
+  const q = query(
+    collection(db, HEALTH_STATS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("calculatedAt", "desc"),
+    firestoreLimit(1)
+  );
+
+  const snapshot = await getDocs(q);
+
+  if (!snapshot.empty) {
+    return { ...snapshot.docs[0].data() } as HealthStats;
+  }
+
+  // If no cached stats, calculate from data
+  return calculateHealthStats(organizationId);
+}
+
+/**
+ * Calculate health statistics from raw data
+ */
+export async function calculateHealthStats(
+  organizationId: string
+): Promise<HealthStats> {
+  const now = Timestamp.now();
+  const thirtyDaysAgo = Timestamp.fromMillis(
+    now.toMillis() - 30 * 24 * 60 * 60 * 1000
+  );
+
+  // Get health records
+  const recordsQuery = query(
+    collection(db, HEALTH_RECORDS_COLLECTION),
+    where("organizationId", "==", organizationId)
+  );
+  const recordsSnapshot = await getDocs(recordsQuery);
+  const records = recordsSnapshot.docs.map((doc) => doc.data() as HealthRecord);
+
+  // Get visits
+  const visitsQuery = query(
+    collection(db, MEDICAL_VISITS_COLLECTION),
+    where("organizationId", "==", organizationId)
+  );
+  const visitsSnapshot = await getDocs(visitsQuery);
+  const visits = visitsSnapshot.docs.map((doc) => doc.data() as MedicalVisit);
+
+  // Get alerts
+  const alertsQuery = query(
+    collection(db, HEALTH_ALERTS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("status", "==", "active")
+  );
+  const alertsSnapshot = await getDocs(alertsQuery);
+  const activeAlerts = alertsSnapshot.docs.map(
+    (doc) => doc.data() as HealthAlert
+  );
+
+  // Calculate fitness status breakdown
+  const fitnessByStatus: Record<FitnessStatus, number> = {
+    fit: 0,
+    fit_with_restrictions: 0,
+    temporarily_unfit: 0,
+    permanently_unfit: 0,
+    pending_examination: 0,
+  };
+
+  for (const record of records) {
+    fitnessByStatus[record.fitnessStatus] =
+      (fitnessByStatus[record.fitnessStatus] || 0) + 1;
+  }
+
+  // Calculate visit stats
+  const scheduledVisits = visits.filter((v) => v.status === "scheduled");
+  const overdueVisits = scheduledVisits.filter(
+    (v) => v.scheduledDate.toMillis() < now.toMillis()
+  );
+
+  // Calculate active cases (employees with restrictions or unfit status)
+  const activeCases = records.filter(
+    (r) =>
+      r.fitnessStatus !== "fit" && r.fitnessStatus !== "pending_examination"
+  ).length;
+
+  const stats: HealthStats = {
+    organizationId,
+    calculatedAt: now,
+    period: {
+      start: thirtyDaysAgo,
+      end: now,
+    },
+    activeCases,
+    activeCasesChange: 0, // Would need historical data to calculate
+    employeesUnderSurveillance: records.filter((r) => r.exposures.length > 0)
+      .length,
+    pendingVisits: scheduledVisits.length,
+    overdueVisits: overdueVisits.length,
+    absenteeismRate: 0, // Would need absence data
+    absenteeismDays: 0,
+    absenteeismChange: 0,
+    fitnessByStatus,
+    activeAlerts: activeAlerts.length,
+    criticalAlerts: activeAlerts.filter((a) => a.severity === "critical")
+      .length,
+    byPathology: [], // Would need more detailed tracking
+    byDepartment: [], // Would need department aggregation
+  };
+
+  // Cache the stats
+  const statsDocRef = doc(collection(db, HEALTH_STATS_COLLECTION));
+  await setDoc(statsDocRef, stats);
+
+  return stats;
+}
+
+/**
+ * Get visit statistics for dashboard
+ */
+export async function getVisitStats(organizationId: string): Promise<{
+  total: number;
+  scheduled: number;
+  completed: number;
+  overdue: number;
+  thisMonth: number;
+  byType: Record<ExaminationType, number>;
+}> {
+  const visits = await getMedicalVisits(organizationId, {}, 1000);
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const stats = {
+    total: visits.length,
+    scheduled: 0,
+    completed: 0,
+    overdue: 0,
+    thisMonth: 0,
+    byType: {} as Record<ExaminationType, number>,
+  };
+
+  for (const visit of visits) {
+    // Count by status
+    if (visit.status === "scheduled") {
+      stats.scheduled++;
+      if (visit.scheduledDate.toMillis() < now.getTime()) {
+        stats.overdue++;
+      }
+    } else if (visit.status === "completed") {
+      stats.completed++;
+    }
+
+    // Count by type
+    stats.byType[visit.type] = (stats.byType[visit.type] || 0) + 1;
+
+    // Count this month
+    if (visit.scheduledDate.toDate() >= thisMonthStart) {
+      stats.thisMonth++;
+    }
+  }
+
+  return stats;
+}
+
+/**
+ * Get exposure statistics for dashboard
+ */
+export async function getExposureStats(organizationId: string): Promise<{
+  total: number;
+  critical: number;
+  elevated: number;
+  withinLimits: number;
+  byHazardType: Record<HazardCategory, number>;
+  totalExposedEmployees: number;
+}> {
+  const exposures = await getExposures(organizationId, {}, 1000);
+
+  const stats = {
+    total: exposures.length,
+    critical: 0,
+    elevated: 0,
+    withinLimits: 0,
+    byHazardType: {} as Record<HazardCategory, number>,
+    totalExposedEmployees: 0,
+  };
+
+  const uniqueEmployees = new Set<string>();
+
+  for (const exposure of exposures) {
+    // Count by alert level
+    if (exposure.alertLevel === "critical") {
+      stats.critical++;
+    } else if (exposure.alertLevel === "elevated") {
+      stats.elevated++;
+    } else {
+      stats.withinLimits++;
+    }
+
+    // Count by hazard type
+    stats.byHazardType[exposure.hazardType] =
+      (stats.byHazardType[exposure.hazardType] || 0) + 1;
+
+    // Count unique exposed employees
+    for (const empId of exposure.exposedEmployeeIds) {
+      uniqueEmployees.add(empId);
+    }
+  }
+
+  stats.totalExposedEmployees = uniqueEmployees.size;
+
+  return stats;
+}
+
+/**
+ * Get monthly trend data for pathologies from health records
+ */
+export async function getPathologyTrends(organizationId: string): Promise<{
+  monthlyData: Array<{
+    month: string;
+    tms: number;
+    rps: number;
+    respiratory: number;
+  }>;
+  currentMonth: {
+    tms: number;
+    rps: number;
+    respiratory: number;
+    other: number;
+  };
+  changes: {
+    tms: number;
+    rps: number;
+    respiratory: number;
+  };
+}> {
+  const records = await getHealthRecords(organizationId, {}, 1000);
+
+  // Get last 12 months
+  const now = new Date();
+  const months: string[] = [];
+  const monthLabels = [
+    "Jan",
+    "Fév",
+    "Mar",
+    "Avr",
+    "Mai",
+    "Jun",
+    "Jul",
+    "Aoû",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Déc",
+  ];
+
+  for (let i = 11; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    );
+  }
+
+  // Initialize monthly data
+  const monthlyData = months.map((month, index) => {
+    const monthIndex = new Date(
+      parseInt(month.split("-")[0]),
+      parseInt(month.split("-")[1]) - 1,
+      1
+    ).getMonth();
+    return {
+      month: monthLabels[monthIndex],
+      tms: 0,
+      rps: 0,
+      respiratory: 0,
+    };
+  });
+
+  // Count pathologies from health records restrictions
+  const currentMonth = { tms: 0, rps: 0, respiratory: 0, other: 0 };
+  const previousMonth = { tms: 0, rps: 0, respiratory: 0, other: 0 };
+
+  const currentMonthStr = months[months.length - 1];
+  const previousMonthStr = months[months.length - 2];
+
+  for (const record of records) {
+    // Count by restriction type
+    for (const restriction of record.restrictions || []) {
+      const restrictionType = restriction.type.toLowerCase();
+      const startDate = restriction.startDate.toDate();
+      const monthStr = `${startDate.getFullYear()}-${String(
+        startDate.getMonth() + 1
+      ).padStart(2, "0")}`;
+      const monthIndex = months.indexOf(monthStr);
+
+      // Categorize pathology
+      let category: "tms" | "rps" | "respiratory" | "other" = "other";
+      if (
+        restrictionType.includes("musculo") ||
+        restrictionType.includes("squelettique") ||
+        restrictionType.includes("ergonomique") ||
+        restrictionType.includes("dos") ||
+        restrictionType.includes("tms") ||
+        restrictionType.includes("posture")
+      ) {
+        category = "tms";
+      } else if (
+        restrictionType.includes("psycho") ||
+        restrictionType.includes("stress") ||
+        restrictionType.includes("rps") ||
+        restrictionType.includes("burn") ||
+        restrictionType.includes("anxiété") ||
+        restrictionType.includes("dépression")
+      ) {
+        category = "rps";
+      } else if (
+        restrictionType.includes("respir") ||
+        restrictionType.includes("pulmon") ||
+        restrictionType.includes("asthme") ||
+        restrictionType.includes("bpco")
+      ) {
+        category = "respiratory";
+      }
+
+      // Add to monthly data
+      if (monthIndex >= 0 && category !== "other") {
+        monthlyData[monthIndex][category]++;
+      }
+
+      // Count for current and previous month
+      if (monthStr === currentMonthStr) {
+        currentMonth[category]++;
+      } else if (monthStr === previousMonthStr) {
+        previousMonth[category]++;
+      }
+    }
+
+    // Also count based on fitness status for TMS/RPS
+    if (
+      record.fitnessStatus === "fit_with_restrictions" ||
+      record.fitnessStatus === "temporarily_unfit"
+    ) {
+      // Count active restrictions as cases
+      const recordDate =
+        record.updatedAt?.toDate() || record.createdAt?.toDate();
+      if (recordDate) {
+        const monthStr = `${recordDate.getFullYear()}-${String(
+          recordDate.getMonth() + 1
+        ).padStart(2, "0")}`;
+        if (monthStr === currentMonthStr) {
+          currentMonth.tms++; // Default to TMS for employees with restrictions
+        }
+      }
+    }
+  }
+
+  // Calculate percentage changes
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
+  return {
+    monthlyData,
+    currentMonth,
+    changes: {
+      tms: calculateChange(currentMonth.tms, previousMonth.tms),
+      rps: calculateChange(currentMonth.rps, previousMonth.rps),
+      respiratory: calculateChange(
+        currentMonth.respiratory,
+        previousMonth.respiratory
+      ),
+    },
+  };
+}
+
+/**
+ * Get monthly visit trends for the last 12 months
+ */
+export async function getVisitTrends(organizationId: string): Promise<{
+  monthlyData: Array<{
+    month: string;
+    scheduled: number;
+    completed: number;
+    compliance: number;
+  }>;
+  currentMonth: {
+    scheduled: number;
+    completed: number;
+    overdue: number;
+    compliance: number;
+  };
+  changes: {
+    completed: number;
+    compliance: number;
+  };
+}> {
+  const visits = await getMedicalVisits(organizationId, {}, 1000);
+
+  // Get last 12 months
+  const now = new Date();
+  const months: string[] = [];
+  const monthLabels = [
+    "Jan",
+    "Fév",
+    "Mar",
+    "Avr",
+    "Mai",
+    "Jun",
+    "Jul",
+    "Aoû",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Déc",
+  ];
+
+  for (let i = 11; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    );
+  }
+
+  // Initialize monthly data
+  const monthlyStats: Record<string, { scheduled: number; completed: number }> =
+    {};
+  for (const month of months) {
+    monthlyStats[month] = { scheduled: 0, completed: 0 };
+  }
+
+  // Count visits by month
+  for (const visit of visits) {
+    const visitDate = visit.scheduledDate.toDate();
+    const monthStr = `${visitDate.getFullYear()}-${String(
+      visitDate.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+    if (monthlyStats[monthStr]) {
+      monthlyStats[monthStr].scheduled++;
+      if (visit.status === "completed") {
+        monthlyStats[monthStr].completed++;
+      }
+    }
+  }
+
+  // Build monthly data array
+  const monthlyData = months.map((month) => {
+    const monthIndex = parseInt(month.split("-")[1]) - 1;
+    const stats = monthlyStats[month];
+    const compliance =
+      stats.scheduled > 0
+        ? Math.round((stats.completed / stats.scheduled) * 100)
+        : 100;
+
+    return {
+      month: monthLabels[monthIndex],
+      scheduled: stats.scheduled,
+      completed: stats.completed,
+      compliance,
+    };
+  });
+
+  // Current month stats
+  const currentMonthStr = months[months.length - 1];
+  const previousMonthStr = months[months.length - 2];
+  const currentStats = monthlyStats[currentMonthStr];
+  const previousStats = monthlyStats[previousMonthStr];
+
+  const currentCompliance =
+    currentStats.scheduled > 0
+      ? Math.round((currentStats.completed / currentStats.scheduled) * 100)
+      : 100;
+  const previousCompliance =
+    previousStats.scheduled > 0
+      ? Math.round((previousStats.completed / previousStats.scheduled) * 100)
+      : 100;
+
+  // Calculate overdue for current month
+  const overdueVisits = visits.filter((v) => {
+    const visitDate = v.scheduledDate.toDate();
+    const monthStr = `${visitDate.getFullYear()}-${String(
+      visitDate.getMonth() + 1
+    ).padStart(2, "0")}`;
+    return (
+      monthStr === currentMonthStr &&
+      v.status === "scheduled" &&
+      visitDate < now
+    );
+  });
+
+  return {
+    monthlyData,
+    currentMonth: {
+      scheduled: currentStats.scheduled,
+      completed: currentStats.completed,
+      overdue: overdueVisits.length,
+      compliance: currentCompliance,
+    },
+    changes: {
+      completed: currentStats.completed - previousStats.completed,
+      compliance: currentCompliance - previousCompliance,
+    },
+  };
+}
+
+/**
+ * Get aptitude (fitness) trends over the last 12 months
+ */
+export async function getAptitudeTrends(organizationId: string): Promise<{
+  currentDistribution: Record<FitnessStatus, number>;
+  totalEmployees: number;
+  withRestrictions: number;
+  pending: number;
+  changes: {
+    fit: number;
+    withRestrictions: number;
+  };
+}> {
+  const records = await getHealthRecords(organizationId, {}, 1000);
+
+  const distribution: Record<FitnessStatus, number> = {
+    fit: 0,
+    fit_with_restrictions: 0,
+    temporarily_unfit: 0,
+    permanently_unfit: 0,
+    pending_examination: 0,
+  };
+
+  for (const record of records) {
+    distribution[record.fitnessStatus] =
+      (distribution[record.fitnessStatus] || 0) + 1;
+  }
+
+  const totalEmployees = records.length;
+  const withRestrictions =
+    distribution.fit_with_restrictions +
+    distribution.temporarily_unfit +
+    distribution.permanently_unfit;
+
+  return {
+    currentDistribution: distribution,
+    totalEmployees,
+    withRestrictions,
+    pending: distribution.pending_examination,
+    changes: {
+      fit: 0, // Would need historical data
+      withRestrictions: 0,
+    },
+  };
+}
+
+/**
+ * Get exposure trends over the last 12 months
+ */
+export async function getExposureTrends(organizationId: string): Promise<{
+  byHazardType: Array<{ type: string; count: number; critical: number }>;
+  totalExposed: number;
+  criticalCount: number;
+  withinLimitsPercent: number;
+  changes: {
+    exposed: number;
+    critical: number;
+  };
+}> {
+  const exposures = await getExposures(organizationId, {}, 1000);
+
+  // Group by hazard type
+  const byType: Record<string, { count: number; critical: number }> = {};
+  let totalExposed = 0;
+  let criticalCount = 0;
+  let withinLimitsCount = 0;
+
+  const uniqueEmployees = new Set<string>();
+
+  for (const exposure of exposures) {
+    // Initialize type if needed
+    if (!byType[exposure.hazardType]) {
+      byType[exposure.hazardType] = { count: 0, critical: 0 };
+    }
+
+    byType[exposure.hazardType].count++;
+
+    if (
+      exposure.alertLevel === "critical" ||
+      exposure.alertLevel === "elevated"
+    ) {
+      byType[exposure.hazardType].critical++;
+      criticalCount++;
+    } else {
+      withinLimitsCount++;
+    }
+
+    for (const empId of exposure.exposedEmployeeIds) {
+      uniqueEmployees.add(empId);
+    }
+  }
+
+  totalExposed = uniqueEmployees.size;
+
+  const withinLimitsPercent =
+    exposures.length > 0
+      ? Math.round((withinLimitsCount / exposures.length) * 100)
+      : 100;
+
+  // Convert to array with labels
+  const hazardLabels: Record<string, string> = {
+    physical: "Physique",
+    chemical: "Chimique",
+    biological: "Biologique",
+    ergonomic: "Ergonomique",
+    psychosocial: "Psychosocial",
+    mechanical: "Mécanique",
+    electrical: "Électrique",
+    thermal: "Thermique",
+    environmental: "Environnemental",
+  };
+
+  const byHazardType = Object.entries(byType).map(([type, data]) => ({
+    type: hazardLabels[type] || type,
+    count: data.count,
+    critical: data.critical,
+  }));
+
+  return {
+    byHazardType,
+    totalExposed,
+    criticalCount,
+    withinLimitsPercent,
+    changes: {
+      exposed: 0, // Would need historical data
+      critical: 0,
+    },
+  };
+}
+
+// =============================================================================
+// Sync Alerts from Existing Data
+// =============================================================================
+
+/**
+ * Sync alerts from existing exposures and visits
+ * Creates alerts for:
+ * - Exposures with critical or elevated alert levels that don't have existing alerts
+ * - Overdue visits that don't have existing alerts
+ *
+ * This is useful when data was seeded/imported without triggering the normal alert creation flow.
+ */
+export async function syncAlertsFromExistingData(
+  organizationId: string,
+  userId: string
+): Promise<{ exposureAlerts: number; visitAlerts: number }> {
+  console.log("[syncAlertsFromExistingData] Starting sync", {
+    organizationId,
+    userId,
+  });
+
+  let exposureAlertsCreated = 0;
+  let visitAlertsCreated = 0;
+
+  try {
+    // Get existing alerts to avoid duplicates
+    console.log("[syncAlertsFromExistingData] Fetching existing alerts...");
+    const existingAlerts = await getHealthAlerts(organizationId);
+    console.log("[syncAlertsFromExistingData] Existing alerts:", {
+      count: existingAlerts.length,
+      alerts: existingAlerts.map((a) => ({
+        id: a.id,
+        sourceId: a.sourceId,
+        status: a.status,
+      })),
+    });
+
+    const existingAlertSourceIds = new Set(
+      existingAlerts
+        .filter((a) => a.sourceId && a.status !== "resolved")
+        .map((a) => a.sourceId)
+    );
+    console.log(
+      "[syncAlertsFromExistingData] Existing source IDs:",
+      Array.from(existingAlertSourceIds)
+    );
+
+    // 1. Create alerts for critical/elevated exposures
+    console.log("[syncAlertsFromExistingData] Fetching exposures...");
+    const allExposures = await getExposures(organizationId);
+    console.log("[syncAlertsFromExistingData] All exposures:", {
+      count: allExposures.length,
+      exposures: allExposures.map((e) => ({
+        id: e.id,
+        agent: e.agent,
+        alertLevel: e.alertLevel,
+      })),
+    });
+
+    const criticalExposures = allExposures.filter(
+      (e) => e.alertLevel === "critical" || e.alertLevel === "elevated"
+    );
+    console.log("[syncAlertsFromExistingData] Critical/elevated exposures:", {
+      count: criticalExposures.length,
+      exposures: criticalExposures.map((e) => ({
+        id: e.id,
+        agent: e.agent,
+        alertLevel: e.alertLevel,
+      })),
+    });
+
+    for (const exposure of criticalExposures) {
+      // Skip if alert already exists for this exposure
+      if (existingAlertSourceIds.has(exposure.id)) {
+        console.log(
+          "[syncAlertsFromExistingData] Skipping exposure (alert exists):",
+          exposure.id
+        );
+        continue;
+      }
+
+      const severity =
+        exposure.alertLevel === "critical" ? "critical" : "warning";
+
+      console.log("[syncAlertsFromExistingData] Creating exposure alert:", {
+        exposureId: exposure.id,
+        agent: exposure.agent,
+        severity,
+      });
+
+      await createHealthAlert(
+        {
+          organizationId,
+          type: "exposure_threshold",
+          severity,
+          title: `Dépassement de limite d'exposition: ${exposure.agent}`,
+          description: `Le niveau d'exposition à ${exposure.agent} (${
+            exposure.lastMeasurement
+          } ${exposure.unit}) représente ${exposure.percentOfLimit.toFixed(
+            0
+          )}% de la limite réglementaire (${exposure.regulatoryLimit} ${
+            exposure.unit
+          }).`,
+          affectedDepartments: exposure.departmentId
+            ? [exposure.departmentId]
+            : undefined,
+          affectedEmployeeCount: exposure.exposedEmployeeCount,
+          siteId: exposure.siteId,
+          status: "active",
+          sourceType: "exposure",
+          sourceId: exposure.id,
+        },
+        userId
+      );
+      exposureAlertsCreated++;
+      console.log(
+        "[syncAlertsFromExistingData] Exposure alert created successfully"
+      );
+    }
+
+    // 2. Create alerts for overdue visits
+    console.log("[syncAlertsFromExistingData] Fetching visits...");
+    const allVisits = await getMedicalVisits(organizationId);
+    console.log("[syncAlertsFromExistingData] All visits:", {
+      count: allVisits.length,
+      visits: allVisits.map((v) => ({
+        id: v.id,
+        employeeName: v.employeeName,
+        status: v.status,
+      })),
+    });
+
+    const now = Timestamp.now();
+    const overdueVisits = allVisits.filter(
+      (v) =>
+        v.status === "scheduled" && v.scheduledDate.toMillis() < now.toMillis()
+    );
+    console.log("[syncAlertsFromExistingData] Overdue visits:", {
+      count: overdueVisits.length,
+      visits: overdueVisits.map((v) => ({
+        id: v.id,
+        employeeName: v.employeeName,
+      })),
+    });
+
+    for (const visit of overdueVisits) {
+      // Skip if alert already exists for this visit
+      if (existingAlertSourceIds.has(visit.id)) {
+        console.log(
+          "[syncAlertsFromExistingData] Skipping visit (alert exists):",
+          visit.id
+        );
+        continue;
+      }
+
+      console.log("[syncAlertsFromExistingData] Creating visit alert:", {
+        visitId: visit.id,
+        employeeName: visit.employeeName,
+      });
+
+      await createHealthAlert(
+        {
+          organizationId,
+          type: "visit_overdue",
+          severity: "warning",
+          title: `Visite médicale en retard: ${visit.employeeName}`,
+          description: `La visite médicale de type "${visit.type}" pour ${
+            visit.employeeName
+          } était prévue le ${visit.scheduledDate
+            .toDate()
+            .toLocaleDateString("fr-FR")} et n'a pas été effectuée.`,
+          affectedDepartments: visit.departmentId
+            ? [visit.departmentId]
+            : undefined,
+          affectedEmployeeCount: 1,
+          status: "active",
+          sourceType: "visit",
+          sourceId: visit.id,
+          linkedVisitIds: [visit.id],
+        },
+        userId
+      );
+      visitAlertsCreated++;
+      console.log(
+        "[syncAlertsFromExistingData] Visit alert created successfully"
+      );
+    }
+
+    const result = {
+      exposureAlerts: exposureAlertsCreated,
+      visitAlerts: visitAlertsCreated,
+    };
+    console.log(
+      "[syncAlertsFromExistingData] Sync completed successfully:",
+      result
+    );
+    return result;
+  } catch (error) {
+    console.error("[syncAlertsFromExistingData] Error during sync:", {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorCode: (error as { code?: string })?.code,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
+}
+
+// =============================================================================
+// Check for Overdue Visits (for scheduled jobs)
+// =============================================================================
+
+/**
+ * Check and mark overdue visits, create alerts
+ */
+export async function checkOverdueVisits(
+  organizationId: string,
+  userId: string
+): Promise<number> {
+  const overdueVisits = await getOverdueVisits(organizationId);
+  const batch = writeBatch(db);
+  let alertsCreated = 0;
+
+  for (const visit of overdueVisits) {
+    // Update visit status to overdue
+    const visitRef = doc(db, MEDICAL_VISITS_COLLECTION, visit.id);
+    batch.update(visitRef, {
+      status: "overdue",
+      updatedAt: Timestamp.now(),
+    });
+
+    // Create alert for overdue visit
+    const alertRef = doc(collection(db, HEALTH_ALERTS_COLLECTION));
+    const alert: Omit<HealthAlert, "id"> = {
+      organizationId,
+      type: "visit_overdue",
+      severity: "warning",
+      title: `Visite médicale en retard: ${visit.employeeName}`,
+      description: `La visite médicale de type "${visit.type}" pour ${
+        visit.employeeName
+      } était prévue le ${visit.scheduledDate
+        .toDate()
+        .toLocaleDateString("fr-FR")} et n'a pas été effectuée.`,
+      affectedDepartments: visit.departmentId
+        ? [visit.departmentId]
+        : undefined,
+      affectedEmployeeCount: 1,
+      status: "active",
+      sourceType: "visit",
+      sourceId: visit.id,
+      linkedVisitIds: [visit.id],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+    batch.set(alertRef, alert);
+    alertsCreated++;
+  }
+
+  await batch.commit();
+  return alertsCreated;
+}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AboutUs } from "./AboutUs";
 import { CTAFinal } from "./CTAFinal";
 import { CTAIntermediate } from "./CTAIntermediate";
-import { Dashboard } from "./Dashboard";
+import { Dashboard } from "./LegacyDashboard";
 import { FeaturesSmallCards } from "./FeaturesSmallCards";
 import { Footer } from "./Footer";
 import { Hero } from "./Hero";

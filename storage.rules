@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Organization files
+    match /organizations/{orgId}/{allPaths=**} {
+      // Allow read/write for authenticated users
+      // In production, you'd want to verify org membership
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+        && request.resource.size < 10 * 1024 * 1024; // Max 10MB
+    }
+    
+    // User profile images
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024; // Max 5MB
+    }
+    
+    // Incident attachments
+    match /incidents/{incidentId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+        && request.resource.size < 25 * 1024 * 1024; // Max 25MB
+    }
+    
+    // Training materials
+    match /training/{planId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+        && request.resource.size < 50 * 1024 * 1024; // Max 50MB
+    }
+  }
+}
+
