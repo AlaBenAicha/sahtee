@@ -36,22 +36,22 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Plus, X, Save, Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { CalendarIcon, Plus, X, Save, Loader2, ChevronLeft, ChevronRight, Check, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useCreateHealthRecord, useUpdateHealthRecord, useIsPhysician } from "@/hooks/useHealth";
+import { useCreateHealthRecord, useUpdateHealthRecord, useIsPhysician, useEmployeeHasHealthRecord, useSyncHealthRecordExposures } from "@/hooks/useHealth";
 import { EmployeeSelector } from "@/components/health/EmployeeSelector";
-import type { HealthRecord, FitnessStatus, MedicalRestriction, MedicalExamination, Vaccination, ExposureRecord, ExaminationType, HazardCategory } from "@/types/health";
+import { ExposureSelector } from "@/components/health/ExposureSelector";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { HealthRecord, FitnessStatus, MedicalRestriction, Vaccination, OrganizationExposure } from "@/types/health";
 import type { User } from "@/types/user";
 
 const formSchema = z.object({
   employeeId: z.string().min(1, "ID employé requis"),
   employeeName: z.string().min(1, "Nom requis"),
   departmentId: z.string().min(1, "Département requis"),
-  jobTitle: z.string().min(1, "Poste requis"),
   fitnessStatus: z.enum(["fit", "fit_with_restrictions", "temporarily_unfit", "permanently_unfit", "pending_examination"]),
-  nextExaminationDue: z.date().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -71,37 +71,11 @@ const FITNESS_OPTIONS: { value: FitnessStatus; label: string }[] = [
   { value: "pending_examination", label: "En attente d'examen" },
 ];
 
-const EXAMINATION_TYPES: { value: ExaminationType; label: string }[] = [
-  { value: "pre_employment", label: "Visite d'embauche" },
-  { value: "periodic", label: "Visite périodique" },
-  { value: "return_to_work", label: "Visite de reprise" },
-  { value: "special_surveillance", label: "Surveillance spéciale" },
-  { value: "exit", label: "Visite de fin de contrat" },
-];
-
-const HAZARD_CATEGORIES: { value: HazardCategory; label: string }[] = [
-  { value: "physical", label: "Physique (bruit, vibrations, radiation)" },
-  { value: "chemical", label: "Chimique (toxique, corrosif, inflammable)" },
-  { value: "biological", label: "Biologique (bactéries, virus, champignons)" },
-  { value: "ergonomic", label: "Ergonomique (posture, mouvements répétitifs)" },
-  { value: "psychosocial", label: "Psychosocial (stress, charge de travail)" },
-  { value: "mechanical", label: "Mécanique (pièces mobiles, objets tranchants)" },
-  { value: "electrical", label: "Électrique (chocs, arc électrique)" },
-  { value: "thermal", label: "Thermique (chaleur, froid, feu)" },
-  { value: "environmental", label: "Environnemental (éclairage, espaces confinés)" },
-];
-
-const EXPOSURE_LEVELS: { value: "low" | "medium" | "high"; label: string }[] = [
-  { value: "low", label: "Faible" },
-  { value: "medium", label: "Moyen" },
-  { value: "high", label: "Élevé" },
-];
-
 // Step configuration for the multi-step wizard
+// Note: Visites/Examens are now managed separately via the medicalVisits collection
 const FORM_STEPS = [
   { id: "info", label: "Informations", description: "Données employé" },
   { id: "restrictions", label: "Restrictions", description: "Restrictions médicales" },
-  { id: "exams", label: "Examens", description: "Historique examens" },
   { id: "vaccines", label: "Vaccins", description: "Vaccinations" },
   { id: "exposures", label: "Expositions", description: "Risques professionnels" },
 ] as const;
@@ -118,6 +92,29 @@ export function MedicalRecordForm({
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(0);
   const totalSteps = FORM_STEPS.length;
+
+  // DEBUG: Log step changes
+  const handleStepChange = (newStep: number, source: string) => {
+    console.log(`[MedicalRecordForm] 📍 Step change requested`, {
+      source,
+      fromStep: currentStep,
+      toStep: newStep,
+      stepName: FORM_STEPS[newStep]?.label,
+      timestamp: new Date().toISOString(),
+    });
+    setCurrentStep(newStep);
+  };
+
+  // DEBUG: Log dialog open/close
+  const handleOpenChange = (newOpen: boolean) => {
+    console.log(`[MedicalRecordForm] 🚪 Dialog state change`, {
+      wasOpen: open,
+      isNowOpen: newOpen,
+      currentStep,
+      timestamp: new Date().toISOString(),
+    });
+    onOpenChange(newOpen);
+  };
   
   // Selected employee state (for linking to User document)
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
@@ -127,26 +124,6 @@ export function MedicalRecordForm({
     record?.restrictions || []
   );
   const [newRestriction, setNewRestriction] = useState("");
-  
-  // Examinations state
-  const [examinations, setExaminations] = useState<Partial<MedicalExamination>[]>(
-    record?.examinations || []
-  );
-  const [newExam, setNewExam] = useState<{
-    type: ExaminationType;
-    date: Date | undefined;
-    conductedBy: string;
-    location: string;
-    result: FitnessStatus;
-    notes: string;
-  }>({
-    type: "periodic",
-    date: undefined,
-    conductedBy: "",
-    location: "",
-    result: "fit",
-    notes: "",
-  });
 
   // Vaccinations state
   const [vaccinations, setVaccinations] = useState<Partial<Vaccination>[]>(
@@ -168,26 +145,20 @@ export function MedicalRecordForm({
     required: false,
   });
 
-  // Exposures state
-  const [exposures, setExposures] = useState<Partial<ExposureRecord>[]>(
-    record?.exposures || []
+  // Exposures state - now using OrganizationExposure references
+  const [exposureIds, setExposureIds] = useState<string[]>(
+    record?.exposureIds || []
   );
-  const [newExposure, setNewExposure] = useState<{
-    hazardType: HazardCategory;
-    substance: string;
-    exposureLevel: "low" | "medium" | "high";
-    duration: string;
-    frequency: string;
-  }>({
-    hazardType: "physical",
-    substance: "",
-    exposureLevel: "low",
-    duration: "",
-    frequency: "",
-  });
+  const [selectedExposures, setSelectedExposures] = useState<OrganizationExposure[]>([]);
   
   const createRecord = useCreateHealthRecord();
   const updateRecord = useUpdateHealthRecord();
+  const syncExposures = useSyncHealthRecordExposures();
+  
+  // Check if selected employee already has a health record
+  const { data: employeeHasRecord, isLoading: checkingEmployee } = useEmployeeHasHealthRecord(
+    selectedEmployee?.id
+  );
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -195,11 +166,44 @@ export function MedicalRecordForm({
       employeeId: record?.employeeId || "",
       employeeName: record?.employeeName || "",
       departmentId: record?.departmentId || "",
-      jobTitle: record?.jobTitle || "",
       fitnessStatus: record?.fitnessStatus || "pending_examination",
-      nextExaminationDue: record?.nextExaminationDue?.toDate() || undefined,
     },
   });
+
+  // Reset form state when dialog opens (for new records only)
+  useEffect(() => {
+    console.log(`[MedicalRecordForm] 🔄 useEffect for reset triggered`, {
+      open,
+      hasRecord: !!record,
+      willReset: open && !record,
+      timestamp: new Date().toISOString(),
+    });
+    if (open && !record) {
+      console.log(`[MedicalRecordForm] 🔄 Resetting form state for new record`);
+      // Reset to first step when opening a new record
+      setCurrentStep(0);
+      setSelectedEmployee(null);
+      setRestrictions([]);
+      setNewRestriction("");
+      setVaccinations([]);
+      setNewVaccine({
+        name: "",
+        date: undefined,
+        batchNumber: "",
+        administeredBy: "",
+        nextDoseDate: undefined,
+        required: false,
+      });
+      setExposureIds([]);
+      setSelectedExposures([]);
+      form.reset({
+        employeeId: "",
+        employeeName: "",
+        departmentId: "",
+        fitnessStatus: "pending_examination",
+      });
+    }
+  }, [open, record, form]);
 
   // Sync selected employee with form values
   useEffect(() => {
@@ -220,9 +224,22 @@ export function MedicalRecordForm({
   const isSubmitting = createRecord.isPending || updateRecord.isPending;
 
   const onSubmit = async (data: FormData) => {
+    console.log(`[MedicalRecordForm] 🚀 FORM SUBMITTED!`, {
+      currentStep,
+      stepName: FORM_STEPS[currentStep]?.label,
+      isEditing,
+      formData: data,
+      restrictions: restrictions.length,
+      vaccinations: vaccinations.length,
+      exposureIds: exposureIds.length,
+      timestamp: new Date().toISOString(),
+    });
+    
     try {
       const recordData = {
         ...data,
+        // Job title comes from employee profile, not from form
+        jobTitle: selectedEmployee?.jobTitle || record?.jobTitle || "",
         restrictions: restrictions.map((r, i) => ({
           id: r.id || `restriction-${i}`,
           type: r.type || "general",
@@ -230,16 +247,6 @@ export function MedicalRecordForm({
           startDate: r.startDate || Timestamp.now(),
           permanent: r.permanent || false,
           issuedBy: r.issuedBy || "",
-        })),
-        examinations: examinations.map((e, i) => ({
-          id: e.id || `exam-${i}`,
-          type: e.type || "periodic",
-          date: e.date || Timestamp.now(),
-          conductedBy: e.conductedBy || "",
-          location: e.location || "",
-          result: e.result || "pending_examination",
-          notes: e.notes || "",
-          documents: e.documents || [],
         })),
         vaccinations: vaccinations.map((v, i) => {
           const vaccine: {
@@ -266,40 +273,61 @@ export function MedicalRecordForm({
           }
           return vaccine;
         }),
-        exposures: exposures.map((exp, i) => ({
-          id: exp.id || `exposure-${i}`,
-          hazardType: exp.hazardType || "physical",
-          substance: exp.substance || "",
-          exposureLevel: exp.exposureLevel || "low",
-          duration: exp.duration || "",
-          frequency: exp.frequency || "",
-          controlMeasures: exp.controlMeasures || [],
-          startDate: exp.startDate || Timestamp.now(),
-        })),
+        // Use exposureIds instead of embedded exposures
+        exposureIds,
         accidents: record?.accidents || [],
         hasConfidentialNotes: record?.hasConfidentialNotes || false,
-        nextExaminationDue: data.nextExaminationDue 
-          ? Timestamp.fromDate(data.nextExaminationDue)
-          : Timestamp.fromDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)), // 1 year from now
+        // nextExaminationDue is now derived from scheduled visits - set a far-future placeholder
+        nextExaminationDue: record?.nextExaminationDue || Timestamp.fromDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)),
       };
 
+      let savedRecordId: string;
+      
       if (isEditing && record) {
         await updateRecord.mutateAsync({
           recordId: record.id,
           data: recordData,
         });
+        savedRecordId = record.id;
+        
+        // Sync employee-exposure links for edited records
+        await syncExposures.mutateAsync({
+          healthRecordId: record.id,
+          employeeId: data.employeeId,
+          previousExposureIds: record.exposureIds || [],
+          newExposureIds: exposureIds,
+        });
       } else {
-        await createRecord.mutateAsync(recordData);
+        const newRecord = await createRecord.mutateAsync(recordData);
+        savedRecordId = newRecord.id;
+        
+        // Sync employee-exposure links for new records
+        await syncExposures.mutateAsync({
+          healthRecordId: savedRecordId,
+          employeeId: data.employeeId,
+          previousExposureIds: [],
+          newExposureIds: exposureIds,
+        });
       }
 
       onSuccess?.();
       onOpenChange(false);
-    } catch (error) {
-      console.error("Error saving medical record:", error);
+    } catch (error: unknown) {
+      // Handle the "employee already has record" error gracefully
+      if (error instanceof Error && error.message === "EMPLOYEE_ALREADY_HAS_RECORD") {
+        console.error("Cet employé a déjà une fiche médicale");
+      } else {
+        console.error("Error saving medical record:", error);
+      }
     }
   };
 
   const addRestriction = () => {
+    console.log(`[MedicalRecordForm] ➕ addRestriction called`, {
+      newRestriction,
+      currentRestrictions: restrictions.length,
+      timestamp: new Date().toISOString(),
+    });
     if (newRestriction.trim()) {
       setRestrictions([
         ...restrictions,
@@ -320,37 +348,12 @@ export function MedicalRecordForm({
     setRestrictions(restrictions.filter((_, i) => i !== index));
   };
 
-  const addExamination = () => {
-    if (newExam.date && newExam.conductedBy.trim()) {
-      setExaminations([
-        ...examinations,
-        {
-          id: `exam-${Date.now()}`,
-          type: newExam.type,
-          date: Timestamp.fromDate(newExam.date),
-          conductedBy: newExam.conductedBy.trim(),
-          location: newExam.location.trim(),
-          result: newExam.result,
-          notes: newExam.notes.trim(),
-          documents: [],
-        },
-      ]);
-      setNewExam({
-        type: "periodic",
-        date: undefined,
-        conductedBy: "",
-        location: "",
-        result: "fit",
-        notes: "",
-      });
-    }
-  };
-
-  const removeExamination = (index: number) => {
-    setExaminations(examinations.filter((_, i) => i !== index));
-  };
-
   const addVaccination = () => {
+    console.log(`[MedicalRecordForm] ➕ addVaccination called`, {
+      newVaccine,
+      currentVaccinations: vaccinations.length,
+      timestamp: new Date().toISOString(),
+    });
     if (newVaccine.name.trim() && newVaccine.date) {
       setVaccinations([
         ...vaccinations,
@@ -379,33 +382,10 @@ export function MedicalRecordForm({
     setVaccinations(vaccinations.filter((_, i) => i !== index));
   };
 
-  const addExposure = () => {
-    if (newExposure.substance.trim() && newExposure.duration.trim()) {
-      setExposures([
-        ...exposures,
-        {
-          id: `exposure-${Date.now()}`,
-          hazardType: newExposure.hazardType,
-          substance: newExposure.substance.trim(),
-          exposureLevel: newExposure.exposureLevel,
-          duration: newExposure.duration.trim(),
-          frequency: newExposure.frequency.trim(),
-          controlMeasures: [],
-          startDate: Timestamp.now(),
-        },
-      ]);
-      setNewExposure({
-        hazardType: "physical",
-        substance: "",
-        exposureLevel: "low",
-        duration: "",
-        frequency: "",
-      });
-    }
-  };
-
-  const removeExposure = (index: number) => {
-    setExposures(exposures.filter((_, i) => i !== index));
+  // Handle exposure selection changes from ExposureSelector
+  const handleExposureChange = (newExposureIds: string[], newExposures: OrganizationExposure[]) => {
+    setExposureIds(newExposureIds);
+    setSelectedExposures(newExposures);
   };
 
   if (!isPhysician) {
@@ -413,7 +393,7 @@ export function MedicalRecordForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>
@@ -426,7 +406,38 @@ export function MedicalRecordForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form onSubmit={(e) => {
+          console.log(`[MedicalRecordForm] 📋 Form onSubmit event triggered`, {
+            currentStep,
+            stepName: FORM_STEPS[currentStep]?.label,
+            eventType: e.type,
+            submitter: (e.nativeEvent as SubmitEvent)?.submitter,
+            submitterType: ((e.nativeEvent as SubmitEvent)?.submitter as HTMLButtonElement)?.type,
+            submitterText: ((e.nativeEvent as SubmitEvent)?.submitter as HTMLButtonElement)?.textContent,
+            timestamp: new Date().toISOString(),
+          });
+          
+          // GUARD: Prevent submission if not on the last step
+          if (currentStep < totalSteps - 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log(`[MedicalRecordForm] 🛑 BLOCKED form submission - not on last step!`, {
+              currentStep,
+              totalSteps,
+              expectedStep: totalSteps - 1,
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+          
+          form.handleSubmit(onSubmit, (errors) => {
+            console.log(`[MedicalRecordForm] ❌ Form validation errors`, {
+              errors,
+              currentStep,
+              timestamp: new Date().toISOString(),
+            });
+          })(e);
+        }}>
           {/* Step Indicator */}
           <div className="mt-4 mb-6">
             <div className="flex items-center justify-between">
@@ -435,7 +446,7 @@ export function MedicalRecordForm({
                   {/* Step circle and label */}
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(index)}
+                    onClick={() => handleStepChange(index, `step-indicator-${index}`)}
                     className={cn(
                       "flex flex-col items-center gap-1 group transition-all duration-200",
                       index <= currentStep ? "cursor-pointer" : "cursor-pointer"
@@ -505,6 +516,21 @@ export function MedicalRecordForm({
                     form.formState.errors.employeeName?.message
                   }
                 />
+                {/* Show warning if employee already has a health record */}
+                {!isEditing && selectedEmployee && employeeHasRecord && (
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Cet employé a déjà une fiche médicale. Veuillez sélectionner un autre employé ou modifier la fiche existante.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {!isEditing && selectedEmployee && checkingEmployee && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
+                    Vérification en cours...
+                  </p>
+                )}
                 {isEditing && (
                   <p className="text-xs text-muted-foreground">
                     L'employé ne peut pas être modifié après la création de la fiche.
@@ -512,33 +538,25 @@ export function MedicalRecordForm({
                 )}
               </div>
 
-              {/* Department and Job Title (auto-filled from employee, but editable) */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="departmentId">Département</Label>
-                  <Input
-                    id="departmentId"
-                    {...form.register("departmentId")}
-                    placeholder="Auto-rempli depuis le profil employé"
-                    className={selectedEmployee?.departmentId ? "bg-muted/50" : ""}
-                  />
-                  {form.formState.errors.departmentId && (
-                    <p className="text-sm text-red-500">{form.formState.errors.departmentId.message}</p>
-                  )}
+              {/* Department and Job Title (read-only from employee profile) */}
+              {selectedEmployee && (
+                <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30 border">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Département</Label>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.departmentId || "Non renseigné"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Poste</Label>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.jobTitle || "Non renseigné"}
+                    </p>
+                  </div>
+                  {/* Hidden input to satisfy form validation */}
+                  <input type="hidden" {...form.register("departmentId")} />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="jobTitle">Poste</Label>
-                  <Input
-                    id="jobTitle"
-                    {...form.register("jobTitle")}
-                    placeholder="Opérateur machine"
-                  />
-                  {form.formState.errors.jobTitle && (
-                    <p className="text-sm text-red-500">{form.formState.errors.jobTitle.message}</p>
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* Fitness Status */}
               <div className="space-y-2">
@@ -560,37 +578,10 @@ export function MedicalRecordForm({
                 </Select>
               </div>
 
-              {/* Next Examination Date */}
-              <div className="space-y-2">
-                <Label>Prochaine visite médicale</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !form.watch("nextExaminationDue") && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {form.watch("nextExaminationDue") ? (
-                        format(form.watch("nextExaminationDue")!, "PPP", { locale: fr })
-                      ) : (
-                        "Sélectionner une date"
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={form.watch("nextExaminationDue")}
-                      onSelect={(date) => form.setValue("nextExaminationDue", date)}
-                      locale={fr}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+              {/* Note: Visits are now scheduled separately via the Visites tab */}
+              <p className="text-xs text-muted-foreground italic">
+                Les visites médicales sont planifiées séparément depuis l'onglet "Visites" ou depuis le détail de la fiche.
+              </p>
             </div>
             )}
 
@@ -651,144 +642,8 @@ export function MedicalRecordForm({
               </div>
             )}
 
-            {/* Step 3: Examinations */}
+            {/* Step 3: Vaccinations */}
             {currentStep === 2 && (
-              <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-4 duration-300">
-              <div className="space-y-3 rounded-lg border p-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Type d'examen</Label>
-                    <Select
-                      value={newExam.type}
-                      onValueChange={(value) => setNewExam({ ...newExam, type: value as ExaminationType })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EXAMINATION_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal text-sm",
-                            !newExam.date && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-3 w-3" />
-                          {newExam.date ? format(newExam.date, "dd/MM/yyyy", { locale: fr }) : "Date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={newExam.date}
-                          onSelect={(date) => setNewExam({ ...newExam, date })}
-                          locale={fr}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Médecin</Label>
-                    <Input
-                      placeholder="Dr. Martin"
-                      value={newExam.conductedBy}
-                      onChange={(e) => setNewExam({ ...newExam, conductedBy: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Lieu</Label>
-                    <Input
-                      placeholder="Centre médical"
-                      value={newExam.location}
-                      onChange={(e) => setNewExam({ ...newExam, location: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Résultat</Label>
-                    <Select
-                      value={newExam.result}
-                      onValueChange={(value) => setNewExam({ ...newExam, result: value as FitnessStatus })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FITNESS_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button type="button" onClick={addExamination} className="w-full">
-                      <Plus className="h-4 w-4 mr-2" /> Ajouter
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {examinations.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">
-                  Aucun examen médical enregistré
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {examinations.map((exam, index) => (
-                    <div
-                      key={exam.id || index}
-                      className="flex items-center justify-between rounded-lg border bg-slate-50 p-3"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-slate-700">
-                            {EXAMINATION_TYPES.find((t) => t.value === exam.type)?.label || exam.type}
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {exam.date instanceof Timestamp
-                              ? format(exam.date.toDate(), "dd/MM/yyyy")
-                              : ""}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {exam.conductedBy} - {exam.location}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeExamination(index)}
-                      >
-                        <X className="h-4 w-4 text-slate-400" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              </div>
-            )}
-
-            {/* Step 4: Vaccinations */}
-            {currentStep === 3 && (
               <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-4 duration-300">
               <div className="space-y-3 rounded-lg border p-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -798,6 +653,11 @@ export function MedicalRecordForm({
                       placeholder="Hépatite B, Tétanos..."
                       value={newVaccine.name}
                       onChange={(e) => setNewVaccine({ ...newVaccine, name: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-1">
@@ -834,6 +694,11 @@ export function MedicalRecordForm({
                       placeholder="LOT-12345"
                       value={newVaccine.batchNumber}
                       onChange={(e) => setNewVaccine({ ...newVaccine, batchNumber: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-1">
@@ -842,6 +707,11 @@ export function MedicalRecordForm({
                       placeholder="Dr. Martin"
                       value={newVaccine.administeredBy}
                       onChange={(e) => setNewVaccine({ ...newVaccine, administeredBy: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -902,124 +772,34 @@ export function MedicalRecordForm({
               </div>
             )}
 
-            {/* Step 5: Exposures */}
-            {currentStep === 4 && (
+            {/* Step 4: Exposures */}
+            {currentStep === 3 && (
               <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-4 duration-300">
-              <div className="space-y-3 rounded-lg border p-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Type de risque</Label>
-                    <Select
-                      value={newExposure.hazardType}
-                      onValueChange={(value) => setNewExposure({ ...newExposure, hazardType: value as HazardCategory })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {HAZARD_CATEGORIES.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Substance / Agent</Label>
-                    <Input
-                      placeholder="Bruit, Silice, Benzène..."
-                      value={newExposure.substance}
-                      onChange={(e) => setNewExposure({ ...newExposure, substance: e.target.value })}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Expositions professionnelles</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Sélectionnez les expositions auxquelles cet employé est soumis, ou créez-en une nouvelle.
+                  </p>
+                  <ExposureSelector
+                    value={exposureIds}
+                    onChange={handleExposureChange}
+                    placeholder="Rechercher ou ajouter des expositions..."
+                    employeeId={selectedEmployee?.id}
+                  />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Niveau</Label>
-                    <Select
-                      value={newExposure.exposureLevel}
-                      onValueChange={(value) => setNewExposure({ ...newExposure, exposureLevel: value as "low" | "medium" | "high" })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EXPOSURE_LEVELS.map((level) => (
-                          <SelectItem key={level.value} value={level.value}>
-                            {level.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Durée</Label>
-                    <Input
-                      placeholder="8h/jour"
-                      value={newExposure.duration}
-                      onChange={(e) => setNewExposure({ ...newExposure, duration: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Fréquence</Label>
-                    <Input
-                      placeholder="Quotidien"
-                      value={newExposure.frequency}
-                      onChange={(e) => setNewExposure({ ...newExposure, frequency: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <Button type="button" onClick={addExposure} className="w-full">
-                  <Plus className="h-4 w-4 mr-2" /> Ajouter
-                </Button>
-              </div>
 
-              {exposures.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">
-                  Aucune exposition enregistrée
+                {exposureIds.length > 0 && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <Badge variant="secondary">
+                      {exposureIds.length} exposition{exposureIds.length > 1 ? "s" : ""} sélectionnée{exposureIds.length > 1 ? "s" : ""}
+                    </Badge>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground italic pt-2">
+                  Les expositions sont gérées de manière centralisée. L'employé sera automatiquement ajouté 
+                  à la liste des personnes exposées pour chaque exposition sélectionnée.
                 </p>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {exposures.map((exposure, index) => (
-                    <div
-                      key={exposure.id || index}
-                      className="flex items-center justify-between rounded-lg border bg-slate-50 p-3"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-slate-700">{exposure.substance}</span>
-                          <Badge
-                            variant={
-                              exposure.exposureLevel === "high"
-                                ? "destructive"
-                                : exposure.exposureLevel === "medium"
-                                ? "default"
-                                : "secondary"
-                            }
-                            className="text-xs"
-                          >
-                            {EXPOSURE_LEVELS.find((l) => l.value === exposure.exposureLevel)?.label}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {HAZARD_CATEGORIES.find((c) => c.value === exposure.hazardType)?.label?.split(" ")[0]} 
-                          {exposure.duration && ` • ${exposure.duration}`}
-                          {exposure.frequency && ` • ${exposure.frequency}`}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeExposure(index)}
-                      >
-                        <X className="h-4 w-4 text-slate-400" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
               </div>
             )}
           </div>
@@ -1030,7 +810,13 @@ export function MedicalRecordForm({
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  console.log(`[MedicalRecordForm] ❌ Annuler button clicked`, {
+                    currentStep,
+                    timestamp: new Date().toISOString(),
+                  });
+                  handleOpenChange(false);
+                }}
               >
                 Annuler
               </Button>
@@ -1042,37 +828,78 @@ export function MedicalRecordForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setCurrentStep(currentStep - 1)}
+                  onClick={() => {
+                    console.log(`[MedicalRecordForm] ⬅️ Précédent button clicked`, {
+                      currentStep,
+                      nextStep: currentStep - 1,
+                      timestamp: new Date().toISOString(),
+                    });
+                    handleStepChange(currentStep - 1, 'precedent-button');
+                  }}
                 >
                   <ChevronLeft className="mr-1 h-4 w-4" />
                   Précédent
                 </Button>
               )}
               
-              {/* Next Button or Submit */}
-              {currentStep < totalSteps - 1 ? (
-                <Button
-                  type="button"
-                  onClick={() => setCurrentStep(currentStep + 1)}
-                >
-                  Suivant
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Enregistrement...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      {isEditing ? "Mettre à jour" : "Créer"}
-                    </>
-                  )}
-                </Button>
-              )}
+              {/* Next Button - Always render but hide when on last step */}
+              <Button
+                type="button"
+                disabled={!isEditing && currentStep === 0 && (employeeHasRecord || checkingEmployee || !selectedEmployee)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log(`[MedicalRecordForm] ➡️ Suivant button clicked`, {
+                    currentStep,
+                    stepName: FORM_STEPS[currentStep]?.label,
+                    nextStep: currentStep + 1,
+                    nextStepName: FORM_STEPS[currentStep + 1]?.label,
+                    timestamp: new Date().toISOString(),
+                  });
+                  handleStepChange(currentStep + 1, 'suivant-button');
+                }}
+                className={cn(currentStep >= totalSteps - 1 && "hidden")}
+              >
+                Suivant
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+              
+              {/* Submit Button - Always render but hide when not on last step */}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || (!isEditing && employeeHasRecord)}
+                onClick={(e) => {
+                  // Prevent accidental submission if not on the last step
+                  if (currentStep < totalSteps - 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`[MedicalRecordForm] ⚠️ Submit blocked - not on last step`, {
+                      currentStep,
+                      totalSteps,
+                      timestamp: new Date().toISOString(),
+                    });
+                    return;
+                  }
+                  console.log(`[MedicalRecordForm] 💾 Submit button clicked (Créer/Mettre à jour)`, {
+                    currentStep,
+                    isSubmitting,
+                    timestamp: new Date().toISOString(),
+                  });
+                }}
+                className={cn(currentStep < totalSteps - 1 && "hidden")}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    {isEditing ? "Mettre à jour" : "Créer"}
+                  </>
+                )}
+              </Button>
             </div>
           </DialogFooter>
         </form>

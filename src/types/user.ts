@@ -56,6 +56,7 @@ export interface User extends FirestoreDocument {
    */
   isOrgAdmin: boolean;
   departmentId?: string;
+  jobTitle?: string;
 
   // Contact
   phone?: string;
@@ -120,7 +121,12 @@ export interface UserInvitation extends FirestoreDocument {
    * @deprecated Use roleId instead. Kept for backwards compatibility.
    */
   role?: UserRole;
+  /** Optional pre-filled first name for the invited user */
+  firstName?: string;
+  /** Optional pre-filled last name for the invited user */
+  lastName?: string;
   departmentId?: string;
+  jobTitle?: string;
   invitedBy: string;
   expiresAt: Timestamp;
   status: "pending" | "accepted" | "expired" | "cancelled";

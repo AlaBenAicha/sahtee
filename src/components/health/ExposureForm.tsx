@@ -5,7 +5,7 @@
  * Uses EmployeesMultiSelector for selecting exposed employees.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -39,6 +39,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCreateExposure, useUpdateExposure, useCreateMeasurement } from "@/hooks/useHealth";
 import { EmployeesMultiSelector } from "@/components/health/EmployeesMultiSelector";
 import { Badge } from "@/components/ui/badge";
 import type { OrganizationExposure, HazardCategory } from "@/types/health";
@@ -117,7 +118,12 @@ export function ExposureForm({
 }: ExposureFormProps) {
   const { userProfile } = useAuth();
   const isEditing = !!exposure;
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Mutation hooks for creating/updating exposures and measurements
+  const createExposure = useCreateExposure();
+  const updateExposure = useUpdateExposure();
+  const createMeasurement = useCreateMeasurement();
+  const isSubmitting = createExposure.isPending || updateExposure.isPending || createMeasurement.isPending;
   
   // Selected employees state (for multi-select)
   const [selectedEmployees, setSelectedEmployees] = useState<User[]>([]);
@@ -154,6 +160,27 @@ export function ExposureForm({
     return "low";
   };
 
+  // Reset form when dialog opens/closes or exposure changes
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        agent: exposure?.agent || "",
+        hazardType: exposure?.hazardType || "chemical",
+        area: exposure?.area || "",
+        regulatoryLimit: exposure?.regulatoryLimit || 0,
+        unit: exposure?.unit || "",
+        regulatoryReference: exposure?.regulatoryReference || "",
+        lastMeasurement: exposure?.lastMeasurement || 0,
+        lastMeasurementDate: exposure?.lastMeasurementDate?.toDate() || new Date(),
+        monitoringFrequency: exposure?.monitoringFrequency || "monthly",
+        nextMeasurementDue: exposure?.nextMeasurementDue?.toDate() || new Date(),
+      });
+      setSelectedEmployees([]);
+      setControlMeasures(exposure?.controlMeasures || []);
+      setNewControlMeasure("");
+    }
+  }, [open, exposure, form]);
+
   const watchedMeasurement = form.watch("lastMeasurement");
   const watchedLimit = form.watch("regulatoryLimit");
   const alertLevel = calculateAlertLevel(watchedMeasurement, watchedLimit);
@@ -161,11 +188,8 @@ export function ExposureForm({
 
   const onSubmit = async (data: FormData) => {
     try {
-      setIsSubmitting(true);
-      
-      const exposureData: Partial<OrganizationExposure> = {
+      const exposureData = {
         ...data,
-        organizationId: userProfile?.organizationId || "",
         lastMeasurementDate: Timestamp.fromDate(data.lastMeasurementDate),
         nextMeasurementDue: Timestamp.fromDate(data.nextMeasurementDue),
         percentOfLimit,
@@ -173,17 +197,44 @@ export function ExposureForm({
         exposedEmployeeCount: selectedEmployees.length,
         exposedEmployeeIds: selectedEmployees.map((emp) => emp.id),
         controlMeasures,
-        measurementHistory: exposure?.measurementHistory || [],
         exceedanceCount: exposure?.exceedanceCount || (alertLevel === "critical" ? 1 : 0),
         linkedCapaIds: exposure?.linkedCapaIds || [],
       };
 
-      onSuccess?.(exposureData);
+      let savedExposure: OrganizationExposure;
+      
+      if (isEditing && exposure) {
+        // Update existing exposure
+        await updateExposure.mutateAsync({
+          exposureId: exposure.id,
+          data: exposureData,
+        });
+        savedExposure = { ...exposure, ...exposureData } as OrganizationExposure;
+      } else {
+        // Create new exposure
+        savedExposure = await createExposure.mutateAsync(exposureData);
+        
+        // Create the initial measurement in the measurements collection
+        if (data.lastMeasurement > 0) {
+          const withinLimits = data.lastMeasurement <= data.regulatoryLimit;
+          await createMeasurement.mutateAsync({
+            exposureId: savedExposure.id,
+            date: data.lastMeasurementDate,
+            value: data.lastMeasurement,
+            unit: data.unit,
+            measuredBy: userProfile?.displayName || "Système",
+            method: "Mesure initiale",
+            duration: "8h TWA",
+            withinLimits,
+            notes: "Mesure initiale lors de la création de l'exposition",
+          });
+        }
+      }
+
+      onSuccess?.(savedExposure);
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving exposure:", error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -200,8 +251,8 @@ export function ExposureForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>
             {isEditing ? "Modifier l'exposition" : "Nouvelle exposition"}
           </DialogTitle>
@@ -212,7 +263,7 @@ export function ExposureForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-1 overflow-y-auto pr-2 -mr-2">
           {/* Hazard Type and Agent */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -467,7 +518,7 @@ export function ExposureForm({
           </div>
         </form>
 
-        <DialogFooter className="mt-4">
+        <DialogFooter className="flex-shrink-0 mt-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>

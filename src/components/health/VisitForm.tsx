@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { useCreateMedicalVisit, useUpdateMedicalVisit, useIsPhysician } from "@/hooks/useHealth";
 import { useAuth } from "@/contexts/AuthContext";
 import { EmployeeSelector } from "@/components/health/EmployeeSelector";
-import type { MedicalVisit, ExaminationType } from "@/types/health";
+import type { MedicalVisit, ExaminationType, MedicalVisitStatus } from "@/types/health";
 import type { User } from "@/types/user";
 
 const formSchema = z.object({
@@ -72,6 +72,17 @@ interface VisitFormProps {
   visit?: MedicalVisit;
   defaultDate?: Date;
   onSuccess?: () => void;
+  /** Link this visit to a health record (fiche médicale) */
+  healthRecordId?: string;
+  /** Default status for the visit (defaults to "scheduled") */
+  defaultStatus?: MedicalVisitStatus;
+  /** Pre-selected employee info when creating from health record context */
+  defaultEmployee?: {
+    id: string;
+    name: string;
+    departmentId: string;
+    departmentName?: string;
+  };
 }
 
 export function VisitForm({
@@ -80,6 +91,9 @@ export function VisitForm({
   visit,
   defaultDate,
   onSuccess,
+  healthRecordId,
+  defaultStatus = "scheduled",
+  defaultEmployee,
 }: VisitFormProps) {
   const isPhysician = useIsPhysician();
   const { user, userProfile } = useAuth();
@@ -94,10 +108,10 @@ export function VisitForm({
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      employeeId: visit?.employeeId || "",
-      employeeName: visit?.employeeName || "",
-      departmentId: visit?.departmentId || "",
-      departmentName: visit?.departmentName || "",
+      employeeId: visit?.employeeId || defaultEmployee?.id || "",
+      employeeName: visit?.employeeName || defaultEmployee?.name || "",
+      departmentId: visit?.departmentId || defaultEmployee?.departmentId || "",
+      departmentName: visit?.departmentName || defaultEmployee?.departmentName || defaultEmployee?.departmentId || "",
       type: visit?.type || "periodic",
       scheduledDate: visit?.scheduledDate?.toDate() || defaultDate || new Date(),
       scheduledTime: visit?.scheduledTime || "",
@@ -132,10 +146,14 @@ export function VisitForm({
       const visitData = {
         ...data,
         scheduledDate: Timestamp.fromDate(data.scheduledDate),
-        status: "scheduled" as const,
+        status: defaultStatus,
         physicianId: user?.uid || "",
         physicianName: userProfile?.displayName || "Médecin",
         documents: visit?.documents || [],
+        // Include healthRecordId if provided (links to fiche médicale)
+        ...(healthRecordId && { healthRecordId }),
+        // If status is completed, set completedDate to scheduledDate
+        ...(defaultStatus === "completed" && { completedDate: Timestamp.fromDate(data.scheduledDate) }),
       };
 
       if (isEditing && visit) {

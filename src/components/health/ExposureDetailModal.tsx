@@ -9,12 +9,12 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -43,9 +43,11 @@ import {
   FileText,
   Plus,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { OrganizationExposure, HazardCategory } from "@/types/health";
+import { useMeasurementsByExposure } from "@/hooks/useHealth";
+import type { OrganizationExposure, HazardCategory, ExposureMeasurement } from "@/types/health";
 
 const ALERT_LEVEL_CONFIG = {
   low: { label: "Faible", color: "bg-emerald-100 text-emerald-700", chartColor: "#10b981" },
@@ -80,22 +82,28 @@ export function ExposureDetailModal({
   onAddMeasurement,
 }: ExposureDetailModalProps) {
   const [activeTab, setActiveTab] = useState("overview");
+  
+  // Fetch measurements from the measurements collection
+  const { data: measurements = [], isLoading: isLoadingMeasurements } = useMeasurementsByExposure(
+    exposure?.id
+  );
 
   if (!exposure) return null;
 
   const alertConfig = ALERT_LEVEL_CONFIG[exposure.alertLevel];
   
-  // Prepare chart data
-  const chartData = exposure.measurementHistory.map((m) => ({
+  // Prepare chart data from fetched measurements (reversed since they come in desc order)
+  const measurementsForChart = [...measurements].reverse();
+  const chartData = measurementsForChart.map((m: ExposureMeasurement) => ({
     date: format(m.date.toDate(), "dd/MM", { locale: fr }),
     value: m.value,
     limit: exposure.regulatoryLimit,
   }));
 
   const getTrend = () => {
-    if (exposure.measurementHistory.length < 2) return { direction: "stable", change: 0 };
-    const last = exposure.measurementHistory[exposure.measurementHistory.length - 1].value;
-    const prev = exposure.measurementHistory[exposure.measurementHistory.length - 2].value;
+    if (measurementsForChart.length < 2) return { direction: "stable", change: 0 };
+    const last = measurementsForChart[measurementsForChart.length - 1].value;
+    const prev = measurementsForChart[measurementsForChart.length - 2].value;
     const change = ((last - prev) / prev) * 100;
     return {
       direction: last > prev ? "up" : last < prev ? "down" : "stable",
@@ -108,23 +116,23 @@ export function ExposureDetailModal({
   const trendColor = trend.direction === "up" ? "text-red-500" : trend.direction === "down" ? "text-emerald-500" : "text-slate-400";
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl">
-        <SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
               <Biohazard className="h-6 w-6 text-orange-600" />
             </div>
-            <div className="flex-1">
-              <SheetTitle>{exposure.agent}</SheetTitle>
-              <SheetDescription>
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="truncate">{exposure.agent}</DialogTitle>
+              <DialogDescription className="truncate">
                 {HAZARD_TYPE_LABELS[exposure.hazardType]} • {exposure.area}
-              </SheetDescription>
+              </DialogDescription>
             </div>
           </div>
-        </SheetHeader>
+        </DialogHeader>
 
-        <ScrollArea className="h-[calc(100vh-200px)] mt-6 pr-4">
+        <ScrollArea className="flex-1 overflow-auto pr-4">
           <div className="space-y-6">
             {/* Alert Level */}
             <div className="flex items-center justify-between">
@@ -185,11 +193,11 @@ export function ExposureDetailModal({
             <Separator />
 
             {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="overview">Aperçu</TabsTrigger>
-                <TabsTrigger value="history">Historique</TabsTrigger>
-                <TabsTrigger value="controls">Mesures</TabsTrigger>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="w-full flex flex-row">
+                <TabsTrigger value="overview" className="flex-1">Aperçu</TabsTrigger>
+                <TabsTrigger value="history" className="flex-1">Historique</TabsTrigger>
+                <TabsTrigger value="controls" className="flex-1">Mesures</TabsTrigger>
               </TabsList>
 
               {/* Overview Tab */}
@@ -256,7 +264,12 @@ export function ExposureDetailModal({
 
               {/* History Tab */}
               <TabsContent value="history" className="mt-4">
-                {chartData.length > 1 ? (
+                {isLoadingMeasurements ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                    <span className="ml-2 text-sm text-slate-500">Chargement...</span>
+                  </div>
+                ) : chartData.length > 1 ? (
                   <div className="h-[200px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData}>
@@ -295,9 +308,9 @@ export function ExposureDetailModal({
 
                 {/* Measurement History List */}
                 <div className="mt-4 space-y-2">
-                  {exposure.measurementHistory.slice().reverse().map((measurement, index) => (
+                  {measurements.map((measurement: ExposureMeasurement) => (
                     <div
-                      key={measurement.id || index}
+                      key={measurement.id}
                       className={cn(
                         "rounded-lg border p-3",
                         !measurement.withinLimits && "border-red-200 bg-red-50"
@@ -319,10 +332,15 @@ export function ExposureDetailModal({
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-1">
-                        Méthode: {measurement.method} • Durée: {measurement.duration}
+                        Mesuré par: {measurement.measuredBy} • Méthode: {measurement.method}
                       </p>
                     </div>
                   ))}
+                  {!isLoadingMeasurements && measurements.length === 0 && (
+                    <p className="text-center text-sm text-slate-500 py-4">
+                      Aucune mesure enregistrée
+                    </p>
+                  )}
                 </div>
               </TabsContent>
 
@@ -359,8 +377,8 @@ export function ExposureDetailModal({
             </Tabs>
           </div>
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

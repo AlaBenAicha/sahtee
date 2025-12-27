@@ -31,8 +31,6 @@ import {
   Plus,
   AlertTriangle,
   Biohazard,
-  TrendingUp,
-  TrendingDown,
   Minus,
   Filter,
   Eye,
@@ -69,7 +67,7 @@ export function ExposureTable({ onSelectExposure, onCreateExposure }: ExposureTa
   const [searchQuery, setSearchQuery] = useState("");
   const [hazardFilter, setHazardFilter] = useState<HazardCategory | "all">("all");
   const [alertFilter, setAlertFilter] = useState<string>("all");
-  
+
   const { data: exposures, isLoading } = useExposures({
     hazardType: hazardFilter !== "all" ? [hazardFilter] : undefined,
   });
@@ -93,22 +91,15 @@ export function ExposureTable({ onSelectExposure, onCreateExposure }: ExposureTa
     return true;
   });
 
-  const getTrendIcon = (history: { value: number }[]) => {
-    if (history.length < 2) return Minus;
-    const last = history[history.length - 1].value;
-    const prev = history[history.length - 2].value;
-    if (last > prev) return TrendingUp;
-    if (last < prev) return TrendingDown;
+  // Note: Trend is now just a placeholder since measurements are in a separate collection.
+  // For detailed trends, open the exposure detail modal.
+  const getTrendIcon = (_history?: { value: number }[]) => {
+    // Trends are now calculated from the measurements collection - show neutral icon
     return Minus;
   };
 
-  const getTrendColor = (history: { value: number }[]) => {
-    if (history.length < 2) return "text-slate-400";
-    const last = history[history.length - 1].value;
-    const prev = history[history.length - 2].value;
-    // For exposures, increase is bad
-    if (last > prev) return "text-red-500";
-    if (last < prev) return "text-emerald-500";
+  const getTrendColor = (_history?: { value: number }[]) => {
+    // Trends are now calculated from the measurements collection
     return "text-slate-400";
   };
 
@@ -145,7 +136,7 @@ export function ExposureTable({ onSelectExposure, onCreateExposure }: ExposureTa
           </div>
           <Button onClick={onCreateExposure}>
             <Plus className="mr-2 h-4 w-4" />
-            Nouvelle mesure
+            Nouvelle exposition
           </Button>
         </div>
 
@@ -228,8 +219,8 @@ export function ExposureTable({ onSelectExposure, onCreateExposure }: ExposureTa
                 {filteredExposures.map((exposure) => {
                   const alertConfig = ALERT_LEVEL_CONFIG[exposure.alertLevel];
                   const hazardConfig = HAZARD_TYPE_CONFIG[exposure.hazardType];
-                  const TrendIcon = getTrendIcon(exposure.measurementHistory);
-                  const trendColor = getTrendColor(exposure.measurementHistory);
+                  const TrendIcon = getTrendIcon(exposure.measurementHistory || []);
+                  const trendColor = getTrendColor(exposure.measurementHistory || []);
 
                   return (
                     <TableRow
@@ -268,8 +259,8 @@ export function ExposureTable({ onSelectExposure, onCreateExposure }: ExposureTa
                               exposure.percentOfLimit >= 100
                                 ? "text-red-600"
                                 : exposure.percentOfLimit >= 80
-                                ? "text-amber-600"
-                                : "text-slate-600"
+                                  ? "text-amber-600"
+                                  : "text-slate-600"
                             )}
                           >
                             {exposure.percentOfLimit.toFixed(0)}%

@@ -15,6 +15,7 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  addDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -50,6 +51,7 @@ const HEALTH_RECORDS_COLLECTION = "healthRecords";
 const MEDICAL_VISITS_COLLECTION = "medicalVisits";
 const HEALTH_ALERTS_COLLECTION = "healthAlerts";
 const EXPOSURES_COLLECTION = "exposures";
+const MEASUREMENTS_COLLECTION = "measurements";
 const HEALTH_STATS_COLLECTION = "healthStats";
 
 // =============================================================================
@@ -107,13 +109,31 @@ export async function generateVisitReference(organizationId: string): Promise<st
 // =============================================================================
 
 /**
+ * Check if an employee already has a health record
+ */
+export async function employeeHasHealthRecord(
+  organizationId: string,
+  employeeId: string
+): Promise<boolean> {
+  const existing = await getHealthRecordByEmployee(organizationId, employeeId);
+  return existing !== null;
+}
+
+/**
  * Create a new health record
  * Note: Only physicians should be able to create health records
+ * Throws error if employee already has a health record (one per employee)
  */
 export async function createHealthRecord(
   data: Omit<HealthRecord, "id" | "createdAt" | "updatedAt" | "audit">,
   userId: string
 ): Promise<HealthRecord> {
+  // Check if employee already has a health record
+  const existingRecord = await getHealthRecordByEmployee(data.organizationId, data.employeeId);
+  if (existingRecord) {
+    throw new Error("EMPLOYEE_ALREADY_HAS_RECORD");
+  }
+  
   const docRef = doc(collection(db, HEALTH_RECORDS_COLLECTION));
   const now = Timestamp.now();
   
@@ -390,6 +410,27 @@ export async function getMedicalVisits(
 }
 
 /**
+ * Get medical visits linked to a specific health record
+ */
+export async function getMedicalVisitsByHealthRecord(
+  healthRecordId: string,
+  organizationId: string
+): Promise<MedicalVisit[]> {
+  const q = query(
+    collection(db, MEDICAL_VISITS_COLLECTION),
+    where("organizationId", "==", organizationId),
+    where("healthRecordId", "==", healthRecordId),
+    orderBy("scheduledDate", "desc")
+  );
+  
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as MedicalVisit[];
+}
+
+/**
  * Get upcoming visits (scheduled in the future)
  */
 export async function getUpcomingVisits(
@@ -618,18 +659,91 @@ export async function getCriticalExposures(organizationId: string): Promise<Orga
   })) as OrganizationExposure[];
 }
 
+// =============================================================================
+// Measurement Functions (Separate Collection)
+// =============================================================================
+
 /**
- * Add a new measurement to an exposure record
+ * Create a new measurement in the measurements collection
  */
-export async function addExposureMeasurement(
+export async function createMeasurement(
+  measurementData: Omit<ExposureMeasurement, "id" | "createdAt" | "updatedAt">,
+  userId: string
+): Promise<ExposureMeasurement> {
+  const now = Timestamp.now();
+  
+  const docRef = await addDoc(collection(db, MEASUREMENTS_COLLECTION), {
+    ...measurementData,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: userId,
+  });
+  
+  // Update the parent exposure with latest measurement data
+  await updateExposureFromMeasurement(measurementData.exposureId, measurementData, userId);
+  
+  return {
+    id: docRef.id,
+    ...measurementData,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: userId,
+  } as ExposureMeasurement;
+}
+
+/**
+ * Get all measurements for a specific exposure, ordered by date descending
+ */
+export async function getMeasurementsByExposure(
+  exposureId: string
+): Promise<ExposureMeasurement[]> {
+  const q = query(
+    collection(db, MEASUREMENTS_COLLECTION),
+    where("exposureId", "==", exposureId),
+    orderBy("date", "desc")
+  );
+  
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as ExposureMeasurement[];
+}
+
+/**
+ * Get latest measurement for an exposure
+ */
+export async function getLatestMeasurement(
+  exposureId: string
+): Promise<ExposureMeasurement | null> {
+  const q = query(
+    collection(db, MEASUREMENTS_COLLECTION),
+    where("exposureId", "==", exposureId),
+    orderBy("date", "desc"),
+    firestoreLimit(1)
+  );
+  
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  
+  const doc = snapshot.docs[0];
+  return {
+    id: doc.id,
+    ...doc.data(),
+  } as ExposureMeasurement;
+}
+
+/**
+ * Update parent exposure with latest measurement data
+ */
+async function updateExposureFromMeasurement(
   exposureId: string,
-  measurement: ExposureMeasurement,
+  measurement: Omit<ExposureMeasurement, "id" | "createdAt" | "updatedAt">,
   userId: string
 ): Promise<void> {
   const exposure = await getExposure(exposureId);
   if (!exposure) throw new Error("Exposure record not found");
   
-  const updatedHistory = [...exposure.measurementHistory, measurement];
   const percentOfLimit = (measurement.value / exposure.regulatoryLimit) * 100;
   
   // Determine alert level
@@ -646,12 +760,11 @@ export async function addExposureMeasurement(
   
   const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
   await updateDoc(docRef, {
-    measurementHistory: updatedHistory,
     lastMeasurement: measurement.value,
     lastMeasurementDate: measurement.date,
     percentOfLimit,
     alertLevel,
-    exceedanceCount: measurement.withinLimits ? exposure.exceedanceCount : exposure.exceedanceCount + 1,
+    exceedanceCount: measurement.withinLimits ? exposure.exceedanceCount : (exposure.exceedanceCount || 0) + 1,
     updatedAt: Timestamp.now(),
     "audit.updatedBy": userId,
     "audit.updatedAt": Timestamp.now(),
@@ -676,6 +789,34 @@ export async function addExposureMeasurement(
       userId
     );
   }
+}
+
+/**
+ * @deprecated Use createMeasurement instead. This function is kept for backwards compatibility.
+ * Add a new measurement to an exposure record (legacy - updates embedded array)
+ */
+export async function addExposureMeasurement(
+  exposureId: string,
+  measurement: ExposureMeasurement,
+  userId: string
+): Promise<void> {
+  // Use the new createMeasurement function
+  await createMeasurement(
+    {
+      exposureId,
+      organizationId: "", // Will be fetched from exposure
+      date: measurement.date,
+      value: measurement.value,
+      unit: measurement.unit,
+      measuredBy: measurement.measuredBy,
+      method: measurement.method,
+      duration: measurement.duration,
+      withinLimits: measurement.withinLimits,
+      notes: measurement.notes,
+      createdBy: userId,
+    },
+    userId
+  );
 }
 
 /**
@@ -706,6 +847,112 @@ export function subscribeToExposures(
       callback([]);
     }
   );
+}
+
+/**
+ * Get multiple exposure records by their IDs
+ */
+export async function getExposuresByIds(exposureIds: string[]): Promise<OrganizationExposure[]> {
+  if (exposureIds.length === 0) return [];
+  
+  const exposures: OrganizationExposure[] = [];
+  
+  // Firestore 'in' query supports max 30 items, so we batch if needed
+  const batchSize = 30;
+  for (let i = 0; i < exposureIds.length; i += batchSize) {
+    const batch = exposureIds.slice(i, i + batchSize);
+    const q = query(
+      collection(db, EXPOSURES_COLLECTION),
+      where("__name__", "in", batch)
+    );
+    
+    const snapshot = await getDocs(q);
+    snapshot.docs.forEach(doc => {
+      exposures.push({ id: doc.id, ...doc.data() } as OrganizationExposure);
+    });
+  }
+  
+  return exposures;
+}
+
+/**
+ * Link an employee to an exposure record
+ * Adds the employee's ID to the exposure's exposedEmployeeIds array
+ */
+export async function linkEmployeeToExposure(
+  exposureId: string,
+  employeeId: string,
+  userId: string
+): Promise<void> {
+  const exposure = await getExposure(exposureId);
+  if (!exposure) throw new Error("Exposure record not found");
+  
+  // Check if employee is already linked
+  if (exposure.exposedEmployeeIds.includes(employeeId)) {
+    return; // Already linked, nothing to do
+  }
+  
+  const updatedEmployeeIds = [...exposure.exposedEmployeeIds, employeeId];
+  
+  const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
+  await updateDoc(docRef, {
+    exposedEmployeeIds: updatedEmployeeIds,
+    exposedEmployeeCount: updatedEmployeeIds.length,
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+}
+
+/**
+ * Unlink an employee from an exposure record
+ * Removes the employee's ID from the exposure's exposedEmployeeIds array
+ */
+export async function unlinkEmployeeFromExposure(
+  exposureId: string,
+  employeeId: string,
+  userId: string
+): Promise<void> {
+  const exposure = await getExposure(exposureId);
+  if (!exposure) throw new Error("Exposure record not found");
+  
+  const updatedEmployeeIds = exposure.exposedEmployeeIds.filter(id => id !== employeeId);
+  
+  const docRef = doc(db, EXPOSURES_COLLECTION, exposureId);
+  await updateDoc(docRef, {
+    exposedEmployeeIds: updatedEmployeeIds,
+    exposedEmployeeCount: updatedEmployeeIds.length,
+    updatedAt: Timestamp.now(),
+    "audit.updatedBy": userId,
+    "audit.updatedAt": Timestamp.now(),
+  });
+}
+
+/**
+ * Sync employee-exposure links when updating a health record's exposureIds
+ * Handles adding and removing the employee from the relevant OrganizationExposure documents
+ */
+export async function syncHealthRecordExposures(
+  healthRecordId: string,
+  employeeId: string,
+  previousExposureIds: string[],
+  newExposureIds: string[],
+  userId: string
+): Promise<void> {
+  // Find exposures to add (in new but not in previous)
+  const toAdd = newExposureIds.filter(id => !previousExposureIds.includes(id));
+  // Find exposures to remove (in previous but not in new)
+  const toRemove = previousExposureIds.filter(id => !newExposureIds.includes(id));
+  
+  // Link employee to new exposures
+  for (const exposureId of toAdd) {
+    await linkEmployeeToExposure(exposureId, employeeId, userId);
+  }
+  
+  // Unlink employee from removed exposures
+  for (const exposureId of toRemove) {
+    await unlinkEmployeeFromExposure(exposureId, employeeId, userId);
+  }
 }
 
 // =============================================================================

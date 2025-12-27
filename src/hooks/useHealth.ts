@@ -18,6 +18,7 @@ import {
   getHealthRecords,
   getHealthRecord,
   getHealthRecordByEmployee,
+  employeeHasHealthRecord,
   createHealthRecord,
   updateHealthRecord,
   deleteHealthRecord,
@@ -25,6 +26,7 @@ import {
   // Medical Visits
   getMedicalVisits,
   getMedicalVisit,
+  getMedicalVisitsByHealthRecord,
   getUpcomingVisits,
   getOverdueVisits,
   createMedicalVisit,
@@ -35,12 +37,19 @@ import {
   // Exposures
   getExposures,
   getExposure,
+  getExposuresByIds,
   getCriticalExposures,
   createExposure,
   updateExposure,
   deleteExposure,
   addExposureMeasurement,
   subscribeToExposures,
+  linkEmployeeToExposure,
+  unlinkEmployeeFromExposure,
+  syncHealthRecordExposures,
+  // Measurements
+  createMeasurement,
+  getMeasurementsByExposure,
   // Health Alerts
   getHealthAlerts,
   getActiveHealthAlerts,
@@ -99,6 +108,8 @@ export const healthKeys = {
   exposuresList: (orgId: string, filters?: object) => [...healthKeys.exposures(), "list", orgId, filters] as const,
   exposureDetail: (id: string) => [...healthKeys.exposures(), "detail", id] as const,
   criticalExposures: (orgId: string) => [...healthKeys.exposures(), "critical", orgId] as const,
+  measurements: () => [...healthKeys.all, "measurements"] as const,
+  measurementsByExposure: (exposureId: string) => [...healthKeys.measurements(), "byExposure", exposureId] as const,
   alerts: () => [...healthKeys.all, "alerts"] as const,
   alertsList: (orgId: string, filters?: object) => [...healthKeys.alerts(), "list", orgId, filters] as const,
   alertDetail: (id: string) => [...healthKeys.alerts(), "detail", id] as const,
@@ -191,6 +202,22 @@ export function useHealthRecordByEmployee(employeeId: string | undefined) {
     queryFn: () => getHealthRecordByEmployee(orgId!, employeeId!),
     enabled: !!orgId && !!employeeId,
     staleTime: 1 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to check if an employee already has a health record
+ * Used to validate before creating a new fiche médicale
+ */
+export function useEmployeeHasHealthRecord(employeeId: string | undefined) {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: [...healthKeys.recordByEmployee(orgId || "", employeeId || ""), "exists"],
+    queryFn: () => employeeHasHealthRecord(orgId!, employeeId!),
+    enabled: !!orgId && !!employeeId,
+    staleTime: 30 * 1000, // 30 seconds - shorter cache for validation
   });
 }
 
@@ -332,6 +359,21 @@ export function useMedicalVisit(visitId: string | undefined) {
     queryFn: () => getMedicalVisit(visitId!),
     enabled: !!visitId,
     staleTime: 1 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch medical visits linked to a specific health record
+ */
+export function useMedicalVisitsByHealthRecord(healthRecordId: string | undefined) {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: [...healthKeys.visits(), "byHealthRecord", healthRecordId || ""],
+    queryFn: () => getMedicalVisitsByHealthRecord(healthRecordId!, orgId!),
+    enabled: !!orgId && !!healthRecordId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -553,6 +595,109 @@ export function useCriticalExposures() {
 }
 
 /**
+ * Hook to fetch multiple exposures by their IDs
+ */
+export function useExposuresByIds(exposureIds: string[]) {
+  return useQuery({
+    queryKey: [...healthKeys.exposures(), "byIds", exposureIds],
+    queryFn: () => getExposuresByIds(exposureIds),
+    enabled: exposureIds.length > 0,
+    staleTime: 1 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to link an employee to an exposure
+ */
+export function useLinkEmployeeToExposure() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      exposureId,
+      employeeId,
+    }: {
+      exposureId: string;
+      employeeId: string;
+    }) => {
+      if (!user?.uid) {
+        throw new Error("Not authenticated");
+      }
+      await linkEmployeeToExposure(exposureId, employeeId, user.uid);
+    },
+    onSuccess: (_data, { exposureId }) => {
+      queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(exposureId) });
+      queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
+    },
+  });
+}
+
+/**
+ * Hook to unlink an employee from an exposure
+ */
+export function useUnlinkEmployeeFromExposure() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      exposureId,
+      employeeId,
+    }: {
+      exposureId: string;
+      employeeId: string;
+    }) => {
+      if (!user?.uid) {
+        throw new Error("Not authenticated");
+      }
+      await unlinkEmployeeFromExposure(exposureId, employeeId, user.uid);
+    },
+    onSuccess: (_data, { exposureId }) => {
+      queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(exposureId) });
+      queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
+    },
+  });
+}
+
+/**
+ * Hook to sync health record exposures (handles linking/unlinking employees)
+ */
+export function useSyncHealthRecordExposures() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      healthRecordId,
+      employeeId,
+      previousExposureIds,
+      newExposureIds,
+    }: {
+      healthRecordId: string;
+      employeeId: string;
+      previousExposureIds: string[];
+      newExposureIds: string[];
+    }) => {
+      if (!user?.uid) {
+        throw new Error("Not authenticated");
+      }
+      await syncHealthRecordExposures(
+        healthRecordId,
+        employeeId,
+        previousExposureIds,
+        newExposureIds,
+        user.uid
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
+      queryClient.invalidateQueries({ queryKey: healthKeys.records() });
+    },
+  });
+}
+
+/**
  * Hook to create a new exposure record
  */
 export function useCreateExposure() {
@@ -621,6 +766,7 @@ export function useDeleteExposure() {
 }
 
 /**
+ * @deprecated Use useCreateMeasurement instead
  * Hook to add a measurement to an exposure
  */
 export function useAddExposureMeasurement() {
@@ -642,6 +788,68 @@ export function useAddExposureMeasurement() {
     },
     onSuccess: (_data, { exposureId }) => {
       queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(exposureId) });
+      queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
+      queryClient.invalidateQueries({ queryKey: healthKeys.alerts() });
+      queryClient.invalidateQueries({ queryKey: healthKeys.measurementsByExposure(exposureId) });
+    },
+  });
+}
+
+// =============================================================================
+// Measurement Hooks (Separate Collection)
+// =============================================================================
+
+/**
+ * Hook to fetch measurements for a specific exposure
+ */
+export function useMeasurementsByExposure(exposureId: string | undefined) {
+  return useQuery({
+    queryKey: healthKeys.measurementsByExposure(exposureId || ""),
+    queryFn: () => getMeasurementsByExposure(exposureId!),
+    enabled: !!exposureId,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+}
+
+/**
+ * Hook to create a new measurement
+ */
+export function useCreateMeasurement() {
+  const { user, userProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (measurementData: {
+      exposureId: string;
+      date: Date;
+      value: number;
+      unit: string;
+      measuredBy: string;
+      method: string;
+      duration: string;
+      withinLimits: boolean;
+      notes?: string;
+    }) => {
+      if (!user?.uid || !userProfile?.organizationId) {
+        throw new Error("Not authenticated");
+      }
+      
+      // Import Timestamp for conversion
+      const { Timestamp } = await import("firebase/firestore");
+      
+      return createMeasurement(
+        {
+          ...measurementData,
+          date: Timestamp.fromDate(measurementData.date),
+          organizationId: userProfile.organizationId,
+          createdBy: user.uid,
+        },
+        user.uid
+      );
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: healthKeys.measurementsByExposure(data.exposureId) });
+      queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(data.exposureId) });
       queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
       queryClient.invalidateQueries({ queryKey: healthKeys.alerts() });
     },

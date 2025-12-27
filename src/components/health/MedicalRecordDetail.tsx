@@ -33,8 +33,10 @@ import {
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDeleteHealthRecord, useIsPhysician } from "@/hooks/useHealth";
-import type { HealthRecord, FitnessStatus } from "@/types/health";
+import { useDeleteHealthRecord, useIsPhysician, useMedicalVisitsByHealthRecord, useExposuresByIds } from "@/hooks/useHealth";
+import { VisitForm } from "@/components/health/VisitForm";
+import { ExposureDisplay } from "@/components/health/ExposureSelector";
+import type { HealthRecord, FitnessStatus, MedicalVisitStatus } from "@/types/health";
 
 const FITNESS_STATUS_CONFIG: Record<FitnessStatus, { label: string; color: string; icon: React.ElementType }> = {
   fit: { label: "Apte", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
@@ -62,6 +64,14 @@ export function MedicalRecordDetail({
   const isPhysician = useIsPhysician();
   const deleteRecord = useDeleteHealthRecord();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAddVisitForm, setShowAddVisitForm] = useState(false);
+  const [addVisitMode, setAddVisitMode] = useState<"scheduled" | "completed">("scheduled");
+
+  // Fetch visits linked to this health record
+  const { data: linkedVisits = [], isLoading: loadingVisits } = useMedicalVisitsByHealthRecord(record?.id);
+  
+  // Fetch linked organization exposures
+  const { data: linkedExposures = [], isLoading: loadingExposures } = useExposuresByIds(record?.exposureIds || []);
 
   if (!record) return null;
 
@@ -182,32 +192,72 @@ export function MedicalRecordDetail({
               )}
             </TabsContent>
 
-            {/* Examinations Tab */}
+            {/* Visits Tab (formerly Examinations) */}
             <TabsContent value="exams" className="mt-4">
-              {record.examinations.length === 0 ? (
+              {/* Add Visit Buttons */}
+              {isPhysician && (
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAddVisitMode("completed");
+                      setShowAddVisitForm(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter visite passée
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAddVisitMode("scheduled");
+                      setShowAddVisitForm(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Planifier visite
+                  </Button>
+                </div>
+              )}
+              
+              {loadingVisits ? (
                 <p className="text-sm text-slate-500 text-center py-4">
-                  Aucun examen enregistré
+                  Chargement des visites...
+                </p>
+              ) : linkedVisits.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Aucune visite enregistrée
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {record.examinations.map((exam) => (
-                    <div key={exam.id} className="rounded-lg border p-3">
+                  {linkedVisits.map((visit) => (
+                    <div key={visit.id} className="rounded-lg border p-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-indigo-500" />
                           <span className="text-sm font-medium text-slate-700">
-                            {getExamTypeLabel(exam.type)}
+                            {getExamTypeLabel(visit.type)}
                           </span>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {exam.result === "fit" ? "Apte" : "Non apte"}
+                        <Badge 
+                          variant="outline" 
+                          className={cn("text-xs", getVisitStatusStyle(visit.status))}
+                        >
+                          {getVisitStatusLabel(visit.status)}
                         </Badge>
                       </div>
                       <p className="text-xs text-slate-500 mt-2">
-                        {exam.date.toDate().toLocaleDateString("fr-FR")} • {exam.conductedBy}
+                        {visit.scheduledDate.toDate().toLocaleDateString("fr-FR")} • {visit.physicianName}
                       </p>
-                      {exam.notes && (
-                        <p className="text-sm text-slate-600 mt-2">{exam.notes}</p>
+                      {visit.findings && (
+                        <p className="text-sm text-slate-600 mt-2">{visit.findings}</p>
+                      )}
+                      {visit.fitnessDecision && (
+                        <Badge variant="secondary" className="mt-2 text-xs">
+                          {visit.fitnessDecision === "fit" ? "Apte" : "Non apte"}
+                        </Badge>
                       )}
                     </div>
                   ))}
@@ -247,32 +297,49 @@ export function MedicalRecordDetail({
 
             {/* Exposures Tab */}
             <TabsContent value="exposures" className="mt-4">
-              {record.exposures.length === 0 ? (
+              {loadingExposures ? (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Chargement des expositions...
+                </p>
+              ) : linkedExposures.length === 0 && (!record.exposures || record.exposures.length === 0) ? (
                 <p className="text-sm text-slate-500 text-center py-4">
                   Aucune exposition enregistrée
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {record.exposures.map((exposure) => (
-                    <div key={exposure.id} className="rounded-lg border p-3">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className={cn(
-                          "h-4 w-4 mt-0.5",
-                          exposure.exposureLevel === "high" ? "text-red-500" :
-                          exposure.exposureLevel === "medium" ? "text-amber-500" : "text-green-500"
-                        )} />
-                        <div>
-                          <p className="text-sm font-medium text-slate-700">
-                            {exposure.substance || getHazardTypeLabel(exposure.hazardType)}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Niveau: {getExposureLevelLabel(exposure.exposureLevel)} • 
-                            {exposure.frequency}
-                          </p>
+                <div className="space-y-4">
+                  {/* Display linked OrganizationExposure records */}
+                  {linkedExposures.length > 0 && (
+                    <ExposureDisplay exposures={linkedExposures} />
+                  )}
+                  
+                  {/* Display legacy embedded exposures (if any) */}
+                  {record.exposures && record.exposures.length > 0 && (
+                    <div className="space-y-2">
+                      {linkedExposures.length > 0 && (
+                        <p className="text-xs text-muted-foreground">Expositions héritées (anciennes données)</p>
+                      )}
+                      {record.exposures.map((exposure) => (
+                        <div key={exposure.id} className="rounded-lg border p-3 opacity-75">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className={cn(
+                              "h-4 w-4 mt-0.5",
+                              exposure.exposureLevel === "high" ? "text-red-500" :
+                              exposure.exposureLevel === "medium" ? "text-amber-500" : "text-green-500"
+                            )} />
+                            <div>
+                              <p className="text-sm font-medium text-slate-700">
+                                {exposure.substance || getHazardTypeLabel(exposure.hazardType)}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                Niveau: {getExposureLevelLabel(exposure.exposureLevel)} • 
+                                {exposure.frequency}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </TabsContent>
@@ -336,6 +403,21 @@ export function MedicalRecordDetail({
           )}
         </div>
       </DialogContent>
+      
+      {/* Add Visit Form Dialog */}
+      <VisitForm
+        open={showAddVisitForm}
+        onOpenChange={setShowAddVisitForm}
+        healthRecordId={record.id}
+        defaultStatus={addVisitMode === "completed" ? "completed" : "scheduled"}
+        defaultEmployee={{
+          id: record.employeeId,
+          name: record.employeeName,
+          departmentId: record.departmentId,
+          departmentName: record.departmentId,
+        }}
+        onSuccess={() => setShowAddVisitForm(false)}
+      />
     </Dialog>
   );
 }
@@ -374,6 +456,33 @@ function getExposureLevelLabel(level: string): string {
     high: "Élevé",
   };
   return labels[level] || level;
+}
+
+function getVisitStatusLabel(status: MedicalVisitStatus): string {
+  const labels: Record<MedicalVisitStatus, string> = {
+    scheduled: "Planifiée",
+    completed: "Effectuée",
+    cancelled: "Annulée",
+    no_show: "Absent",
+    overdue: "En retard",
+  };
+  return labels[status] || status;
+}
+
+function getVisitStatusStyle(status: MedicalVisitStatus): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "scheduled":
+      return "bg-blue-100 text-blue-700 border-blue-200";
+    case "cancelled":
+    case "no_show":
+      return "bg-slate-100 text-slate-700 border-slate-200";
+    case "overdue":
+      return "bg-red-100 text-red-700 border-red-200";
+    default:
+      return "";
+  }
 }
 
 export default MedicalRecordDetail;

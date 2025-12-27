@@ -160,5 +160,3 @@ Create [`src/hooks/useEmployeeSearch.ts`](src/hooks/useEmployeeSearch.ts):
 | File | Action ||------|--------|| `src/components/health/EmployeeSelector.tsx` | CREATE - Main searchable selector || `src/components/health/EmployeesMultiSelector.tsx` | CREATE - Multi-select variant || `src/hooks/useEmployeeSearch.ts` | CREATE - Hook for search logic || `src/components/health/MedicalRecordForm.tsx` | MODIFY - Replace text inputs || `src/components/health/VisitForm.tsx` | MODIFY - Replace text inputs || `src/types/health.ts` | MODIFY - Add clarifying comments || `src/components/health/ExposureForm.tsx` | CREATE - New form for OrganizationExposure |---
 
 ## Testing Points
-
-- Create a new fiche medicale and verify employee search works

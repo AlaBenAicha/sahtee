@@ -76,6 +76,9 @@ import {
   Shield,
   Send,
   RefreshCw,
+  Pencil,
+  Building2,
+  Briefcase,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -95,6 +98,7 @@ import {
   getInvitationsByOrganization,
   cancelInvitation,
   updateUserRoleId,
+  updateUser,
 } from "@/services/userService";
 import { getRolesByOrganization } from "@/services/roleService";
 
@@ -128,11 +132,31 @@ export default function UsersPage() {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
   const [showCancelInviteDialog, setShowCancelInviteDialog] = useState(false);
+  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   
-  // Form state
+  // Form state - Invite
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRoleId, setInviteRoleId] = useState("");
+  const [inviteDepartmentId, setInviteDepartmentId] = useState("");
+  const [inviteJobTitle, setInviteJobTitle] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
+  
+  // Form state - Edit User
+  const [editUserData, setEditUserData] = useState<{
+    firstName: string;
+    lastName: string;
+    roleId: string;
+    departmentId: string;
+    jobTitle: string;
+  }>({
+    firstName: "",
+    lastName: "",
+    roleId: "",
+    departmentId: "",
+    jobTitle: "",
+  });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [selectedInvitation, setSelectedInvitation] = useState<UserInvitation | null>(null);
@@ -218,7 +242,11 @@ export default function UsersPage() {
         inviteEmail,
         userProfile.organizationId,
         inviteRoleId,
-        userProfile.uid
+        userProfile.uid,
+        inviteDepartmentId || undefined,
+        inviteJobTitle || undefined,
+        inviteFirstName || undefined,
+        inviteLastName || undefined
       );
       
       setInvitations(prev => [invitation, ...prev]);
@@ -307,6 +335,60 @@ export default function UsersPage() {
     setShowRoleChangeDialog(true);
   };
 
+  // Open edit user dialog
+  const openEditUserDialog = (user: User) => {
+    setSelectedUser(user);
+    setEditUserData({
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      roleId: user.roleId || "",
+      departmentId: user.departmentId || "",
+      jobTitle: user.jobTitle || "",
+    });
+    setShowEditUserDialog(true);
+  };
+
+  // Handle edit user
+  const handleEditUser = async () => {
+    if (!selectedUser || !userProfile?.uid) return;
+    
+    setSaving(true);
+    try {
+      await updateUser(selectedUser.uid, {
+        firstName: editUserData.firstName.trim(),
+        lastName: editUserData.lastName.trim(),
+        displayName: `${editUserData.firstName.trim()} ${editUserData.lastName.trim()}`,
+        roleId: editUserData.roleId,
+        departmentId: editUserData.departmentId.trim() || undefined,
+        jobTitle: editUserData.jobTitle.trim() || undefined,
+      }, userProfile.uid);
+      
+      // Update local state
+      setUsers(users.map(u => 
+        u.id === selectedUser.id 
+          ? { 
+              ...u, 
+              firstName: editUserData.firstName.trim(),
+              lastName: editUserData.lastName.trim(),
+              displayName: `${editUserData.firstName.trim()} ${editUserData.lastName.trim()}`,
+              roleId: editUserData.roleId,
+              departmentId: editUserData.departmentId.trim() || undefined,
+              jobTitle: editUserData.jobTitle.trim() || undefined,
+            }
+          : u
+      ));
+      
+      setShowEditUserDialog(false);
+      setSelectedUser(null);
+      toast.success("Utilisateur modifié avec succès");
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast.error("Erreur lors de la modification");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Get user initials
   const getInitials = (user: User): string => {
     return `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "U";
@@ -358,6 +440,10 @@ export default function UsersPage() {
             if (!open) {
               setGeneratedLink("");
               setInviteEmail("");
+              setInviteFirstName("");
+              setInviteLastName("");
+              setInviteDepartmentId("");
+              setInviteJobTitle("");
             }
           }}>
             <DialogTrigger asChild>
@@ -387,6 +473,29 @@ export default function UsersPage() {
                   />
                 </div>
                 
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="firstName">Prénom</Label>
+                    <Input
+                      id="firstName"
+                      value={inviteFirstName}
+                      onChange={(e) => setInviteFirstName(e.target.value)}
+                      placeholder="Ex: Jean"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Nom</Label>
+                    <Input
+                      id="lastName"
+                      value={inviteLastName}
+                      onChange={(e) => setInviteLastName(e.target.value)}
+                      placeholder="Ex: Dupont"
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+                
                 <div>
                   <Label htmlFor="role">Rôle à attribuer *</Label>
                   <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
@@ -404,6 +513,29 @@ export default function UsersPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="department">Département</Label>
+                    <Input
+                      id="department"
+                      value={inviteDepartmentId}
+                      onChange={(e) => setInviteDepartmentId(e.target.value)}
+                      placeholder="Ex: Production"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="jobTitle">Poste</Label>
+                    <Input
+                      id="jobTitle"
+                      value={inviteJobTitle}
+                      onChange={(e) => setInviteJobTitle(e.target.value)}
+                      placeholder="Ex: Opérateur machine"
+                      className="mt-1.5"
+                    />
+                  </div>
                 </div>
                 
                 {generatedLink && (
@@ -533,6 +665,8 @@ export default function UsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Utilisateur</TableHead>
+                    <TableHead>Département</TableHead>
+                    <TableHead>Poste</TableHead>
                     <TableHead>Rôle</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Dernière connexion</TableHead>
@@ -564,6 +698,16 @@ export default function UsersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <span className="text-sm text-slate-600">
+                          {user.departmentId || "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-slate-600">
+                          {user.jobTitle || "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="secondary" className="bg-slate-100">
                           {getRoleName(user.roleId || "")}
                         </Badge>
@@ -590,6 +734,10 @@ export default function UsersPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => openEditUserDialog(user)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Modifier
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openRoleChangeDialog(user)}>
                                 <Shield className="mr-2 h-4 w-4" />
                                 Changer le rôle
@@ -603,7 +751,7 @@ export default function UsersPage() {
                   
                   {users.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-slate-500">
                         Aucun utilisateur dans votre organisation
                       </TableCell>
                     </TableRow>
@@ -776,6 +924,98 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+        <DialogContent size="sm">
+          <DialogHeader>
+            <DialogTitle>Modifier l'utilisateur</DialogTitle>
+            <DialogDescription>
+              Modifier les informations de {selectedUser?.firstName} {selectedUser?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="edit-firstName">Prénom</Label>
+                <Input
+                  id="edit-firstName"
+                  value={editUserData.firstName}
+                  onChange={(e) => setEditUserData({ ...editUserData, firstName: e.target.value })}
+                  placeholder="Prénom"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-lastName">Nom</Label>
+                <Input
+                  id="edit-lastName"
+                  value={editUserData.lastName}
+                  onChange={(e) => setEditUserData({ ...editUserData, lastName: e.target.value })}
+                  placeholder="Nom"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="edit-role">Rôle</Label>
+              <Select value={editUserData.roleId} onValueChange={(value) => setEditUserData({ ...editUserData, roleId: value })}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Sélectionnez un rôle" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-slate-400" />
+                        {role.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="edit-department">Département</Label>
+                <Input
+                  id="edit-department"
+                  value={editUserData.departmentId}
+                  onChange={(e) => setEditUserData({ ...editUserData, departmentId: e.target.value })}
+                  placeholder="Ex: Production"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-jobTitle">Poste</Label>
+                <Input
+                  id="edit-jobTitle"
+                  value={editUserData.jobTitle}
+                  onChange={(e) => setEditUserData({ ...editUserData, jobTitle: e.target.value })}
+                  placeholder="Ex: Opérateur machine"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditUserDialog(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleEditUser} 
+              disabled={saving || !editUserData.firstName.trim() || !editUserData.lastName.trim()}
+            >
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

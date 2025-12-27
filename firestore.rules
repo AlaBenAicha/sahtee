@@ -256,6 +256,16 @@ service cloud.firestore {
       allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
+    // Measurements collection (exposure measurements - separate from exposures)
+    match /measurements/{measurementId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
     // Health Alerts collection
     match /healthAlerts/{alertId} {
       allow read: if isAuthenticated() && 

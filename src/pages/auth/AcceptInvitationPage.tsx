@@ -128,6 +128,15 @@ export default function AcceptInvitationPage() {
         
         setInvitationData({ invitation, organization, role });
         setInvitationState("valid");
+        
+        // Pre-fill form with invitation data if provided
+        if (invitation.firstName || invitation.lastName) {
+          setFormData(prev => ({
+            ...prev,
+            firstName: invitation.firstName || "",
+            lastName: invitation.lastName || "",
+          }));
+        }
       } catch (error) {
         console.error("Error validating invitation:", error);
         setInvitationState("error");
@@ -213,6 +222,7 @@ export default function AcceptInvitationPage() {
         roleId: invitation.roleId,
         isOrgAdmin: false,
         ...(invitation.departmentId && { departmentId: invitation.departmentId }), // Only include if defined
+        ...(invitation.jobTitle && { jobTitle: invitation.jobTitle }), // Only include if defined
         status: "active",
         emailVerified: false,
         onboardingCompleted: false,

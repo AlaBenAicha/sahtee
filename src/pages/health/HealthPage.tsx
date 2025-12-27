@@ -43,6 +43,8 @@ import { VisitForm } from "@/components/health/VisitForm";
 import { VisitList } from "@/components/health/VisitList";
 import { ExposureTable } from "@/components/health/ExposureTable";
 import { ExposureDetailModal } from "@/components/health/ExposureDetailModal";
+import { ExposureForm } from "@/components/health/ExposureForm";
+import { MeasurementForm } from "@/components/health/MeasurementForm";
 import { HealthAlertsFeed } from "@/components/health/HealthAlertsFeed";
 import { HealthAIPanel } from "@/components/health/ai/HealthAIPanel";
 
@@ -73,6 +75,9 @@ export default function HealthPage() {
   // Form modals
   const [showRecordForm, setShowRecordForm] = useState(false);
   const [showVisitForm, setShowVisitForm] = useState(false);
+  const [showExposureForm, setShowExposureForm] = useState(false);
+  const [showMeasurementForm, setShowMeasurementForm] = useState(false);
+  const [exposureForMeasurement, setExposureForMeasurement] = useState<OrganizationExposure | null>(null);
   const [visitFormDate, setVisitFormDate] = useState<Date | undefined>(undefined);
 
   // Tab configuration
@@ -173,6 +178,12 @@ export default function HealthPage() {
   // Handle exposure selection
   const handleSelectExposure = (exposure: OrganizationExposure) => {
     setSelectedExposure(exposure);
+  };
+
+  // Handle exposure creation
+  const handleCreateExposure = () => {
+    setSelectedExposure(null);
+    setShowExposureForm(true);
   };
 
   // Handle alert actions
@@ -283,10 +294,7 @@ export default function HealthPage() {
         <TabsContent value="exposures" className="mt-6">
           <ExposureTable
             onSelectExposure={handleSelectExposure}
-            onCreateExposure={() => {
-              // TODO: Implement exposure creation form
-              console.log("Create exposure");
-            }}
+            onCreateExposure={handleCreateExposure}
           />
         </TabsContent>
 
@@ -305,7 +313,7 @@ export default function HealthPage() {
       </Tabs>
 
       {/* Modals */}
-      
+
       {/* Medical Record Form */}
       <MedicalRecordForm
         open={showRecordForm}
@@ -345,13 +353,42 @@ export default function HealthPage() {
       {/* Exposure Detail Modal */}
       <ExposureDetailModal
         exposure={selectedExposure}
-        open={!!selectedExposure}
+        open={!!selectedExposure && !showExposureForm && !showMeasurementForm}
         onOpenChange={(open) => !open && setSelectedExposure(null)}
         onAddMeasurement={(exposure) => {
-          // TODO: Implement measurement form
-          console.log("Add measurement to:", exposure);
+          setExposureForMeasurement(exposure);
+          setShowMeasurementForm(true);
         }}
       />
+
+      {/* Exposure Form */}
+      <ExposureForm
+        open={showExposureForm}
+        onOpenChange={setShowExposureForm}
+        exposure={undefined}
+        onSuccess={() => {
+          setShowExposureForm(false);
+          setSelectedExposure(null);
+        }}
+      />
+
+      {/* Measurement Form */}
+      {exposureForMeasurement && (
+        <MeasurementForm
+          open={showMeasurementForm}
+          onOpenChange={(open) => {
+            setShowMeasurementForm(open);
+            if (!open) {
+              setExposureForMeasurement(null);
+            }
+          }}
+          exposure={exposureForMeasurement}
+          onSuccess={() => {
+            setShowMeasurementForm(false);
+            setExposureForMeasurement(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -48,14 +48,32 @@ export interface HealthRecord extends FirestoreDocument {
   restrictions: MedicalRestriction[];
   
   // Examinations
-  examinations: MedicalExamination[];
+  /**
+   * @deprecated Use MedicalVisit documents in the medicalVisits collection instead.
+   * This field is kept for backwards compatibility with existing data.
+   * New visits should be created as MedicalVisit documents linked via healthRecordId.
+   */
+  examinations?: MedicalExamination[];
   nextExaminationDue: Timestamp;
   
   // Vaccinations
   vaccinations: Vaccination[];
   
   // Exposure tracking
-  exposures: ExposureRecord[];
+  /**
+   * @deprecated Use exposureIds to reference OrganizationExposure documents instead.
+   * This field is kept for backwards compatibility with existing data.
+   * New exposures should be linked via exposureIds.
+   */
+  exposures?: ExposureRecord[];
+  
+  /**
+   * References to OrganizationExposure document IDs.
+   * Links this medical record to organization-level exposure records.
+   * Selected via ExposureSelector component.
+   * The employee is also added to OrganizationExposure.exposedEmployeeIds for bidirectional linking.
+   */
+  exposureIds: string[];
   
   // Work accidents
   accidents: AccidentRecord[];
@@ -86,7 +104,11 @@ export interface MedicalRestriction {
   issuedBy: string;
 }
 
-/** Medical examination record */
+/**
+ * Medical examination record
+ * @deprecated Use MedicalVisit instead. This type is kept for backwards compatibility
+ * with existing HealthRecord documents that have embedded examinations.
+ */
 export interface MedicalExamination {
   id: string;
   type: ExaminationType;
@@ -367,6 +389,13 @@ export interface MedicalVisit {
   id: string;
   organizationId: string;
   
+  /**
+   * Reference to the HealthRecord document ID.
+   * Links this visit to the employee's fiche médicale.
+   * Optional for backwards compatibility with existing data.
+   */
+  healthRecordId?: string;
+  
   // Employee info
   /**
    * Reference to the User document ID (uid).
@@ -576,7 +605,11 @@ export interface OrganizationExposure {
   percentOfLimit: number;
   
   // Historical data
-  measurementHistory: ExposureMeasurement[];
+  /**
+   * @deprecated Use ExposureMeasurement documents in measurements collection instead.
+   * Query measurements by exposureId. This field is kept for backwards compatibility.
+   */
+  measurementHistory?: ExposureMeasurement[];
   
   // Status
   alertLevel: "low" | "moderate" | "elevated" | "critical";
@@ -609,9 +642,17 @@ export interface OrganizationExposure {
   updatedAt: Timestamp;
 }
 
-/** Individual exposure measurement */
-export interface ExposureMeasurement {
-  id: string;
+/**
+ * Individual exposure measurement - stored in 'measurements' collection.
+ * Each measurement references an OrganizationExposure via exposureId.
+ */
+export interface ExposureMeasurement extends FirestoreDocument {
+  /** The ID of the OrganizationExposure this measurement belongs to */
+  exposureId: string;
+  /** Organization ID for multi-tenancy */
+  organizationId: string;
+  
+  // Measurement data
   date: Timestamp;
   value: number;
   unit: string;
@@ -620,7 +661,11 @@ export interface ExposureMeasurement {
   duration: string; // e.g., "8h TWA"
   withinLimits: boolean;
   notes?: string;
-  documentId?: string;
+  
+  // Audit
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  createdBy: string;
 }
 
 // =============================================================================

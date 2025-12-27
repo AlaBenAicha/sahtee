@@ -280,7 +280,10 @@ export async function createInvitation(
   organizationId: string,
   roleId: string,
   invitedBy: string,
-  departmentId?: string
+  departmentId?: string,
+  jobTitle?: string,
+  firstName?: string,
+  lastName?: string
 ): Promise<UserInvitation> {
   // Generate a unique token
   const token = generateInvitationToken();
@@ -295,7 +298,10 @@ export async function createInvitation(
     email: email.toLowerCase(),
     organizationId,
     roleId,
+    ...(firstName && { firstName }), // Only include if defined
+    ...(lastName && { lastName }), // Only include if defined
     ...(departmentId && { departmentId }), // Only include if defined
+    ...(jobTitle && { jobTitle }), // Only include if defined
     invitedBy,
     expiresAt,
     status: "pending",
