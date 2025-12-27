@@ -249,9 +249,9 @@ export function PreventionRecommendations({
 
       {/* Recommendations List */}
       <div className="space-y-3">
-        {recommendations.map((recommendation) => (
+        {recommendations.map((recommendation, index) => (
           <RecommendationCard
-            key={recommendation.id}
+            key={recommendation.id || `recommendation-${index}`}
             recommendation={recommendation}
             onAccept={onAccept}
             onReject={onReject}

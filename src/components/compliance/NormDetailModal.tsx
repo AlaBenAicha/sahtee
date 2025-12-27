@@ -8,7 +8,7 @@
  * - CAPA links
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   FileText,
@@ -21,6 +21,7 @@ import {
   Link2,
   Plus,
   Calendar,
+  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -40,15 +41,20 @@ import {
 } from "@/components/ui/collapsible";
 import { RequirementEditor } from "./RequirementEditor";
 import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
+import { useNorm, useAddRequirement } from "@/hooks/useCompliance";
+import { toast } from "sonner";
 import type { NormWithRequirements, NormRequirement, NormStatus, ComplianceStatus } from "@/types/conformity";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface NormDetailModalProps {
   norm: NormWithRequirements | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPlanAudit?: (norm: NormWithRequirements) => void;
-  onRequirementUpdate?: (normId: string, requirementId: string, data: Partial<NormRequirement>) => void;
+  onRequirementUpdate?: (normId: string, requirementId: string, data: Partial<NormRequirement>) => Promise<void>;
 }
 
 const STATUS_CONFIG: Record<NormStatus, { label: string; color: string }> = {
@@ -99,7 +105,7 @@ const COMPLIANCE_STATUS_CONFIG: Record<ComplianceStatus, { label: string; color:
 };
 
 export function NormDetailModal({
-  norm,
+  norm: initialNorm,
   open,
   onOpenChange,
   onPlanAudit,
@@ -108,6 +114,30 @@ export function NormDetailModal({
   const { canUpdate } = useFeaturePermissions("compliance");
   const [expandedRequirements, setExpandedRequirements] = useState<Set<string>>(new Set());
   const [editingRequirement, setEditingRequirement] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isAddingRequirement, setIsAddingRequirement] = useState(false);
+  const [newRequirement, setNewRequirement] = useState({
+    clause: "",
+    title: "",
+    description: "",
+  });
+
+  // Fetch the latest norm data to reflect updates
+  const { data: freshNorm, isLoading: isRefetching } = useNorm(initialNorm?.id);
+  const addRequirement = useAddRequirement();
+  
+  // Use fresh data if available, otherwise use initial data
+  const norm = freshNorm || initialNorm;
+
+  // Reset editing state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setEditingRequirement(null);
+      setExpandedRequirements(new Set());
+      setIsAddingRequirement(false);
+      setNewRequirement({ clause: "", title: "", description: "" });
+    }
+  }, [open]);
 
   if (!norm) return null;
 
@@ -129,9 +159,57 @@ export function NormDetailModal({
     setEditingRequirement(requirementId);
   };
 
-  const handleRequirementSave = (requirementId: string, data: Partial<NormRequirement>) => {
-    onRequirementUpdate?.(norm.id, requirementId, data);
-    setEditingRequirement(null);
+  const handleRequirementSave = async (requirementId: string, data: Partial<NormRequirement>) => {
+    if (!onRequirementUpdate) return;
+    
+    setIsUpdating(true);
+    try {
+      await onRequirementUpdate(norm.id, requirementId, data);
+      setEditingRequirement(null);
+      toast.success("Exigence mise à jour", {
+        description: "Le statut de conformité a été enregistré.",
+      });
+    } catch (error) {
+      console.error("Failed to update requirement:", error);
+      toast.error("Erreur", {
+        description: "Impossible de mettre à jour l'exigence.",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleAddRequirement = async () => {
+    if (!newRequirement.clause.trim() || !newRequirement.title.trim()) {
+      toast.error("Champs requis", {
+        description: "Veuillez remplir la clause et le titre.",
+      });
+      return;
+    }
+
+    try {
+      await addRequirement.mutateAsync({
+        normId: norm.id,
+        requirement: {
+          clause: newRequirement.clause.trim(),
+          title: newRequirement.title.trim(),
+          description: newRequirement.description.trim(),
+          status: "pending_review",
+          evidenceRequired: false,
+          notes: undefined,
+        },
+      });
+      setNewRequirement({ clause: "", title: "", description: "" });
+      setIsAddingRequirement(false);
+      toast.success("Exigence ajoutée", {
+        description: "La nouvelle exigence a été ajoutée à la norme.",
+      });
+    } catch (error) {
+      console.error("Failed to add requirement:", error);
+      toast.error("Erreur", {
+        description: "Impossible d'ajouter l'exigence.",
+      });
+    }
   };
 
   // Group requirements by category (clause prefix)
@@ -159,12 +237,15 @@ export function NormDetailModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="xl" className="p-0">
-        <DialogHeader className="p-6 pb-4 border-b">
+        <DialogHeader className="p-6 pb-4 border-b shrink-0">
           <div className="flex items-start justify-between">
             <div>
               <DialogTitle className="text-xl flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 {norm.code}
+                {(isRefetching || isUpdating) && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {norm.name}
@@ -200,8 +281,8 @@ export function NormDetailModal({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-250px)]">
-          <div className="p-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="p-6 space-y-4">
             {/* Description */}
             {norm.description && (
               <div className="space-y-2">
@@ -215,7 +296,86 @@ export function NormDetailModal({
 
             {/* Requirements */}
             <div className="space-y-4">
-              <h3 className="font-medium">Exigences ({norm.requirements.length})</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium">Exigences ({norm.requirements.length})</h3>
+                {canUpdate && !isAddingRequirement && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAddingRequirement(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter
+                  </Button>
+                )}
+              </div>
+
+              {/* Add Requirement Form */}
+              {isAddingRequirement && (
+                <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
+                  <h4 className="font-medium text-sm">Nouvelle exigence</h4>
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-clause">Clause</Label>
+                      <Input
+                        id="new-clause"
+                        placeholder="Ex: 5.1"
+                        value={newRequirement.clause}
+                        onChange={(e) => setNewRequirement(prev => ({ ...prev, clause: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-span-3 space-y-2">
+                      <Label htmlFor="new-title">Titre</Label>
+                      <Input
+                        id="new-title"
+                        placeholder="Titre de l'exigence"
+                        value={newRequirement.title}
+                        onChange={(e) => setNewRequirement(prev => ({ ...prev, title: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-description">Description</Label>
+                    <Textarea
+                      id="new-description"
+                      placeholder="Description détaillée de l'exigence..."
+                      value={newRequirement.description}
+                      onChange={(e) => setNewRequirement(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsAddingRequirement(false);
+                        setNewRequirement({ clause: "", title: "", description: "" });
+                      }}
+                      disabled={addRequirement.isPending}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleAddRequirement}
+                      disabled={addRequirement.isPending || !newRequirement.clause.trim() || !newRequirement.title.trim()}
+                    >
+                      {addRequirement.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          Ajout...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Ajouter
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {Object.entries(groupedRequirements).map(([clausePrefix, requirements]) => (
                 <div key={clausePrefix} className="space-y-2">
@@ -342,7 +502,7 @@ export function NormDetailModal({
               ))}
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

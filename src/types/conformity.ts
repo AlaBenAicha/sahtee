@@ -334,3 +334,97 @@ export interface FindingFilters {
   hasLinkedCapa?: boolean;
 }
 
+// =============================================================================
+// AI Analysis History Types
+// =============================================================================
+
+/** Type of AI analysis performed */
+export type AIAnalysisType = 
+  | "gap_analysis"
+  | "audit_planning" 
+  | "capa_suggestions"
+  | "compliance_report";
+
+/** Priority level for recommendations */
+export type AIRecommendationPriority = "high" | "medium" | "low";
+
+/** Recommendation type */
+export type AIRecommendationType = "gap" | "audit" | "capa" | "training" | "documentation";
+
+/** AI Recommendation stored in analysis */
+export interface AIRecommendationRecord {
+  id: string;
+  type: AIRecommendationType;
+  priority: AIRecommendationPriority;
+  title: string;
+  description: string;
+  action?: string;
+  normId?: string;
+  normCode?: string;
+  requirementId?: string;
+  clause?: string;
+}
+
+/** Gap identified during analysis */
+export interface AIGapRecord {
+  normId: string;
+  normCode: string;
+  requirementId: string;
+  clause: string;
+  description: string;
+  severity: "critical" | "major" | "minor";
+  suggestedAction?: string;
+}
+
+/** Audit recommendation from AI */
+export interface AIAuditRecommendationRecord {
+  normId: string;
+  normCode: string;
+  priority: "urgent" | "soon" | "planned";
+  reason: string;
+  suggestedDate?: string;
+}
+
+/** AI Analysis record stored in Firestore */
+export interface AIAnalysis extends FirestoreDocument {
+  organizationId: string;
+  
+  // Analysis metadata
+  type: AIAnalysisType;
+  title: string;
+  description?: string;
+  
+  // Results
+  overallScore: number;
+  gaps: AIGapRecord[];
+  recommendations: AIRecommendationRecord[];
+  auditRecommendations: AIAuditRecommendationRecord[];
+  
+  // Context at time of analysis
+  totalNorms: number;
+  totalRequirements: number;
+  compliantCount: number;
+  nonCompliantCount: number;
+  
+  // AI details
+  aiModel?: string;
+  rawResponse?: string;
+  
+  // Audit trail
+  analyzedBy: string;
+  analyzedByName: string;
+  audit: AuditInfo;
+}
+
+/** Filters for AI analysis history */
+export interface AIAnalysisFilters {
+  type?: AIAnalysisType[];
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+  searchQuery?: string;
+  minScore?: number;
+  maxScore?: number;
+}
+

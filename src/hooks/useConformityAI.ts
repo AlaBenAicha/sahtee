@@ -15,12 +15,15 @@ import {
     getConformityAIService,
     isConformityAIEnabled
 } from "@/services/ai/conformityAIService";
+import { saveAIAnalysis } from "@/services/complianceService";
+import { complianceKeys } from "@/hooks/useCompliance";
 import type {
     AIContext,
     ComplianceGapResult,
     AuditRecommendation,
     ComplianceRecommendation
 } from "@/services/ai/types";
+import type { AIRecommendationRecord, AIGapRecord, AIAuditRecommendationRecord } from "@/types/conformity";
 
 // Query keys for caching
 export const conformityAIKeys = {
@@ -131,10 +134,11 @@ export function useAuditPlanning() {
 }
 
 /**
- * Hook to manually trigger gap analysis
+ * Hook to manually trigger gap analysis and save results to database
  */
 export function usePerformGapAnalysis() {
     const { service, isInitialized, isEnabled } = useConformityAI();
+    const { user, userProfile } = useAuth();
     const queryClient = useQueryClient();
 
     return useMutation({
@@ -142,10 +146,66 @@ export function usePerformGapAnalysis() {
             if (!isInitialized || !isEnabled) {
                 throw new Error("Conformity-AI not initialized");
             }
-            return service.performGapAnalysis();
+            
+            const result = await service.performGapAnalysis();
+            
+            // Save the analysis to the database
+            if (user?.uid && userProfile?.organizationId) {
+                // Map the result to our database format
+                const gaps: AIGapRecord[] = result.gaps?.map(g => ({
+                    normId: g.normId,
+                    normCode: g.normCode,
+                    requirementId: g.requirementId,
+                    clause: g.clause,
+                    description: g.description,
+                    severity: g.severity,
+                    suggestedAction: g.suggestedAction,
+                })) || [];
+                
+                const recommendations: AIRecommendationRecord[] = result.recommendations?.map((r, i) => ({
+                    id: `rec-${i}`,
+                    type: r.type === "audit" ? "audit" : r.type === "training" ? "training" : r.type === "documentation" ? "documentation" : "capa",
+                    priority: r.priority,
+                    title: r.title,
+                    description: r.description,
+                    normId: r.relatedNormIds?.[0],
+                })) || [];
+                
+                const auditRecommendations: AIAuditRecommendationRecord[] = result.prioritizedAudits?.map(a => ({
+                    normId: a.normId,
+                    normCode: a.normCode,
+                    priority: a.priority,
+                    reason: a.reason,
+                    suggestedDate: a.suggestedDate,
+                })) || [];
+                
+                await saveAIAnalysis(
+                    {
+                        organizationId: userProfile.organizationId,
+                        type: "gap_analysis",
+                        description: `Analyse d'écarts avec score de ${result.overallScore}%`,
+                        overallScore: result.overallScore,
+                        gaps,
+                        recommendations,
+                        auditRecommendations,
+                        totalNorms: 0, // Will be updated from metrics
+                        totalRequirements: 0,
+                        compliantCount: 0,
+                        nonCompliantCount: gaps.length,
+                        aiModel: "gemini",
+                        analyzedBy: user.uid,
+                        analyzedByName: userProfile.displayName || user.email || "Unknown",
+                    },
+                    user.uid,
+                    userProfile.displayName || user.email || "Unknown"
+                );
+            }
+            
+            return result;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: conformityAIKeys.all });
+            queryClient.invalidateQueries({ queryKey: complianceKeys.aiAnalyses() });
         },
     });
 }

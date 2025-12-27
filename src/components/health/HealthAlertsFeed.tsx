@@ -123,8 +123,8 @@ export function HealthAlertsFeed({
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active" className="relative">
+          <TabsList className="flex w-full">
+            <TabsTrigger value="active" className="flex-1 relative">
               Actives
               {activeCount > 0 && (
                 <Badge
@@ -135,10 +135,10 @@ export function HealthAlertsFeed({
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="acknowledged">
+            <TabsTrigger value="acknowledged" className="flex-1">
               En cours
             </TabsTrigger>
-            <TabsTrigger value="resolved">
+            <TabsTrigger value="resolved" className="flex-1">
               Résolues
             </TabsTrigger>
           </TabsList>

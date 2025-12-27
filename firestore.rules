@@ -199,6 +199,45 @@ service cloud.firestore {
       allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
     }
 
+    // Norms collection (Regulatory frameworks and requirements)
+    match /norms/{normId} {
+      allow read: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // AI Analyses collection (Conformity-AI analysis history)
+    match /aiAnalyses/{analysisId} {
+      // Allow list if user is authenticated and query filters by their organization
+      allow list: if isAuthenticated();
+      // Allow get if document belongs to user's organization
+      allow get: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
+    // CAPA AI History collection
+    match /capaAIHistory/{entryId} {
+      // Allow list if user is authenticated (query filters by organization)
+      allow list: if isAuthenticated();
+      // Allow get if document belongs to user's organization
+      allow get: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Users can create history entries
+      allow create: if isAuthenticated();
+      // Users can update entries in their organization
+      allow update: if isAuthenticated() && 
+        belongsToOrg(resource.data.organizationId);
+      // Only org_admin can delete history entries
+      allow delete: if belongsToOrg(resource.data.organizationId) && isOrgAdminOrSuperAdmin();
+    }
+
     // ==========================================================================
     // Healthmeter Module Collections
     // ==========================================================================

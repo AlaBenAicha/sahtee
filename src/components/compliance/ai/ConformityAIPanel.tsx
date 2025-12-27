@@ -7,7 +7,9 @@
  * - CAPA suggestions
  */
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Brain,
   TrendingUp,
@@ -21,7 +23,9 @@ import {
   Target,
   Sparkles,
   AlertCircle,
+  History,
 } from "lucide-react";
+import { AIAnalysisHistory } from "./AIAnalysisHistory";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 import { useComplianceMetrics, useNorms, useAudits } from "@/hooks/useCompliance";
 import { 
   useConformityAI, 
@@ -59,7 +64,12 @@ const FRAMEWORK_LABELS: Record<string, string> = {
   custom: "Personnalisé",
 };
 
-export function ConformityAIPanel() {
+interface ConformityAIPanelProps {
+  onPlanAudit?: () => void;
+  onCreateCapa?: () => void;
+}
+
+export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPanelProps) {
   const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useComplianceMetrics();
   const { data: norms, isLoading: normsLoading } = useNorms({ isActive: true });
   const { data: audits, isLoading: auditsLoading } = useAudits();
@@ -78,6 +88,7 @@ export function ConformityAIPanel() {
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const isLoading = metricsLoading || normsLoading || auditsLoading;
 
@@ -195,6 +206,189 @@ export function ConformityAIPanel() {
     }
   };
 
+  const handleGenerateReport = useCallback(async () => {
+    setIsGeneratingReport(true);
+    try {
+      const reportDate = new Date().toLocaleDateString("fr-FR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      // Create PDF document
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let yPosition = 20;
+
+      // Title
+      doc.setFontSize(22);
+      doc.setTextColor(16, 185, 129); // emerald-500
+      doc.text("RAPPORT DE CONFORMITÉ", pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 10;
+
+      // Subtitle with date
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Généré le ${reportDate}`, pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 15;
+
+      // Executive Summary Section
+      doc.setFontSize(16);
+      doc.setTextColor(30, 41, 59); // slate-800
+      doc.text("Résumé Exécutif", 14, yPosition);
+      yPosition += 10;
+
+      // KPI Cards as table
+      autoTable(doc, {
+        startY: yPosition,
+        head: [["Indicateur", "Valeur"]],
+        body: [
+          ["Taux de conformité global", `${metrics?.overallComplianceRate ?? 0}%`],
+          ["Exigences conformes", `${metrics?.compliantCount ?? 0}`],
+          ["Exigences non conformes", `${metrics?.nonCompliantCount ?? 0}`],
+          ["Écarts ouverts", `${metrics?.openFindings ?? 0}`],
+        ],
+        theme: "striped",
+        headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+        margin: { left: 14 },
+        tableWidth: "auto",
+      });
+
+      yPosition = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+
+      // Referentiels Section
+      if (norms && norms.length > 0) {
+        doc.setFontSize(16);
+        doc.setTextColor(30, 41, 59);
+        doc.text("Référentiels", 14, yPosition);
+        yPosition += 10;
+
+        autoTable(doc, {
+          startY: yPosition,
+          head: [["Code", "Nom", "Score"]],
+          body: norms.map(norm => [norm.code, norm.name, `${norm.complianceScore}%`]),
+          theme: "striped",
+          headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+          margin: { left: 14 },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 100 },
+            2: { cellWidth: 30 },
+          },
+        });
+
+        yPosition = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+      }
+
+      // Check if we need a new page
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      // Recommendations Section
+      if (recommendations.length > 0) {
+        doc.setFontSize(16);
+        doc.setTextColor(30, 41, 59);
+        doc.text("Recommandations", 14, yPosition);
+        yPosition += 10;
+
+        const priorityLabels: Record<string, string> = {
+          high: "Haute",
+          medium: "Moyenne",
+          low: "Basse",
+        };
+
+        autoTable(doc, {
+          startY: yPosition,
+          head: [["Priorité", "Titre", "Description"]],
+          body: recommendations.map(rec => [
+            priorityLabels[rec.priority] || rec.priority,
+            rec.title,
+            rec.description.substring(0, 100) + (rec.description.length > 100 ? "..." : ""),
+          ]),
+          theme: "striped",
+          headStyles: { fillColor: [168, 85, 247], textColor: 255 },
+          margin: { left: 14 },
+          columnStyles: {
+            0: { cellWidth: 25 },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 100 },
+          },
+        });
+
+        yPosition = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+      }
+
+      // Check if we need a new page
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      // Recent Audits Section
+      if (audits && audits.length > 0) {
+        doc.setFontSize(16);
+        doc.setTextColor(30, 41, 59);
+        doc.text("Audits Récents", 14, yPosition);
+        yPosition += 10;
+
+        const statusLabels: Record<string, string> = {
+          planned: "Planifié",
+          in_progress: "En cours",
+          completed: "Terminé",
+          cancelled: "Annulé",
+        };
+
+        autoTable(doc, {
+          startY: yPosition,
+          head: [["Référence", "Titre", "Statut"]],
+          body: audits.slice(0, 5).map(audit => [
+            audit.reference,
+            audit.title,
+            statusLabels[audit.status] || audit.status,
+          ]),
+          theme: "striped",
+          headStyles: { fillColor: [251, 146, 60], textColor: 255 },
+          margin: { left: 14 },
+          columnStyles: {
+            0: { cellWidth: 45 },
+            1: { cellWidth: 90 },
+            2: { cellWidth: 35 },
+          },
+        });
+      }
+
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Rapport généré par SAHTEE Conformity-AI - Page ${i}/${pageCount}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: "center" }
+        );
+      }
+
+      // Save the PDF
+      doc.save(`rapport-conformite-${new Date().toISOString().split("T")[0]}.pdf`);
+
+      toast.success("Rapport PDF généré", {
+        description: "Le rapport de conformité a été téléchargé.",
+      });
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      toast.error("Erreur", {
+        description: "Impossible de générer le rapport PDF.",
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }, [metrics, norms, recommendations, audits]);
+
   const priorityConfig = {
     high: { label: "Haute", color: "bg-red-100 text-red-800" },
     medium: { label: "Moyenne", color: "bg-amber-100 text-amber-800" },
@@ -224,32 +418,64 @@ export function ConformityAIPanel() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-4">
+      {/* Compact Header */}
       <Card className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-purple-200 dark:border-purple-800">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Title Section */}
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                <Brain className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  Conformity-AI
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-base">Conformity-AI</span>
                   {isAIEnabled && (
                     <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
                       <Sparkles className="h-3 w-3 mr-1" />
                       IA Active
                     </Badge>
                   )}
-                </CardTitle>
-                <CardDescription>
+                </div>
+                <p className="text-xs text-muted-foreground">
                   {isAIEnabled 
                     ? "Analyse intelligente de votre conformité" 
                     : "Assistant d'analyse de conformité"}
-                </CardDescription>
+                </p>
               </div>
             </div>
+
+            {/* Stats - Always Horizontal */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                <div>
+                  <p className="text-lg font-bold leading-none">
+                    {gapAnalysis?.overallScore ?? metrics?.overallComplianceRate ?? 0}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">Taux de conformité</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <div>
+                  <p className="text-lg font-bold leading-none">
+                    {gapAnalysis?.gaps?.length ?? metrics?.nonCompliantCount ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Écarts identifiés</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-purple-600" />
+                <div>
+                  <p className="text-lg font-bold leading-none">{recommendations.length}</p>
+                  <p className="text-xs text-muted-foreground">Recommandations</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Refresh Button */}
             <Button
               variant="outline"
               size="sm"
@@ -260,35 +486,6 @@ export function ConformityAIPanel() {
               <RefreshCw className={cn("h-4 w-4", (isAnalyzing || isStreaming) && "animate-spin")} />
               {isAnalyzing || isStreaming ? "Analyse..." : "Analyser"}
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-900/50 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {gapAnalysis?.overallScore ?? metrics?.overallComplianceRate ?? 0}%
-                </p>
-                <p className="text-xs text-muted-foreground">Taux de conformité</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-900/50 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {gapAnalysis?.gaps?.length ?? metrics?.nonCompliantCount ?? 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Écarts identifiés</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-900/50 rounded-lg">
-              <Lightbulb className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-2xl font-bold">{recommendations.length}</p>
-                <p className="text-xs text-muted-foreground">Recommandations</p>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -325,10 +522,14 @@ export function ConformityAIPanel() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="gaps">Écarts</TabsTrigger>
-          <TabsTrigger value="audits">Audits</TabsTrigger>
+        <TabsList className="flex w-full">
+          <TabsTrigger value="overview" className="flex-1">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="gaps" className="flex-1">Écarts</TabsTrigger>
+          <TabsTrigger value="audits" className="flex-1">Audits</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 gap-1">
+            <History className="h-4 w-4" />
+            Historique
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -499,33 +700,51 @@ export function ConformityAIPanel() {
                     ))}
                   </div>
                 </ScrollArea>
-              )}
+                )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history">
+          <AIAnalysisHistory />
         </TabsContent>
       </Tabs>
 
       {/* Quick Actions */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Actions rapides</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-auto py-4 flex-col gap-2" disabled>
-              <FileText className="h-5 w-5" />
-              <span>Générer un rapport</span>
-              <span className="text-xs text-muted-foreground">Prochainement</span>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">Actions rapides:</span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="gap-2" 
+              onClick={handleGenerateReport}
+              disabled={isGeneratingReport || isLoading}
+            >
+              <FileText className={cn("h-4 w-4", isGeneratingReport && "animate-pulse")} />
+              {isGeneratingReport ? "Génération..." : "Générer un rapport"}
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex-col gap-2" disabled>
-              <Calendar className="h-5 w-5" />
-              <span>Planifier des audits</span>
-              <span className="text-xs text-muted-foreground">Prochainement</span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="gap-2"
+              onClick={onPlanAudit}
+              disabled={!onPlanAudit}
+            >
+              <Calendar className="h-4 w-4" />
+              Planifier des audits
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex-col gap-2" disabled>
-              <Target className="h-5 w-5" />
-              <span>Créer des CAPA</span>
-              <span className="text-xs text-muted-foreground">Prochainement</span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="gap-2"
+              onClick={onCreateCapa}
+              disabled={!onCreateCapa}
+            >
+              <Target className="h-4 w-4" />
+              Créer des CAPA
             </Button>
           </div>
         </CardContent>

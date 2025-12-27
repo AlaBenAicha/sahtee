@@ -700,3 +700,13 @@ export async function bulkAssignCAPAs(
   await batch.commit();
 }
 
+/**
+ * Alias for getCAPAs - get all CAPAs for an organization
+ * This is used by the CAPA AI service for analysis
+ */
+export async function getCAPAsByOrganization(
+  organizationId: string
+): Promise<ActionPlan[]> {
+  return getCAPAs(organizationId, {});
+}
+

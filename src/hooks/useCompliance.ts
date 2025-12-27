@@ -22,6 +22,8 @@ import {
   deleteNorm,
   subscribeToNorms,
   updateNormRequirement,
+  addRequirementToNorm,
+  deleteRequirementFromNorm,
   addEvidenceToRequirement,
   removeEvidenceFromRequirement,
   linkCapaToRequirement,
@@ -47,6 +49,13 @@ import {
   // Metrics
   getComplianceMetrics,
   getAuditStats,
+  // AI Analysis operations
+  saveAIAnalysis,
+  getAIAnalyses,
+  getAIAnalysis,
+  getLatestAIAnalysis,
+  deleteAIAnalysis,
+  subscribeToAIAnalyses,
 } from "@/services/complianceService";
 import type {
   Norm,
@@ -60,6 +69,9 @@ import type {
   Evidence,
   ComplianceMetrics,
   ComplianceStatus,
+  AIAnalysis,
+  AIAnalysisFilters,
+  AIAnalysisType,
 } from "@/types/conformity";
 
 // Re-export types for consumers
@@ -72,6 +84,8 @@ export type {
   AuditFilters,
   Finding,
   ComplianceMetrics,
+  AIAnalysis,
+  AIAnalysisFilters,
 } from "@/types/conformity";
 
 // =============================================================================
@@ -94,6 +108,12 @@ export const complianceKeys = {
   
   // Metrics
   metrics: (orgId: string) => [...complianceKeys.all, "metrics", orgId] as const,
+  
+  // AI Analyses
+  aiAnalyses: () => [...complianceKeys.all, "aiAnalyses"] as const,
+  aiAnalysesList: (orgId: string, filters?: AIAnalysisFilters) => [...complianceKeys.aiAnalyses(), "list", orgId, filters] as const,
+  aiAnalysisDetail: (id: string) => [...complianceKeys.aiAnalyses(), "detail", id] as const,
+  aiAnalysisLatest: (orgId: string, type?: AIAnalysisType) => [...complianceKeys.aiAnalyses(), "latest", orgId, type] as const,
 };
 
 // =============================================================================
@@ -259,6 +279,62 @@ export function useUpdateRequirement() {
         throw new Error("Not authenticated");
       }
       await updateNormRequirement(normId, requirementId, data, user.uid);
+    },
+    onSuccess: (_data, { normId }) => {
+      queryClient.invalidateQueries({ queryKey: complianceKeys.normDetail(normId) });
+      queryClient.invalidateQueries({ queryKey: complianceKeys.norms() });
+      queryClient.invalidateQueries({ queryKey: complianceKeys.metrics(userProfile?.organizationId || "") });
+    },
+  });
+}
+
+/**
+ * Hook to add a new requirement to a norm
+ */
+export function useAddRequirement() {
+  const { user, userProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      normId,
+      requirement,
+    }: {
+      normId: string;
+      requirement: Omit<NormRequirement, "id" | "evidence" | "linkedCapaIds">;
+    }) => {
+      if (!user?.uid) {
+        throw new Error("Not authenticated");
+      }
+      return addRequirementToNorm(normId, requirement, user.uid);
+    },
+    onSuccess: (_data, { normId }) => {
+      queryClient.invalidateQueries({ queryKey: complianceKeys.normDetail(normId) });
+      queryClient.invalidateQueries({ queryKey: complianceKeys.norms() });
+      queryClient.invalidateQueries({ queryKey: complianceKeys.metrics(userProfile?.organizationId || "") });
+    },
+  });
+}
+
+/**
+ * Hook to delete a requirement from a norm
+ */
+export function useDeleteRequirement() {
+  const { user, userProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      normId,
+      requirementId,
+    }: {
+      normId: string;
+      requirementId: string;
+    }) => {
+      if (!user?.uid) {
+        throw new Error("Not authenticated");
+      }
+      await deleteRequirementFromNorm(normId, requirementId, user.uid);
     },
     onSuccess: (_data, { normId }) => {
       queryClient.invalidateQueries({ queryKey: complianceKeys.normDetail(normId) });
@@ -854,5 +930,129 @@ export function useComplianceCounts() {
     isLoading, 
     error: isError ? error : null 
   };
+}
+
+// =============================================================================
+// AI Analysis Hooks
+// =============================================================================
+
+/**
+ * Hook to get AI analyses with optional filters
+ */
+export function useAIAnalyses(filters: AIAnalysisFilters = {}) {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: complianceKeys.aiAnalysesList(orgId || "", filters),
+    queryFn: () => getAIAnalyses(orgId!, filters),
+    enabled: !!orgId,
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
+}
+
+/**
+ * Hook for real-time AI analysis updates
+ */
+export function useRealtimeAIAnalyses(limit = 20) {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+  const queryClient = useQueryClient();
+  const [analyses, setAnalyses] = useState<AIAnalysis[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!orgId) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    const unsubscribe = subscribeToAIAnalyses(orgId, (newAnalyses) => {
+      setAnalyses(newAnalyses);
+      setIsLoading(false);
+      
+      // Update React Query cache
+      queryClient.setQueryData(complianceKeys.aiAnalysesList(orgId, {}), newAnalyses);
+    }, limit);
+
+    return () => unsubscribe();
+  }, [orgId, queryClient, limit]);
+
+  return { analyses, isLoading, error };
+}
+
+/**
+ * Hook to get a single AI analysis by ID
+ */
+export function useAIAnalysisDetail(analysisId: string | undefined) {
+  return useQuery({
+    queryKey: complianceKeys.aiAnalysisDetail(analysisId || ""),
+    queryFn: () => getAIAnalysis(analysisId!),
+    enabled: !!analysisId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to get the latest AI analysis
+ */
+export function useLatestAIAnalysis(type?: AIAnalysisType) {
+  const { userProfile } = useAuth();
+  const orgId = userProfile?.organizationId;
+
+  return useQuery({
+    queryKey: complianceKeys.aiAnalysisLatest(orgId || "", type),
+    queryFn: () => getLatestAIAnalysis(orgId!, type),
+    enabled: !!orgId,
+    staleTime: 1 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to save an AI analysis
+ */
+export function useSaveAIAnalysis() {
+  const { user, userProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      data: Omit<AIAnalysis, "id" | "createdAt" | "updatedAt" | "audit" | "title" | "analyzedBy" | "analyzedByName">
+    ) => {
+      if (!user?.uid || !userProfile?.organizationId) {
+        throw new Error("Not authenticated");
+      }
+      const userName = userProfile.displayName || user.email || "Unknown";
+      return saveAIAnalysis(
+        { ...data, organizationId: userProfile.organizationId, analyzedBy: user.uid, analyzedByName: userName },
+        user.uid,
+        userName
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: complianceKeys.aiAnalyses() });
+    },
+  });
+}
+
+/**
+ * Hook to delete an AI analysis
+ */
+export function useDeleteAIAnalysis() {
+  const { userProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (analysisId: string) => {
+      await deleteAIAnalysis(analysisId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: complianceKeys.aiAnalysesList(userProfile?.organizationId || "", {}) });
+    },
+  });
 }
 

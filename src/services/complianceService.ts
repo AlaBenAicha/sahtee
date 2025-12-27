@@ -48,6 +48,12 @@ import type {
   RegulatoryFramework,
   ComplianceStatus,
   AuditorInfo,
+  AIAnalysis,
+  AIAnalysisFilters,
+  AIRecommendationRecord,
+  AIGapRecord,
+  AIAuditRecommendationRecord,
+  AIAnalysisType,
 } from "@/types/conformity";
 import type { AuditInfo, FileMetadata } from "@/types/common";
 import { createCAPA } from "./capaService";
@@ -57,6 +63,7 @@ import type { ActionPlan, ActionPriority } from "@/types/capa";
 const NORMS_COLLECTION = "norms";
 const AUDITS_COLLECTION = "audits";
 const FINDINGS_COLLECTION = "findings";
+const AI_ANALYSES_COLLECTION = "aiAnalyses";
 
 // =============================================================================
 // Helper Functions
@@ -349,6 +356,61 @@ export async function updateNormRequirement(
     requirements: updatedRequirements,
     complianceScore,
     status: normStatus,
+  }, userId);
+}
+
+/**
+ * Add a new requirement to a norm
+ */
+export async function addRequirementToNorm(
+  normId: string,
+  requirement: Omit<NormRequirement, "id" | "evidence" | "linkedCapaIds">,
+  userId: string
+): Promise<NormRequirement> {
+  const norm = await getNorm(normId);
+  if (!norm) throw new Error("Norm not found");
+
+  const newRequirement: NormRequirement = {
+    ...requirement,
+    id: crypto.randomUUID(),
+    evidence: [],
+    linkedCapaIds: [],
+  };
+
+  const updatedRequirements = [...norm.requirements, newRequirement];
+  const updatedRequirementIds = [...norm.requirementIds, newRequirement.id];
+
+  await updateNorm(normId, {
+    requirements: updatedRequirements,
+    requirementIds: updatedRequirementIds,
+  }, userId);
+
+  return newRequirement;
+}
+
+/**
+ * Delete a requirement from a norm
+ */
+export async function deleteRequirementFromNorm(
+  normId: string,
+  requirementId: string,
+  userId: string
+): Promise<void> {
+  const norm = await getNorm(normId);
+  if (!norm) throw new Error("Norm not found");
+
+  const updatedRequirements = norm.requirements.filter(req => req.id !== requirementId);
+  const updatedRequirementIds = norm.requirementIds.filter(id => id !== requirementId);
+
+  // Recalculate compliance score
+  const compliantCount = updatedRequirements.filter(r => r.status === "compliant").length;
+  const totalCount = updatedRequirements.length;
+  const complianceScore = totalCount > 0 ? Math.round((compliantCount / totalCount) * 100) : 0;
+
+  await updateNorm(normId, {
+    requirements: updatedRequirements,
+    requirementIds: updatedRequirementIds,
+    complianceScore,
   }, userId);
 }
 
@@ -1056,5 +1118,227 @@ export async function linkNormToAudit(
     lastAuditId: auditId,
     lastAuditDate: audit.actualEndDate || audit.plannedEndDate,
   }, userId);
+}
+
+// =============================================================================
+// AI Analysis History Operations
+// =============================================================================
+
+/**
+ * Generate a short title for an AI analysis based on its type and results
+ */
+function generateAnalysisTitle(
+  type: AIAnalysisType,
+  overallScore: number,
+  gapsCount: number
+): string {
+  const date = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+  const typeLabels: Record<AIAnalysisType, string> = {
+    gap_analysis: "Analyse d'écarts",
+    audit_planning: "Planification d'audits",
+    capa_suggestions: "Suggestions CAPA",
+    compliance_report: "Rapport de conformité",
+  };
+  return `${typeLabels[type]} - ${date} (${overallScore}%, ${gapsCount} écarts)`;
+}
+
+/**
+ * Save an AI analysis to Firestore
+ */
+export async function saveAIAnalysis(
+  data: Omit<AIAnalysis, "id" | "createdAt" | "updatedAt" | "audit" | "title">,
+  userId: string,
+  userName: string
+): Promise<AIAnalysis> {
+  const docRef = doc(collection(db, AI_ANALYSES_COLLECTION));
+  const now = Timestamp.now();
+  
+  const title = generateAnalysisTitle(data.type, data.overallScore, data.gaps.length);
+  
+  const analysis: AIAnalysis = {
+    ...data,
+    id: docRef.id,
+    title,
+    analyzedBy: userId,
+    analyzedByName: userName,
+    createdAt: now,
+    updatedAt: now,
+    audit: createAuditInfo(userId),
+  };
+  
+  await setDoc(docRef, analysis);
+  return analysis;
+}
+
+/**
+ * Get a single AI analysis by ID
+ */
+export async function getAIAnalysis(analysisId: string): Promise<AIAnalysis | null> {
+  const docRef = doc(db, AI_ANALYSES_COLLECTION, analysisId);
+  const docSnap = await getDoc(docRef);
+  
+  if (!docSnap.exists()) return null;
+  
+  return { id: docSnap.id, ...docSnap.data() } as AIAnalysis;
+}
+
+/**
+ * Get all AI analyses for an organization
+ */
+export async function getAIAnalyses(
+  organizationId: string,
+  filters: AIAnalysisFilters = {},
+  limit = 50
+): Promise<AIAnalysis[]> {
+  try {
+    // Try query with index (requires composite index: organizationId + createdAt)
+    const q = query(
+      collection(db, AI_ANALYSES_COLLECTION),
+      where("organizationId", "==", organizationId),
+      orderBy("createdAt", "desc"),
+      firestoreLimit(limit)
+    );
+    
+    const snapshot = await getDocs(q);
+    let analyses = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as AIAnalysis[];
+    
+    return applyAIAnalysisFilters(analyses, filters);
+  } catch (error: unknown) {
+    // If index is missing, fall back to simple query with client-side sorting
+    console.warn("AI Analyses index not available, using fallback query:", error);
+    
+    const q = query(
+      collection(db, AI_ANALYSES_COLLECTION),
+      where("organizationId", "==", organizationId),
+      firestoreLimit(limit)
+    );
+    
+    const snapshot = await getDocs(q);
+    let analyses = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as AIAnalysis[];
+    
+    // Sort client-side
+    analyses.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+    
+    return applyAIAnalysisFilters(analyses, filters);
+  }
+}
+
+/**
+ * Apply client-side filters to AI analyses
+ */
+function applyAIAnalysisFilters(
+  analyses: AIAnalysis[],
+  filters: AIAnalysisFilters
+): AIAnalysis[] {
+  let filtered = analyses;
+  
+  // Client-side filtering
+  if (filters.type && filters.type.length > 0) {
+    filtered = filtered.filter(a => filters.type!.includes(a.type));
+  }
+  
+  if (filters.dateRange) {
+    const start = filters.dateRange.start.getTime();
+    const end = filters.dateRange.end.getTime();
+    filtered = filtered.filter(a => {
+      const createdTime = a.createdAt.toMillis();
+      return createdTime >= start && createdTime <= end;
+    });
+  }
+  
+  if (filters.searchQuery) {
+    const searchLower = filters.searchQuery.toLowerCase();
+    filtered = filtered.filter(a =>
+      a.title.toLowerCase().includes(searchLower) ||
+      a.description?.toLowerCase().includes(searchLower) ||
+      a.recommendations.some(r => 
+        r.title.toLowerCase().includes(searchLower) ||
+        r.description.toLowerCase().includes(searchLower)
+      )
+    );
+  }
+  
+  if (filters.minScore !== undefined) {
+    filtered = filtered.filter(a => a.overallScore >= filters.minScore!);
+  }
+  
+  if (filters.maxScore !== undefined) {
+    filtered = filtered.filter(a => a.overallScore <= filters.maxScore!);
+  }
+  
+  return filtered;
+}
+
+/**
+ * Subscribe to real-time AI analysis updates
+ */
+export function subscribeToAIAnalyses(
+  organizationId: string,
+  callback: (analyses: AIAnalysis[]) => void,
+  limit = 20
+): Unsubscribe {
+  // Use simple query without orderBy to avoid index requirement
+  // Sort client-side instead
+  const q = query(
+    collection(db, AI_ANALYSES_COLLECTION),
+    where("organizationId", "==", organizationId),
+    firestoreLimit(limit)
+  );
+  
+  return onSnapshot(q, (snapshot) => {
+    let analyses = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as AIAnalysis[];
+    
+    // Sort client-side by createdAt descending
+    analyses.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+    
+    callback(analyses);
+  });
+}
+
+/**
+ * Delete an AI analysis
+ */
+export async function deleteAIAnalysis(analysisId: string): Promise<void> {
+  const docRef = doc(db, AI_ANALYSES_COLLECTION, analysisId);
+  await deleteDoc(docRef);
+}
+
+/**
+ * Get the most recent AI analysis for an organization
+ */
+export async function getLatestAIAnalysis(
+  organizationId: string,
+  type?: AIAnalysisType
+): Promise<AIAnalysis | null> {
+  let q = query(
+    collection(db, AI_ANALYSES_COLLECTION),
+    where("organizationId", "==", organizationId),
+    orderBy("createdAt", "desc"),
+    firestoreLimit(1)
+  );
+  
+  if (type) {
+    q = query(
+      collection(db, AI_ANALYSES_COLLECTION),
+      where("organizationId", "==", organizationId),
+      where("type", "==", type),
+      orderBy("createdAt", "desc"),
+      firestoreLimit(1)
+    );
+  }
+  
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  
+  return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as AIAnalysis;
 }
 

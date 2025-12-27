@@ -11,6 +11,7 @@ export { ComplianceCharts } from "./ComplianceCharts";
 // Norm Management
 export { NormLibrary } from "./NormLibrary";
 export { NormDetailModal } from "./NormDetailModal";
+export { NormFormModal } from "./NormFormModal";
 export { RequirementEditor } from "./RequirementEditor";
 
 // Audit Management

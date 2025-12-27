@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Shield, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +26,7 @@ import {
   ComplianceCharts,
   NormLibrary,
   NormDetailModal,
+  NormFormModal,
   AuditBoard,
   AuditForm,
   AuditDetailModal,
@@ -39,11 +41,13 @@ import { useUpdateRequirement, useCreateCAPAFromFinding } from "@/hooks/useCompl
 import type { NormWithRequirements, NormRequirement, Audit, Finding } from "@/types/conformity";
 
 export default function CompliancePage() {
+  const navigate = useNavigate();
   const { canCreate, canUpdate } = useFeaturePermissions("compliance");
 
   // State for modals
   const [selectedNorm, setSelectedNorm] = useState<NormWithRequirements | null>(null);
   const [normModalOpen, setNormModalOpen] = useState(false);
+  const [normFormOpen, setNormFormOpen] = useState(false);
   const [selectedAudit, setSelectedAudit] = useState<Audit | null>(null);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [auditFormOpen, setAuditFormOpen] = useState(false);
@@ -60,6 +64,10 @@ export default function CompliancePage() {
     setNormModalOpen(true);
   }, []);
 
+  const handleAddNorm = useCallback(() => {
+    setNormFormOpen(true);
+  }, []);
+
   const handlePlanAuditFromNorm = useCallback((norm: NormWithRequirements) => {
     // Close norm modal and open audit form with norm framework pre-populated
     setNormModalOpen(false);
@@ -70,11 +78,7 @@ export default function CompliancePage() {
 
   const handleRequirementUpdate = useCallback(
     async (normId: string, requirementId: string, data: Partial<NormRequirement>) => {
-      try {
-        await updateRequirement.mutateAsync({ normId, requirementId, data });
-      } catch (error) {
-        console.error("Failed to update requirement:", error);
-      }
+      await updateRequirement.mutateAsync({ normId, requirementId, data });
     },
     [updateRequirement]
   );
@@ -106,6 +110,12 @@ export default function CompliancePage() {
     setEditingAudit(null);
     setNormForAudit(null);
   }, []);
+
+  // Handler for Conformity-AI quick actions
+  const handleCreateCapaFromAI = useCallback(() => {
+    // Navigate to CAPA page with creation mode
+    navigate("/app/capa?action=create");
+  }, [navigate]);
 
   return (
     <div className="space-y-6">
@@ -164,10 +174,7 @@ export default function CompliancePage() {
         <TabsContent value="norms" className="mt-0">
           <NormLibrary
             onNormClick={handleNormClick}
-            onAddNorm={() => {
-              // For now, we don't have a norm creation form
-              // This would open a modal to create custom norms
-            }}
+            onAddNorm={handleAddNorm}
           />
         </TabsContent>
 
@@ -181,11 +188,19 @@ export default function CompliancePage() {
 
         {/* AI Tab */}
         <TabsContent value="ai" className="mt-0">
-          <ConformityAIPanel />
+          <ConformityAIPanel 
+            onPlanAudit={canCreate ? handleCreateAudit : undefined}
+            onCreateCapa={canCreate ? handleCreateCapaFromAI : undefined}
+          />
         </TabsContent>
       </Tabs>
 
       {/* Modals */}
+      <NormFormModal
+        open={normFormOpen}
+        onOpenChange={setNormFormOpen}
+      />
+
       <NormDetailModal
         norm={selectedNorm}
         open={normModalOpen}

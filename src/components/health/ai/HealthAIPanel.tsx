@@ -259,16 +259,16 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
+          <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full">
+            <TabsTrigger value="overview" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium flex-1 gap-2">
               <TrendingUp className="h-4 w-4" />
               Tendances
             </TabsTrigger>
-            <TabsTrigger value="risks" className="flex items-center gap-2">
+            <TabsTrigger value="risks" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium flex-1 gap-2">
               <AlertTriangle className="h-4 w-4" />
               Groupes à risque
             </TabsTrigger>
-            <TabsTrigger value="recommendations" className="flex items-center gap-2">
+            <TabsTrigger value="recommendations" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium flex-1 gap-2">
               <Lightbulb className="h-4 w-4" />
               Recommandations
             </TabsTrigger>
