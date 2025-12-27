@@ -12,17 +12,18 @@ import {
   EquipmentCatalog,
   EquipmentDetailModal,
   EquipmentForm,
+  EquipmentOrderForm,
 } from "@/components/equipment";
 import { useEquipmentCatalog } from "@/hooks/useEquipment";
 import { useAuth } from "@/contexts/AuthContext";
 import type { EquipmentRecommendation } from "@/types/capa";
 import CRUDGuard from "@/components/auth/CRUDGuard";
-import { toast } from "sonner";
 
 export default function EquipmentPage() {
   const { canPerformAction } = useAuth();
 
   const [showEquipmentForm, setShowEquipmentForm] = useState(false);
+  const [showOrderForm, setShowOrderForm] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentRecommendation | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -49,10 +50,13 @@ export default function EquipmentPage() {
   };
 
   const handleOrderEquipment = (item: EquipmentRecommendation) => {
-    // TODO: Implement order workflow
-    toast.info("Fonctionnalité à venir", {
-      description: "La commande d'équipement sera bientôt disponible.",
-    });
+    setSelectedEquipment(item);
+    setShowOrderForm(true);
+  };
+
+  const handleCloseOrderForm = () => {
+    setShowOrderForm(false);
+    setSelectedEquipment(null);
   };
 
   if (isLoading) {
@@ -113,6 +117,15 @@ export default function EquipmentPage() {
           equipment={selectedEquipment}
           isOpen={showEquipmentForm}
           onClose={handleCloseEquipmentForm}
+        />
+      )}
+
+      {showOrderForm && selectedEquipment && (
+        <EquipmentOrderForm
+          equipment={selectedEquipment}
+          open={showOrderForm}
+          onOpenChange={setShowOrderForm}
+          onSuccess={handleCloseOrderForm}
         />
       )}
     </div>

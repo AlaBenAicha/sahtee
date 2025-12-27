@@ -19,6 +19,7 @@ import {
   canAgentExecuteAction,
   actionRequiresConfirmation,
 } from "@/services/agent/agentPermissions";
+import { getSafetyBotService } from "@/services/safetyBotService";
 import type {
   AgentState,
   AgentAction,
@@ -229,9 +230,15 @@ export function AgentProvider({ children }: AgentProviderProps) {
       highlightedElement: null,
     }));
 
-    // TODO: Notify AI that user stopped execution
+    // Notify AI that user stopped execution
     if (notify) {
-      console.log("[Agent] Execution stopped by user");
+      console.log("[Agent] Execution stopped by user - notifying AI");
+      try {
+        const service = getSafetyBotService();
+        service.notifyExecutionStopped();
+      } catch (error) {
+        console.warn("[Agent] Failed to notify SafetyBot:", error);
+      }
     }
   }, []);
 

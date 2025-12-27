@@ -67,8 +67,19 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+// Prefill data for creating CAPA from other modules
+interface CAPAPrefill {
+  title?: string;
+  description?: string;
+  source?: string;
+  sourceId?: string;
+  priority?: "critique" | "haute" | "moyenne" | "basse";
+  category?: "correctif" | "preventif";
+}
+
 interface CAPAFormProps {
   capa?: ActionPlan | null;
+  prefill?: CAPAPrefill | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -102,7 +113,7 @@ const mockUsers = [
   { id: "user-3", name: "Pierre Durand" },
 ];
 
-export function CAPAForm({ capa, open, onOpenChange, onSuccess }: CAPAFormProps) {
+export function CAPAForm({ capa, prefill, open, onOpenChange, onSuccess }: CAPAFormProps) {
   const isEditing = !!capa;
   const { mutate: createCAPA, isPending: isCreating } = useCreateCAPA();
   const { mutate: updateCAPA, isPending: isUpdating } = useUpdateCAPA();
@@ -124,9 +135,10 @@ export function CAPAForm({ capa, open, onOpenChange, onSuccess }: CAPAFormProps)
     },
   });
 
-  // Reset form when capa changes
+  // Reset form when capa or prefill changes
   useEffect(() => {
     if (capa) {
+      // Editing existing CAPA
       form.reset({
         title: capa.title,
         description: capa.description,
@@ -140,7 +152,23 @@ export function CAPAForm({ capa, open, onOpenChange, onSuccess }: CAPAFormProps)
         sourceIncidentId: capa.sourceIncidentId || "",
         aiGenerated: capa.aiGenerated,
       });
+    } else if (prefill) {
+      // Creating from prefill (e.g., from health alert)
+      form.reset({
+        title: prefill.title || "",
+        description: prefill.description || "",
+        category: prefill.category || "correctif",
+        priority: prefill.priority || "moyenne",
+        assigneeId: "",
+        assigneeName: "",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        riskDescription: "",
+        sourceType: prefill.source === "health_alert" ? "observation" : "manual",
+        sourceIncidentId: prefill.sourceId || "",
+        aiGenerated: false,
+      });
     } else {
+      // Fresh form
       form.reset({
         title: "",
         description: "",
@@ -155,7 +183,7 @@ export function CAPAForm({ capa, open, onOpenChange, onSuccess }: CAPAFormProps)
         aiGenerated: false,
       });
     }
-  }, [capa, form]);
+  }, [capa, prefill, form]);
 
   const handleAssigneeChange = (userId: string) => {
     const user = mockUsers.find((u) => u.id === userId);

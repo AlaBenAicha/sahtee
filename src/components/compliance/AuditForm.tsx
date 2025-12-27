@@ -73,10 +73,18 @@ const auditFormSchema = z.object({
 
 type AuditFormValues = z.infer<typeof auditFormSchema>;
 
+interface NormForAudit {
+  code: string;
+  name: string;
+  description?: string;
+  framework: RegulatoryFramework;
+}
+
 interface AuditFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   audit?: Audit | null;
+  normFramework?: NormForAudit | null;
   onSuccess?: () => void;
 }
 
@@ -98,7 +106,7 @@ const FRAMEWORK_OPTIONS: Array<{ value: RegulatoryFramework; label: string }> = 
   { value: "custom", label: "Personnalisé" },
 ];
 
-export function AuditForm({ open, onOpenChange, audit, onSuccess }: AuditFormProps) {
+export function AuditForm({ open, onOpenChange, audit, normFramework, onSuccess }: AuditFormProps) {
   const isEditing = !!audit;
   
   const createAudit = useCreateAudit();
@@ -121,6 +129,7 @@ export function AuditForm({ open, onOpenChange, audit, onSuccess }: AuditFormPro
   useEffect(() => {
     if (open) {
       if (audit) {
+        // Editing existing audit
         form.reset({
           title: audit.title,
           type: audit.type,
@@ -130,7 +139,19 @@ export function AuditForm({ open, onOpenChange, audit, onSuccess }: AuditFormPro
           plannedEndDate: audit.plannedEndDate.toDate(),
           leadAuditorName: audit.leadAuditorName || "",
         });
+      } else if (normFramework) {
+        // Creating audit from norm - pre-populate with norm data
+        form.reset({
+          title: `Audit ${normFramework.code} - ${normFramework.name}`,
+          type: "internal",
+          framework: normFramework.framework,
+          scope: normFramework.description || `Audit de conformité selon ${normFramework.name}`,
+          plannedStartDate: undefined,
+          plannedEndDate: undefined,
+          leadAuditorName: "",
+        });
       } else {
+        // Fresh form
         form.reset({
           title: "",
           type: undefined,
@@ -142,7 +163,7 @@ export function AuditForm({ open, onOpenChange, audit, onSuccess }: AuditFormPro
         });
       }
     }
-  }, [open, audit, form]);
+  }, [open, audit, normFramework, form]);
 
   const onSubmit = async (values: AuditFormValues) => {
     try {

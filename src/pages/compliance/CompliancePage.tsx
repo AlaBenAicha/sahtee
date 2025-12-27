@@ -48,6 +48,7 @@ export default function CompliancePage() {
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [auditFormOpen, setAuditFormOpen] = useState(false);
   const [editingAudit, setEditingAudit] = useState<Audit | null>(null);
+  const [normForAudit, setNormForAudit] = useState<NormWithRequirements | null>(null);
 
   // Mutations
   const updateRequirement = useUpdateRequirement();
@@ -59,11 +60,11 @@ export default function CompliancePage() {
     setNormModalOpen(true);
   }, []);
 
-  const handlePlanAuditFromNorm = useCallback((_norm: NormWithRequirements) => {
-    // Close norm modal and open audit form
-    // TODO: Pre-populate audit form with norm framework
+  const handlePlanAuditFromNorm = useCallback((norm: NormWithRequirements) => {
+    // Close norm modal and open audit form with norm framework pre-populated
     setNormModalOpen(false);
     setEditingAudit(null);
+    setNormForAudit(norm);
     setAuditFormOpen(true);
   }, []);
 
@@ -103,6 +104,7 @@ export default function CompliancePage() {
   const handleAuditFormSuccess = useCallback(() => {
     setAuditFormOpen(false);
     setEditingAudit(null);
+    setNormForAudit(null);
   }, []);
 
   return (
@@ -201,8 +203,14 @@ export default function CompliancePage() {
 
       <AuditForm
         open={auditFormOpen}
-        onOpenChange={setAuditFormOpen}
+        onOpenChange={(open) => {
+          setAuditFormOpen(open);
+          if (!open) {
+            setNormForAudit(null);
+          }
+        }}
         audit={editingAudit}
+        normFramework={normForAudit}
         onSuccess={handleAuditFormSuccess}
       />
     </div>

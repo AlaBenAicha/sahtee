@@ -269,6 +269,67 @@ export interface EquipmentRecommendation extends FirestoreDocument {
 }
 
 // =============================================================================
+// Equipment Order Types
+// =============================================================================
+
+/** Equipment order status */
+export type EquipmentOrderStatus = 
+  | "requested"     // Order requested
+  | "approved"      // Order approved by manager
+  | "ordered"       // Order placed with supplier
+  | "shipped"       // Order shipped
+  | "delivered"     // Order delivered
+  | "rejected"      // Order rejected
+  | "cancelled";    // Order cancelled
+
+/** Equipment order document */
+export interface EquipmentOrder extends FirestoreDocument {
+  organizationId: string;
+
+  // Equipment reference
+  equipmentId: string;
+  equipmentName: string;
+  equipmentCategory: EquipmentCategory;
+
+  // Order details
+  quantity: number;
+  unitPrice?: number;
+  totalPrice?: number;
+
+  // Supplier info
+  supplierName?: string;
+  supplierContact?: string;
+  orderReference?: string;
+
+  // Status tracking
+  status: EquipmentOrderStatus;
+  
+  // Request details
+  requestedBy: string;
+  requestedByName: string;
+  requestedAt: Timestamp;
+  requestReason: string;
+
+  // Approval
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedAt?: Timestamp;
+  rejectionReason?: string;
+
+  // Delivery
+  expectedDeliveryDate?: Timestamp;
+  actualDeliveryDate?: Timestamp;
+  deliveryNotes?: string;
+
+  // Linked to CAPA or incident
+  linkedCapaId?: string;
+  linkedIncidentId?: string;
+
+  // Audit
+  audit: AuditInfo;
+}
+
+// =============================================================================
 // Incident Types
 // =============================================================================
 

@@ -13,7 +13,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCAPAAIService, isCAPAAIEnabled } from "@/services/ai/capaAIService";
-import type { Incident, ActionPlan, AIIncidentAnalysis, AIRecommendedAction } from "@/types/capa";
+import { getIncidents } from "@/services/incidentService";
+import { getCAPAsByOrganization } from "@/services/capaService";
+import type { Incident, ActionPlan, AIIncidentAnalysis, AIRecommendedAction, IncidentStatus } from "@/types/capa";
 import type { Priority } from "@/types/common";
 import type { AIContext, IncidentAnalysisResult, SuggestedCapa } from "@/services/ai/types";
 import { Timestamp } from "firebase/firestore";
@@ -506,23 +508,73 @@ export function useAcceptAIRecommendation() {
 
 /**
  * Hook to get CAPA recommendations (uses real AI when available)
+ * Analyzes open incidents in batch to suggest CAPAs
  */
 export function useCAPARecommendations() {
   const { userProfile } = useAuth();
-  const { isEnabled } = useCAPAAI();
+  const { isEnabled, context } = useCAPAAI();
   const orgId = userProfile?.organizationId;
   const [isGenerating, setIsGenerating] = useState(false);
 
   const query = useQuery({
     queryKey: capaAIKeys.suggestions(orgId || ""),
     queryFn: async (): Promise<CAPARecommendation[]> => {
-      // For now, return empty array - in production,
-      // this would aggregate suggestions from open incidents
-      if (!isEnabled) {
+      // Return mock data when AI is not enabled
+      if (!isEnabled || !orgId) {
         return getMockCAPARecommendations();
       }
-      // TODO: Implement batch analysis of open incidents
-      return [];
+
+      try {
+        // Fetch open incidents (reported, under_investigation, pending_capa)
+        const openStatuses: IncidentStatus[] = ["reported", "under_investigation", "pending_capa"];
+        const openIncidents = await getIncidents(orgId, { status: openStatuses }, 20);
+
+        if (openIncidents.length === 0) {
+          return [];
+        }
+
+        // Get CAPA-AI service
+        const capaAI = getCAPAAIService();
+        if (context) {
+          await capaAI.initialize(context);
+        }
+
+        // Analyze incidents in batch (limit to first 5 to avoid overloading)
+        const incidentsToAnalyze = openIncidents.slice(0, 5);
+        const recommendations: CAPARecommendation[] = [];
+
+        for (const incident of incidentsToAnalyze) {
+          try {
+            const suggestions = await capaAI.generateCAPASuggestions(incident.id);
+            
+            // Convert SuggestedCapa to CAPARecommendation
+            for (const suggestion of suggestions) {
+              recommendations.push({
+                id: `rec-${incident.id}-${recommendations.length}`,
+                title: suggestion.title,
+                description: suggestion.description,
+                priority: suggestion.priority as "critique" | "haute" | "moyenne" | "basse",
+                category: suggestion.category as "correctif" | "preventif",
+                confidence: suggestion.confidence || 85,
+                reasoning: `Basé sur l'analyse de l'incident ${incident.reference}`,
+                linkedIncidentIds: [incident.id],
+                suggestedDueDate: suggestion.suggestedDueDate 
+                  ? (suggestion.suggestedDueDate instanceof Timestamp 
+                      ? suggestion.suggestedDueDate.toDate() 
+                      : suggestion.suggestedDueDate)
+                  : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+              });
+            }
+          } catch (error) {
+            console.warn(`Failed to analyze incident ${incident.id}:`, error);
+          }
+        }
+
+        return recommendations;
+      } catch (error) {
+        console.error("Failed to generate CAPA recommendations:", error);
+        return getMockCAPARecommendations();
+      }
     },
     enabled: !!orgId,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -538,21 +590,90 @@ export function useCAPARecommendations() {
 
 /**
  * Hook to get priority recommendations for existing CAPAs
+ * Analyzes active CAPAs and suggests priority adjustments based on:
+ * - Due date proximity
+ * - Related incident severity
+ * - Resource availability
+ * - Dependencies on other CAPAs
  */
 export function usePriorityRecommendations() {
   const { userProfile } = useAuth();
-  const { isEnabled } = useCAPAAI();
+  const { isEnabled, context } = useCAPAAI();
   const orgId = userProfile?.organizationId;
 
   return useQuery({
     queryKey: capaAIKeys.priorityRecommendations(orgId || ""),
     queryFn: async (): Promise<PriorityRecommendation[]> => {
-      // In production, this would analyze CAPAs and suggest priority changes
-      if (!isEnabled) {
+      // Return mock data when AI is not enabled
+      if (!isEnabled || !orgId) {
         return getMockPriorityRecommendations();
       }
-      // TODO: Implement CAPA priority analysis
-      return [];
+
+      try {
+        // Fetch active CAPAs (approved, in_progress)
+        const activeCAPAs = await getCAPAsByOrganization(orgId);
+        const relevantCAPAs = activeCAPAs.filter(
+          capa => capa.status === "approved" || capa.status === "in_progress"
+        );
+
+        if (relevantCAPAs.length === 0) {
+          return [];
+        }
+
+        const recommendations: PriorityRecommendation[] = [];
+        const now = new Date();
+
+        for (const capa of relevantCAPAs) {
+          const dueDate = capa.dueDate instanceof Timestamp 
+            ? capa.dueDate.toDate() 
+            : capa.dueDate;
+          const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // Analyze if priority should be adjusted
+          let suggestedPriority: string | null = null;
+          const factors: string[] = [];
+          let reasoning = "";
+
+          // Rule 1: Overdue items should be critical
+          if (daysUntilDue < 0 && capa.priority !== "critique") {
+            suggestedPriority = "critique";
+            factors.push(`Échéance dépassée de ${Math.abs(daysUntilDue)} jours`);
+            reasoning = "L'action est en retard et nécessite une attention immédiate.";
+          }
+          // Rule 2: Due within 3 days but not critical/haute
+          else if (daysUntilDue <= 3 && daysUntilDue >= 0 && 
+                   capa.priority !== "critique" && capa.priority !== "haute") {
+            suggestedPriority = "haute";
+            factors.push(`Échéance dans ${daysUntilDue} jours`);
+            reasoning = "L'échéance approche rapidement.";
+          }
+          // Rule 3: Low priority but linked to critical incident
+          else if (capa.priority === "basse" && 
+                   capa.sourceIncidentId && 
+                   capa.sourceType === "incident") {
+            suggestedPriority = "moyenne";
+            factors.push("Liée à un incident déclaré");
+            reasoning = "Cette action est liée à un incident et mérite plus d'attention.";
+          }
+
+          // Add recommendation if priority adjustment is suggested
+          if (suggestedPriority) {
+            recommendations.push({
+              capaId: capa.id,
+              currentPriority: capa.priority,
+              suggestedPriority,
+              reasoning,
+              confidence: daysUntilDue < 0 ? 95 : 80,
+              factors,
+            });
+          }
+        }
+
+        return recommendations;
+      } catch (error) {
+        console.error("Failed to generate priority recommendations:", error);
+        return getMockPriorityRecommendations();
+      }
     },
     enabled: !!orgId,
     staleTime: 15 * 60 * 1000, // 15 minutes

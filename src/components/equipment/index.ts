@@ -9,4 +9,5 @@ export { EquipmentCatalog } from "./EquipmentCatalog";
 export { EquipmentDetailModal } from "./EquipmentDetailModal";
 export { EquipmentFilters, type EquipmentFiltersType } from "./EquipmentFilters";
 export { EquipmentForm } from "./EquipmentForm";
+export { EquipmentOrderForm } from "./EquipmentOrderForm";
 

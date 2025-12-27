@@ -6,8 +6,9 @@
  * trend charts, and alert feeds.
  */
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, RefreshCw } from "lucide-react";
@@ -49,6 +50,7 @@ import type { DashboardKPI, RiskMapCell, RiskMapViewMode } from "@/types/dashboa
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { userProfile, user } = useAuth();
   const userId = user?.uid;
 
@@ -104,26 +106,45 @@ export default function DashboardPage() {
   };
 
   // Export handlers
-  const handleExportPDF = async () => {
+  const handleExportPDF = useCallback(async () => {
     const now = new Date();
     const period = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
     
-    const blob = await generateMonthlyReport({
-      organizationName: "Organisation",
-      period,
-      kpis: {
-        complianceRate: 85,
-        accidentFrequency: 2.5,
-        lostDays: 12,
-        capaCompletionRate: 78,
-      },
-      incidents: [],
-      capas: [],
-      trainings: { completed: 45, inProgress: 12, planned: 8 },
-    });
+    toast.info("Génération du rapport...", { id: "report-generation" });
     
-    downloadBlob(blob, `rapport-sst-${now.toISOString().slice(0, 7)}.pdf`);
-  };
+    try {
+      const blob = await generateMonthlyReport({
+        organizationName: userProfile?.organizationId || "Organisation",
+        period,
+        kpis: {
+          complianceRate: 85,
+          accidentFrequency: 2.5,
+          lostDays: 12,
+          capaCompletionRate: 78,
+        },
+        incidents: [],
+        capas: [],
+        trainings: { completed: 45, inProgress: 12, planned: 8 },
+      });
+      
+      downloadBlob(blob, `rapport-sst-${now.toISOString().slice(0, 7)}.pdf`);
+      toast.success("Rapport généré avec succès", { id: "report-generation" });
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast.error("Erreur lors de la génération du rapport", { id: "report-generation" });
+    }
+  }, [userProfile?.organizationId]);
+
+  // Handle generateReport query parameter from SafetyBot
+  useEffect(() => {
+    const shouldGenerateReport = searchParams.get("generateReport") === "true";
+    if (shouldGenerateReport && !isLoading) {
+      // Clear the query parameter
+      setSearchParams({}, { replace: true });
+      // Trigger report generation
+      handleExportPDF();
+    }
+  }, [searchParams, setSearchParams, isLoading, handleExportPDF]);
 
   const handleExportExcel = () => {
     exportDashboardData({

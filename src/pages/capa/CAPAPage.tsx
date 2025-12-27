@@ -5,7 +5,8 @@
  * Enforces CRUD permissions using FeatureGuard and useFeaturePermissions.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,7 +23,19 @@ import {
 import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
 import type { ActionPlan, CAPAFilters as CAPAFiltersType, ViewMode } from "@/types/capa";
 
+// Prefill data type for creating CAPA from other modules
+interface CAPAPrefill {
+  title?: string;
+  description?: string;
+  source?: string;
+  sourceId?: string;
+  priority?: "critique" | "haute" | "moyenne" | "basse";
+  category?: "correctif" | "preventif";
+}
+
 export default function CAPAPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { canCreate, canRead } = useFeaturePermissions("capa");
 
   // UI State
@@ -32,6 +45,19 @@ export default function CAPAPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingCapa, setEditingCapa] = useState<ActionPlan | null>(null);
+  const [prefillData, setPrefillData] = useState<CAPAPrefill | null>(null);
+
+  // Handle incoming navigation state for creating CAPA from other modules
+  useEffect(() => {
+    const state = location.state as { createMode?: boolean; prefill?: CAPAPrefill } | null;
+    if (state?.createMode && state?.prefill && canCreate) {
+      setPrefillData(state.prefill);
+      setEditingCapa(null);
+      setShowFormModal(true);
+      // Clear the state to prevent re-opening on navigation
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, canCreate, navigate, location.pathname]);
 
   const handleCAPAClick = (capa: ActionPlan) => {
     setSelectedCapa(capa);
@@ -208,8 +234,14 @@ export default function CAPAPage() {
       {/* Create/Edit Form Modal */}
       <CAPAForm
         capa={editingCapa}
+        prefill={prefillData}
         open={showFormModal}
-        onOpenChange={setShowFormModal}
+        onOpenChange={(open) => {
+          setShowFormModal(open);
+          if (!open) {
+            setPrefillData(null); // Clear prefill when form closes
+          }
+        }}
       />
     </div>
   );

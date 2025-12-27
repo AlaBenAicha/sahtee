@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { completeOnboarding } from "@/services/organizationService";
+import { updateUser } from "@/services/userService";
+import { toast } from "sonner";
 import {
   Users,
   Shield,
@@ -99,14 +102,39 @@ export default function OnboardingPage() {
   };
 
   const handleComplete = async () => {
+    if (!user || !userProfile?.organizationId) {
+      toast.error("Erreur d'authentification");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // TODO: Save onboarding data to Firestore
-      // await saveOnboardingData(user.uid, data);
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
+      // Update user profile with onboarding data
+      await updateUser(
+        user.uid,
+        {
+          jobTitle: data.jobTitle,
+          department: data.department,
+          onboardingCompleted: true,
+          preferences: {
+            ...userProfile.preferences,
+            notifications: {
+              ...userProfile.preferences?.notifications,
+              email: data.notifications,
+            },
+          },
+        },
+        user.uid
+      );
+
+      // Mark organization onboarding as complete
+      await completeOnboarding(userProfile.organizationId, user.uid);
+
+      toast.success("Configuration terminée !");
       navigate("/app/dashboard");
     } catch (error) {
       console.error("Onboarding error:", error);
+      toast.error("Erreur lors de la sauvegarde");
     } finally {
       setIsLoading(false);
     }

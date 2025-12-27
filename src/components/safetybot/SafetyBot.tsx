@@ -9,6 +9,7 @@ import useSafetyBot from "@/hooks/useSafetyBot";
 import SafetyBotTrigger from "./SafetyBotTrigger";
 import SafetyBotPanel from "./SafetyBotPanel";
 import { createAssistantMessage } from "@/services/safetyBotService";
+import { toast } from "sonner";
 import type { SuggestedAction } from "@/types/safetybot";
 
 // Fallback message when AI is not configured
@@ -76,8 +77,11 @@ export function SafetyBot({ showTrigger = true }: SafetyBotProps) {
     // Handle other action types
     switch (action.type) {
       case "generate_report":
-        // TODO: Trigger report generation
-        console.log("Generate report action:", action);
+        // Navigate to dashboard with report generation flag
+        toast.info("Génération du rapport", {
+          description: "Vous allez être redirigé vers le tableau de bord pour générer le rapport.",
+        });
+        navigate("/app/dashboard?generateReport=true");
         break;
       case "create_capa":
         navigate("/app/capa");

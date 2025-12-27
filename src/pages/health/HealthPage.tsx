@@ -11,6 +11,7 @@
  */
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,7 @@ interface TabConfig {
 }
 
 export default function HealthPage() {
+  const navigate = useNavigate();
   const { session } = useAuth();
   const isPhysician = useIsPhysician();
   const { counts, isLoading: countsLoading } = useHealthDashboardCounts();
@@ -193,8 +195,20 @@ export default function HealthPage() {
 
   const handleCreateCapaFromAlert = (alert: HealthAlert) => {
     // Navigate to CAPA Room with pre-filled data from alert
-    console.log("Create CAPA from alert:", alert);
-    // TODO: Implement navigation to CAPA creation with alert data
+    navigate("/app/capa", {
+      state: {
+        createMode: true,
+        prefill: {
+          title: `CAPA: ${alert.title}`,
+          description: alert.description,
+          source: "health_alert",
+          sourceId: alert.id,
+          priority: alert.severity === "critical" ? "haute" :
+            alert.severity === "warning" ? "moyenne" : "basse",
+          category: "correctif" as const,
+        }
+      }
+    });
   };
 
   return (
