@@ -134,6 +134,20 @@ export function useAuditPlanning() {
 }
 
 /**
+ * Helper function to remove undefined values from an object
+ * Firebase doesn't accept undefined values in setDoc()
+ */
+function removeUndefinedValues<T extends Record<string, unknown>>(obj: T): T {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined) {
+            result[key] = value;
+        }
+    }
+    return result as T;
+}
+
+/**
  * Hook to manually trigger gap analysis and save results to database
  */
 export function usePerformGapAnalysis() {
@@ -151,40 +165,42 @@ export function usePerformGapAnalysis() {
             
             // Save the analysis to the database
             if (user?.uid && userProfile?.organizationId) {
-                // Map the result to our database format
-                const gaps: AIGapRecord[] = result.gaps?.map(g => ({
-                    normId: g.normId,
-                    normCode: g.normCode,
-                    requirementId: g.requirementId,
-                    clause: g.clause,
-                    description: g.description,
-                    severity: g.severity,
+                // Map the result to our database format, removing undefined values
+                const gaps: AIGapRecord[] = (result.gaps || []).map(g => removeUndefinedValues({
+                    normId: g.normId || "",
+                    normCode: g.normCode || "",
+                    requirementId: g.requirementId || "",
+                    clause: g.clause || "",
+                    description: g.description || "",
+                    severity: g.severity || "minor",
                     suggestedAction: g.suggestedAction,
-                })) || [];
+                }));
                 
-                const recommendations: AIRecommendationRecord[] = result.recommendations?.map((r, i) => ({
+                const recommendations: AIRecommendationRecord[] = (result.recommendations || []).map((r, i) => removeUndefinedValues({
                     id: `rec-${i}`,
                     type: r.type === "audit" ? "audit" : r.type === "training" ? "training" : r.type === "documentation" ? "documentation" : "capa",
-                    priority: r.priority,
-                    title: r.title,
-                    description: r.description,
+                    priority: r.priority || "medium",
+                    title: r.title || "",
+                    description: r.description || "",
                     normId: r.relatedNormIds?.[0],
-                })) || [];
+                }));
                 
-                const auditRecommendations: AIAuditRecommendationRecord[] = result.prioritizedAudits?.map(a => ({
-                    normId: a.normId,
-                    normCode: a.normCode,
-                    priority: a.priority,
-                    reason: a.reason,
-                    suggestedDate: a.suggestedDate,
-                })) || [];
+                const auditRecommendations: AIAuditRecommendationRecord[] = (result.prioritizedAudits || []).map(a => removeUndefinedValues({
+                    normId: a.normId || "",
+                    normCode: a.normCode || "",
+                    priority: a.priority || "planned",
+                    reason: a.reason || "",
+                    suggestedDate: a.suggestedDate instanceof Date 
+                        ? a.suggestedDate.toISOString() 
+                        : a.suggestedDate,
+                }));
                 
                 await saveAIAnalysis(
                     {
                         organizationId: userProfile.organizationId,
                         type: "gap_analysis",
-                        description: `Analyse d'écarts avec score de ${result.overallScore}%`,
-                        overallScore: result.overallScore,
+                        description: `Analyse d'écarts avec score de ${result.overallScore ?? 0}%`,
+                        overallScore: result.overallScore ?? 0,
                         gaps,
                         recommendations,
                         auditRecommendations,

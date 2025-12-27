@@ -1,6 +1,6 @@
 /**
  * Health Hooks
- * 
+ *
  * React Query hooks for health management.
  * Provides data fetching, mutations, and real-time updates for:
  * - Health records (physician-only)
@@ -10,117 +10,131 @@
  * - Aggregate statistics
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  // Health Records
-  getHealthRecords,
-  getHealthRecord,
-  getHealthRecordByEmployee,
-  employeeHasHealthRecord,
-  createHealthRecord,
-  updateHealthRecord,
-  deleteHealthRecord,
-  subscribeToHealthRecords,
-  // Medical Visits
-  getMedicalVisits,
-  getMedicalVisit,
-  getMedicalVisitsByHealthRecord,
-  getUpcomingVisits,
-  getOverdueVisits,
-  createMedicalVisit,
-  updateMedicalVisit,
-  deleteMedicalVisit,
-  completeMedicalVisit,
-  subscribeToMedicalVisits,
-  // Exposures
-  getExposures,
-  getExposure,
-  getExposuresByIds,
-  getCriticalExposures,
-  createExposure,
-  updateExposure,
-  deleteExposure,
+  acknowledgeHealthAlert,
   addExposureMeasurement,
-  subscribeToExposures,
-  linkEmployeeToExposure,
-  unlinkEmployeeFromExposure,
-  syncHealthRecordExposures,
+  calculateHealthStats,
+  completeMedicalVisit,
+  createExposure,
+  createHealthAlert,
+  createHealthRecord,
   // Measurements
   createMeasurement,
-  getMeasurementsByExposure,
+  createMedicalVisit,
+  deleteExposure,
+  deleteHealthRecord,
+  deleteMedicalVisit,
+  employeeHasHealthRecord,
+  getActiveHealthAlerts,
+  getAptitudeTrends,
+  getCriticalExposures,
+  getExposure,
+  // Exposures
+  getExposures,
+  getExposuresByIds,
+  getExposureStats,
+  getExposureTrends,
+  getHealthAlert,
   // Health Alerts
   getHealthAlerts,
-  getActiveHealthAlerts,
-  getHealthAlert,
-  createHealthAlert,
-  acknowledgeHealthAlert,
-  resolveHealthAlert,
-  subscribeToHealthAlerts,
+  getHealthRecord,
+  getHealthRecordByEmployee,
+  // Health Records
+  getHealthRecords,
   // Statistics
   getHealthStats,
-  getVisitStats,
-  getExposureStats,
-  calculateHealthStats,
+  getMeasurementsByExposure,
+  getMedicalVisit,
+  // Medical Visits
+  getMedicalVisits,
+  getMedicalVisitsByHealthRecord,
+  getOverdueVisits,
   getPathologyTrends,
+  getUpcomingVisits,
+  getVisitStats,
   getVisitTrends,
-  getAptitudeTrends,
-  getExposureTrends,
+  linkEmployeeToExposure,
+  resolveHealthAlert,
+  subscribeToExposures,
+  subscribeToHealthAlerts,
+  subscribeToHealthRecords,
+  subscribeToMedicalVisits,
+  syncAlertsFromExistingData,
+  syncHealthRecordExposures,
+  unlinkEmployeeFromExposure,
+  updateExposure,
+  updateHealthRecord,
+  updateMedicalVisit,
 } from "@/services/healthService";
 import type {
+  ExaminationType,
+  ExposureMeasurement,
+  FitnessStatus,
+  HazardCategory,
+  HealthAlert,
+  HealthAlertSeverity,
+  HealthAlertStatus,
+  HealthAlertType,
   HealthRecord,
   MedicalVisit,
   MedicalVisitStatus,
-  HealthAlert,
-  HealthAlertStatus,
-  HealthAlertSeverity,
-  HealthAlertType,
-  HealthStats,
   OrganizationExposure,
-  ExposureMeasurement,
-  FitnessStatus,
-  ExaminationType,
-  HazardCategory,
 } from "@/types/health";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 // Re-export types for consumers
 export type {
+  ExaminationType,
+  FitnessStatus,
+  HealthAlert,
   HealthRecord,
+  HealthStats,
   MedicalVisit,
   MedicalVisitStatus,
-  HealthAlert,
-  HealthStats,
   OrganizationExposure,
-  FitnessStatus,
-  ExaminationType,
 } from "@/types/health";
 
 // Query keys for caching
 export const healthKeys = {
   all: ["health"] as const,
   records: () => [...healthKeys.all, "records"] as const,
-  recordsList: (orgId: string, filters?: object) => [...healthKeys.records(), "list", orgId, filters] as const,
-  recordDetail: (id: string) => [...healthKeys.records(), "detail", id] as const,
-  recordByEmployee: (orgId: string, empId: string) => [...healthKeys.records(), "employee", orgId, empId] as const,
+  recordsList: (orgId: string, filters?: object) =>
+    [...healthKeys.records(), "list", orgId, filters] as const,
+  recordDetail: (id: string) =>
+    [...healthKeys.records(), "detail", id] as const,
+  recordByEmployee: (orgId: string, empId: string) =>
+    [...healthKeys.records(), "employee", orgId, empId] as const,
   visits: () => [...healthKeys.all, "visits"] as const,
-  visitsList: (orgId: string, filters?: object) => [...healthKeys.visits(), "list", orgId, filters] as const,
+  visitsList: (orgId: string, filters?: object) =>
+    [...healthKeys.visits(), "list", orgId, filters] as const,
   visitDetail: (id: string) => [...healthKeys.visits(), "detail", id] as const,
-  upcomingVisits: (orgId: string) => [...healthKeys.visits(), "upcoming", orgId] as const,
-  overdueVisits: (orgId: string) => [...healthKeys.visits(), "overdue", orgId] as const,
+  upcomingVisits: (orgId: string) =>
+    [...healthKeys.visits(), "upcoming", orgId] as const,
+  overdueVisits: (orgId: string) =>
+    [...healthKeys.visits(), "overdue", orgId] as const,
   exposures: () => [...healthKeys.all, "exposures"] as const,
-  exposuresList: (orgId: string, filters?: object) => [...healthKeys.exposures(), "list", orgId, filters] as const,
-  exposureDetail: (id: string) => [...healthKeys.exposures(), "detail", id] as const,
-  criticalExposures: (orgId: string) => [...healthKeys.exposures(), "critical", orgId] as const,
+  exposuresList: (orgId: string, filters?: object) =>
+    [...healthKeys.exposures(), "list", orgId, filters] as const,
+  exposureDetail: (id: string) =>
+    [...healthKeys.exposures(), "detail", id] as const,
+  criticalExposures: (orgId: string) =>
+    [...healthKeys.exposures(), "critical", orgId] as const,
   measurements: () => [...healthKeys.all, "measurements"] as const,
-  measurementsByExposure: (exposureId: string) => [...healthKeys.measurements(), "byExposure", exposureId] as const,
+  measurementsByExposure: (exposureId: string) =>
+    [...healthKeys.measurements(), "byExposure", exposureId] as const,
   alerts: () => [...healthKeys.all, "alerts"] as const,
-  alertsList: (orgId: string, filters?: object) => [...healthKeys.alerts(), "list", orgId, filters] as const,
+  alertsList: (orgId: string, filters?: object) =>
+    [...healthKeys.alerts(), "list", orgId, filters] as const,
   alertDetail: (id: string) => [...healthKeys.alerts(), "detail", id] as const,
-  activeAlerts: (orgId: string) => [...healthKeys.alerts(), "active", orgId] as const,
+  activeAlerts: (orgId: string) =>
+    [...healthKeys.alerts(), "active", orgId] as const,
   stats: (orgId: string) => [...healthKeys.all, "stats", orgId] as const,
-  visitStats: (orgId: string) => [...healthKeys.all, "visitStats", orgId] as const,
-  exposureStats: (orgId: string) => [...healthKeys.all, "exposureStats", orgId] as const,
+  visitStats: (orgId: string) =>
+    [...healthKeys.all, "visitStats", orgId] as const,
+  exposureStats: (orgId: string) =>
+    [...healthKeys.all, "exposureStats", orgId] as const,
 };
 
 // =============================================================================
@@ -218,7 +232,10 @@ export function useEmployeeHasHealthRecord(employeeId: string | undefined) {
   const orgId = userProfile?.organizationId;
 
   return useQuery({
-    queryKey: [...healthKeys.recordByEmployee(orgId || "", employeeId || ""), "exists"],
+    queryKey: [
+      ...healthKeys.recordByEmployee(orgId || "", employeeId || ""),
+      "exists",
+    ],
     queryFn: () => employeeHasHealthRecord(orgId!, employeeId!),
     enabled: !!orgId && !!employeeId,
     staleTime: 30 * 1000, // 30 seconds - shorter cache for validation
@@ -234,7 +251,10 @@ export function useCreateHealthRecord() {
 
   return useMutation({
     mutationFn: async (
-      data: Omit<HealthRecord, "id" | "createdAt" | "updatedAt" | "audit" | "organizationId">
+      data: Omit<
+        HealthRecord,
+        "id" | "createdAt" | "updatedAt" | "audit" | "organizationId"
+      >
     ) => {
       if (!user?.uid || !userProfile?.organizationId) {
         throw new Error("Not authenticated");
@@ -263,7 +283,9 @@ export function useUpdateHealthRecord() {
       data,
     }: {
       recordId: string;
-      data: Partial<Omit<HealthRecord, "id" | "createdAt" | "audit" | "organizationId">>;
+      data: Partial<
+        Omit<HealthRecord, "id" | "createdAt" | "audit" | "organizationId">
+      >;
     }) => {
       if (!user?.uid) {
         throw new Error("Not authenticated");
@@ -271,7 +293,9 @@ export function useUpdateHealthRecord() {
       await updateHealthRecord(recordId, data, user.uid);
     },
     onSuccess: (_data, { recordId }) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.recordDetail(recordId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.recordDetail(recordId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.records() });
     },
   });
@@ -369,7 +393,9 @@ export function useMedicalVisit(visitId: string | undefined) {
 /**
  * Hook to fetch medical visits linked to a specific health record
  */
-export function useMedicalVisitsByHealthRecord(healthRecordId: string | undefined) {
+export function useMedicalVisitsByHealthRecord(
+  healthRecordId: string | undefined
+) {
   const { userProfile } = useAuth();
   const orgId = userProfile?.organizationId;
 
@@ -420,7 +446,10 @@ export function useCreateMedicalVisit() {
 
   return useMutation({
     mutationFn: async (
-      data: Omit<MedicalVisit, "id" | "createdAt" | "updatedAt" | "audit" | "organizationId">
+      data: Omit<
+        MedicalVisit,
+        "id" | "createdAt" | "updatedAt" | "audit" | "organizationId"
+      >
     ) => {
       if (!user?.uid || !userProfile?.organizationId) {
         throw new Error("Not authenticated");
@@ -449,7 +478,9 @@ export function useUpdateMedicalVisit() {
       data,
     }: {
       visitId: string;
-      data: Partial<Omit<MedicalVisit, "id" | "createdAt" | "audit" | "organizationId">>;
+      data: Partial<
+        Omit<MedicalVisit, "id" | "createdAt" | "audit" | "organizationId">
+      >;
     }) => {
       if (!user?.uid) {
         throw new Error("Not authenticated");
@@ -457,7 +488,9 @@ export function useUpdateMedicalVisit() {
       await updateMedicalVisit(visitId, data, user.uid);
     },
     onSuccess: (_data, { visitId }) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.visitDetail(visitId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.visitDetail(visitId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.visits() });
     },
   });
@@ -506,7 +539,9 @@ export function useCompleteMedicalVisit() {
       await completeMedicalVisit(visitId, findings, user.uid);
     },
     onSuccess: (_data, { visitId }) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.visitDetail(visitId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.visitDetail(visitId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.visits() });
     },
   });
@@ -631,7 +666,9 @@ export function useLinkEmployeeToExposure() {
       await linkEmployeeToExposure(exposureId, employeeId, user.uid);
     },
     onSuccess: (_data, { exposureId }) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(exposureId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.exposureDetail(exposureId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
     },
   });
@@ -658,7 +695,9 @@ export function useUnlinkEmployeeFromExposure() {
       await unlinkEmployeeFromExposure(exposureId, employeeId, user.uid);
     },
     onSuccess: (_data, { exposureId }) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(exposureId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.exposureDetail(exposureId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
     },
   });
@@ -710,7 +749,10 @@ export function useCreateExposure() {
 
   return useMutation({
     mutationFn: async (
-      data: Omit<OrganizationExposure, "id" | "createdAt" | "updatedAt" | "audit" | "organizationId">
+      data: Omit<
+        OrganizationExposure,
+        "id" | "createdAt" | "updatedAt" | "audit" | "organizationId"
+      >
     ) => {
       if (!user?.uid || !userProfile?.organizationId) {
         throw new Error("Not authenticated");
@@ -739,7 +781,12 @@ export function useUpdateExposure() {
       data,
     }: {
       exposureId: string;
-      data: Partial<Omit<OrganizationExposure, "id" | "createdAt" | "audit" | "organizationId">>;
+      data: Partial<
+        Omit<
+          OrganizationExposure,
+          "id" | "createdAt" | "audit" | "organizationId"
+        >
+      >;
     }) => {
       if (!user?.uid) {
         throw new Error("Not authenticated");
@@ -747,7 +794,9 @@ export function useUpdateExposure() {
       await updateExposure(exposureId, data, user.uid);
     },
     onSuccess: (_data, { exposureId }) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(exposureId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.exposureDetail(exposureId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
     },
   });
@@ -791,10 +840,14 @@ export function useAddExposureMeasurement() {
       await addExposureMeasurement(exposureId, measurement, user.uid);
     },
     onSuccess: (_data, { exposureId }) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(exposureId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.exposureDetail(exposureId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
       queryClient.invalidateQueries({ queryKey: healthKeys.alerts() });
-      queryClient.invalidateQueries({ queryKey: healthKeys.measurementsByExposure(exposureId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.measurementsByExposure(exposureId),
+      });
     },
   });
 }
@@ -837,10 +890,10 @@ export function useCreateMeasurement() {
       if (!user?.uid || !userProfile?.organizationId) {
         throw new Error("Not authenticated");
       }
-      
+
       // Import Timestamp for conversion
       const { Timestamp } = await import("firebase/firestore");
-      
+
       return createMeasurement(
         {
           ...measurementData,
@@ -852,8 +905,12 @@ export function useCreateMeasurement() {
       );
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.measurementsByExposure(data.exposureId) });
-      queryClient.invalidateQueries({ queryKey: healthKeys.exposureDetail(data.exposureId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.measurementsByExposure(data.exposureId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.exposureDetail(data.exposureId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.exposures() });
       queryClient.invalidateQueries({ queryKey: healthKeys.alerts() });
     },
@@ -877,9 +934,33 @@ export function useHealthAlerts(
   const { userProfile } = useAuth();
   const orgId = userProfile?.organizationId;
 
+  console.log("[useHealthAlerts] Hook called", { orgId, filters });
+
   return useQuery({
     queryKey: healthKeys.alertsList(orgId || "", filters),
-    queryFn: () => getHealthAlerts(orgId!, filters),
+    queryFn: async () => {
+      console.log("[useHealthAlerts] Fetching alerts for org:", orgId);
+      try {
+        const alerts = await getHealthAlerts(orgId!, filters);
+        console.log("[useHealthAlerts] Fetched alerts:", {
+          count: alerts.length,
+          alerts: alerts.map((a) => ({
+            id: a.id,
+            title: a.title,
+            status: a.status,
+            severity: a.severity,
+          })),
+        });
+        return alerts;
+      } catch (error) {
+        console.error("[useHealthAlerts] Error fetching alerts:", {
+          error,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorCode: (error as { code?: string })?.code,
+        });
+        throw error;
+      }
+    },
     enabled: !!orgId,
     staleTime: 1 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -898,7 +979,13 @@ export function useRealtimeHealthAlerts() {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    console.log("[useRealtimeHealthAlerts] Hook initialized", {
+      orgId,
+      hasUserProfile: !!userProfile,
+    });
+
     if (!orgId) {
+      console.log("[useRealtimeHealthAlerts] No orgId, skipping subscription");
       setIsLoading(false);
       return;
     }
@@ -906,13 +993,30 @@ export function useRealtimeHealthAlerts() {
     setIsLoading(true);
     setError(null);
 
+    console.log(
+      "[useRealtimeHealthAlerts] Subscribing to alerts for org:",
+      orgId
+    );
     const unsubscribe = subscribeToHealthAlerts(orgId, (newAlerts) => {
+      console.log("[useRealtimeHealthAlerts] Received alerts:", {
+        count: newAlerts.length,
+        alerts: newAlerts.map((a) => ({
+          id: a.id,
+          title: a.title,
+          status: a.status,
+          severity: a.severity,
+          type: a.type,
+        })),
+      });
       setAlerts(newAlerts);
       setIsLoading(false);
       queryClient.setQueryData(healthKeys.alertsList(orgId), newAlerts);
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log("[useRealtimeHealthAlerts] Unsubscribing from alerts");
+      unsubscribe();
+    };
   }, [orgId, queryClient]);
 
   return { alerts, isLoading, error };
@@ -955,7 +1059,10 @@ export function useCreateHealthAlert() {
 
   return useMutation({
     mutationFn: async (
-      data: Omit<HealthAlert, "id" | "createdAt" | "updatedAt" | "organizationId">
+      data: Omit<
+        HealthAlert,
+        "id" | "createdAt" | "updatedAt" | "organizationId"
+      >
     ) => {
       if (!user?.uid || !userProfile?.organizationId) {
         throw new Error("Not authenticated");
@@ -986,7 +1093,9 @@ export function useAcknowledgeHealthAlert() {
       await acknowledgeHealthAlert(alertId, user.uid);
     },
     onSuccess: (_data, alertId) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.alertDetail(alertId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.alertDetail(alertId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.alerts() });
     },
   });
@@ -1012,11 +1121,75 @@ export function useResolveHealthAlert() {
       if (!user?.uid) {
         throw new Error("Not authenticated");
       }
-      await resolveHealthAlert(alertId, resolutionNotes, linkedCapaId, user.uid);
+      await resolveHealthAlert(
+        alertId,
+        resolutionNotes,
+        linkedCapaId,
+        user.uid
+      );
     },
     onSuccess: (_data, { alertId }) => {
-      queryClient.invalidateQueries({ queryKey: healthKeys.alertDetail(alertId) });
+      queryClient.invalidateQueries({
+        queryKey: healthKeys.alertDetail(alertId),
+      });
       queryClient.invalidateQueries({ queryKey: healthKeys.alerts() });
+    },
+  });
+}
+
+/**
+ * Hook to sync alerts from existing data (exposures and overdue visits)
+ * Creates alerts for data that was imported/seeded without triggering normal alert creation
+ */
+export function useSyncHealthAlerts() {
+  const { user, userProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      console.log("[useSyncHealthAlerts] Starting sync...", {
+        userId: user?.uid,
+        orgId: userProfile?.organizationId,
+      });
+
+      if (!user?.uid || !userProfile?.organizationId) {
+        console.error("[useSyncHealthAlerts] Not authenticated", {
+          hasUser: !!user,
+          hasUid: !!user?.uid,
+          hasOrgId: !!userProfile?.organizationId,
+        });
+        throw new Error("Not authenticated");
+      }
+
+      try {
+        const result = await syncAlertsFromExistingData(
+          userProfile.organizationId,
+          user.uid
+        );
+        console.log(
+          "[useSyncHealthAlerts] Sync completed successfully:",
+          result
+        );
+        return result;
+      } catch (error) {
+        console.error("[useSyncHealthAlerts] Sync failed:", {
+          error,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorCode: (error as { code?: string })?.code,
+        });
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      console.log("[useSyncHealthAlerts] Invalidating queries");
+      queryClient.invalidateQueries({ queryKey: healthKeys.alerts() });
+      queryClient.invalidateQueries({ queryKey: healthKeys.all });
+    },
+    onError: (error) => {
+      console.error("[useSyncHealthAlerts] Mutation error handler:", {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
     },
   });
 }
@@ -1100,7 +1273,8 @@ export function useRecalculateHealthStats() {
 export function useHealthDashboardCounts() {
   const { data: stats, isLoading: statsLoading } = useHealthStats();
   const { data: visitStats, isLoading: visitStatsLoading } = useVisitStats();
-  const { data: exposureStats, isLoading: exposureStatsLoading } = useExposureStats();
+  const { data: exposureStats, isLoading: exposureStatsLoading } =
+    useExposureStats();
 
   const isLoading = statsLoading || visitStatsLoading || exposureStatsLoading;
 
@@ -1123,12 +1297,13 @@ export function useHealthDashboardCounts() {
  */
 export function useIsPhysician() {
   const { session } = useAuth();
-  
+
   // Check if user has physician role
-  const isPhysician = session?.roleName === "Médecin du travail" || 
-                      session?.roleName === "physician" ||
-                      session?.featurePermissions?.health?.delete === true; // Full health access indicator
-  
+  const isPhysician =
+    session?.roleName === "Médecin du travail" ||
+    session?.roleName === "physician" ||
+    session?.featurePermissions?.health?.delete === true; // Full health access indicator
+
   return isPhysician;
 }
 
@@ -1195,4 +1370,3 @@ export function useExposureTrends() {
     staleTime: 5 * 60 * 1000,
   });
 }
-

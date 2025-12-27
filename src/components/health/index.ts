@@ -25,6 +25,7 @@ export { ExposureDetailModal } from "./ExposureDetailModal";
 // Alert Components
 export { HealthAlertCard } from "./HealthAlertCard";
 export { HealthAlertsFeed } from "./HealthAlertsFeed";
+export { HealthAlertDetailModal } from "./HealthAlertDetailModal";
 
 // AI Components
 export { HealthAIPanel } from "./ai/HealthAIPanel";

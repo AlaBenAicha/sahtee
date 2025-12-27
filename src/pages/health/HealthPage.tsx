@@ -47,6 +47,7 @@ import { ExposureDetailModal } from "@/components/health/ExposureDetailModal";
 import { ExposureForm } from "@/components/health/ExposureForm";
 import { MeasurementForm } from "@/components/health/MeasurementForm";
 import { HealthAlertsFeed } from "@/components/health/HealthAlertsFeed";
+import { HealthAlertDetailModal } from "@/components/health/HealthAlertDetailModal";
 import { HealthAIPanel } from "@/components/health/ai/HealthAIPanel";
 
 import type { HealthRecord, MedicalVisit, OrganizationExposure, HealthAlert } from "@/types/health";
@@ -403,6 +404,14 @@ export default function HealthPage() {
           }}
         />
       )}
+
+      {/* Health Alert Detail Modal */}
+      <HealthAlertDetailModal
+        alert={selectedAlert}
+        open={!!selectedAlert}
+        onOpenChange={(open) => !open && setSelectedAlert(null)}
+        onCreateCapa={handleCreateCapaFromAlert}
+      />
     </div>
   );
 }
