@@ -4,6 +4,7 @@
  * Form for creating and editing medical visits.
  */
 
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -39,7 +40,9 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useCreateMedicalVisit, useUpdateMedicalVisit, useIsPhysician } from "@/hooks/useHealth";
 import { useAuth } from "@/contexts/AuthContext";
+import { EmployeeSelector } from "@/components/health/EmployeeSelector";
 import type { MedicalVisit, ExaminationType } from "@/types/health";
+import type { User } from "@/types/user";
 
 const formSchema = z.object({
   employeeId: z.string().min(1, "ID employé requis"),
@@ -82,6 +85,9 @@ export function VisitForm({
   const { user, userProfile } = useAuth();
   const isEditing = !!visit;
   
+  // Selected employee state (for linking to User document)
+  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
+  
   const createVisit = useCreateMedicalVisit();
   const updateVisit = useUpdateMedicalVisit();
 
@@ -99,6 +105,25 @@ export function VisitForm({
       reason: visit?.reason || "",
     },
   });
+
+  // Sync selected employee with form values
+  useEffect(() => {
+    if (selectedEmployee) {
+      form.setValue("employeeId", selectedEmployee.id);
+      form.setValue("employeeName", selectedEmployee.displayName);
+      if (selectedEmployee.departmentId) {
+        form.setValue("departmentId", selectedEmployee.departmentId);
+        // For department name, we use the departmentId as placeholder since we don't have the department name readily available
+        // In a production setup, you might want to fetch the department name from the departments collection
+        form.setValue("departmentName", selectedEmployee.departmentId);
+      }
+    }
+  }, [selectedEmployee, form]);
+
+  // Handle employee selection
+  const handleEmployeeSelect = (user: User | null) => {
+    setSelectedEmployee(user);
+  };
 
   const isSubmitting = createVisit.isPending || updateVisit.isPending;
 
@@ -148,40 +173,35 @@ export function VisitForm({
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
-          {/* Employee Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="employeeId">ID Employé</Label>
-              <Input
-                id="employeeId"
-                {...form.register("employeeId")}
-                placeholder="EMP-001"
-              />
-              {form.formState.errors.employeeId && (
-                <p className="text-sm text-red-500">{form.formState.errors.employeeId.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="employeeName">Nom de l'employé</Label>
-              <Input
-                id="employeeName"
-                {...form.register("employeeName")}
-                placeholder="Jean Dupont"
-              />
-              {form.formState.errors.employeeName && (
-                <p className="text-sm text-red-500">{form.formState.errors.employeeName.message}</p>
-              )}
-            </div>
+          {/* Employee Selection */}
+          <div className="space-y-2">
+            <Label>Employé</Label>
+            <EmployeeSelector
+              value={selectedEmployee}
+              onSelect={handleEmployeeSelect}
+              placeholder="Rechercher et sélectionner un employé..."
+              disabled={isEditing}
+              error={
+                form.formState.errors.employeeId?.message ||
+                form.formState.errors.employeeName?.message
+              }
+            />
+            {isEditing && (
+              <p className="text-xs text-muted-foreground">
+                L'employé ne peut pas être modifié après la création de la visite.
+              </p>
+            )}
           </div>
 
+          {/* Department Info (auto-filled from employee, editable) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="departmentId">ID Département</Label>
               <Input
                 id="departmentId"
                 {...form.register("departmentId")}
-                placeholder="PROD"
+                placeholder="Auto-rempli depuis le profil employé"
+                className={selectedEmployee?.departmentId ? "bg-muted/50" : ""}
               />
               {form.formState.errors.departmentId && (
                 <p className="text-sm text-red-500">{form.formState.errors.departmentId.message}</p>

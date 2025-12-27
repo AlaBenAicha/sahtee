@@ -23,10 +23,23 @@ export type HazardCategory =
 /** Employee health record in Firestore */
 export interface HealthRecord extends FirestoreDocument {
   organizationId: string;
+  /**
+   * Reference to the User document ID (uid).
+   * Links this medical record to an actual user account in the organization.
+   * Selected via EmployeeSelector component.
+   */
   employeeId: string;
   
   // Personal info (reference)
+  /**
+   * Employee's display name, auto-filled from User.displayName when selected.
+   * Stored for quick display without needing to fetch the User document.
+   */
   employeeName: string;
+  /**
+   * Reference to the Department document ID.
+   * Auto-filled from User.departmentId when employee is selected.
+   */
   departmentId: string;
   jobTitle: string;
   
@@ -355,8 +368,20 @@ export interface MedicalVisit {
   organizationId: string;
   
   // Employee info
+  /**
+   * Reference to the User document ID (uid).
+   * Links this visit to an actual user account in the organization.
+   * Selected via EmployeeSelector component.
+   */
   employeeId: string;
+  /**
+   * Employee's display name, auto-filled from User.displayName when selected.
+   */
   employeeName: string;
+  /**
+   * Reference to the Department document ID.
+   * Auto-filled from User.departmentId when employee is selected.
+   */
   departmentId: string;
   departmentName: string;
   
@@ -558,7 +583,16 @@ export interface OrganizationExposure {
   exceedanceCount: number; // Number of times limit exceeded
   
   // Affected employees
+  /**
+   * Number of employees exposed to this hazard.
+   * Derived from exposedEmployeeIds.length.
+   */
   exposedEmployeeCount: number;
+  /**
+   * Array of User document IDs (uid) for employees exposed to this hazard.
+   * Selected via EmployeesMultiSelector component.
+   * Links to actual user accounts in the organization.
+   */
   exposedEmployeeIds: string[];
   
   // Control measures

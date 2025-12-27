@@ -5,7 +5,7 @@
  * Physician-only access.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -41,7 +41,9 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useCreateHealthRecord, useUpdateHealthRecord, useIsPhysician } from "@/hooks/useHealth";
+import { EmployeeSelector } from "@/components/health/EmployeeSelector";
 import type { HealthRecord, FitnessStatus, MedicalRestriction, MedicalExamination, Vaccination, ExposureRecord, ExaminationType, HazardCategory } from "@/types/health";
+import type { User } from "@/types/user";
 
 const formSchema = z.object({
   employeeId: z.string().min(1, "ID employé requis"),
@@ -116,6 +118,9 @@ export function MedicalRecordForm({
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(0);
   const totalSteps = FORM_STEPS.length;
+  
+  // Selected employee state (for linking to User document)
+  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
   
   // Restrictions state
   const [restrictions, setRestrictions] = useState<Partial<MedicalRestriction>[]>(
@@ -195,6 +200,22 @@ export function MedicalRecordForm({
       nextExaminationDue: record?.nextExaminationDue?.toDate() || undefined,
     },
   });
+
+  // Sync selected employee with form values
+  useEffect(() => {
+    if (selectedEmployee) {
+      form.setValue("employeeId", selectedEmployee.id);
+      form.setValue("employeeName", selectedEmployee.displayName);
+      if (selectedEmployee.departmentId) {
+        form.setValue("departmentId", selectedEmployee.departmentId);
+      }
+    }
+  }, [selectedEmployee, form]);
+
+  // Handle employee selection
+  const handleEmployeeSelect = (user: User | null) => {
+    setSelectedEmployee(user);
+  };
 
   const isSubmitting = createRecord.isPending || updateRecord.isPending;
 
@@ -471,41 +492,35 @@ export function MedicalRecordForm({
             {/* Step 1: Info */}
             {currentStep === 0 && (
               <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-4 duration-300">
-              {/* Employee Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employeeId">ID Employé</Label>
-                  <Input
-                    id="employeeId"
-                    {...form.register("employeeId")}
-                    placeholder="EMP-001"
-                    disabled={isEditing}
-                  />
-                  {form.formState.errors.employeeId && (
-                    <p className="text-sm text-red-500">{form.formState.errors.employeeId.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="employeeName">Nom complet</Label>
-                  <Input
-                    id="employeeName"
-                    {...form.register("employeeName")}
-                    placeholder="Jean Dupont"
-                  />
-                  {form.formState.errors.employeeName && (
-                    <p className="text-sm text-red-500">{form.formState.errors.employeeName.message}</p>
-                  )}
-                </div>
+              {/* Employee Selection */}
+              <div className="space-y-2">
+                <Label>Employé</Label>
+                <EmployeeSelector
+                  value={selectedEmployee}
+                  onSelect={handleEmployeeSelect}
+                  placeholder="Rechercher et sélectionner un employé..."
+                  disabled={isEditing}
+                  error={
+                    form.formState.errors.employeeId?.message ||
+                    form.formState.errors.employeeName?.message
+                  }
+                />
+                {isEditing && (
+                  <p className="text-xs text-muted-foreground">
+                    L'employé ne peut pas être modifié après la création de la fiche.
+                  </p>
+                )}
               </div>
 
+              {/* Department and Job Title (auto-filled from employee, but editable) */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="departmentId">Département</Label>
                   <Input
                     id="departmentId"
                     {...form.register("departmentId")}
-                    placeholder="Production"
+                    placeholder="Auto-rempli depuis le profil employé"
+                    className={selectedEmployee?.departmentId ? "bg-muted/50" : ""}
                   />
                   {form.formState.errors.departmentId && (
                     <p className="text-sm text-red-500">{form.formState.errors.departmentId.message}</p>
