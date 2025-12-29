@@ -37,7 +37,7 @@ const categoryConfig: Record<
   epi: {
     label: "EPI",
     icon: <HardHat className="h-4 w-4" />,
-    color: "bg-blue-100 text-blue-800",
+    color: "bg-secondary text-primary",
   },
   ergonomie: {
     label: "Ergonomie",
@@ -83,7 +83,7 @@ const statusConfig: Record<
   ordered: {
     label: "Commandé",
     icon: <ShoppingCart className="h-4 w-4" />,
-    color: "bg-blue-100 text-blue-800",
+    color: "bg-secondary text-primary",
   },
   received: {
     label: "Reçu",
@@ -93,7 +93,7 @@ const statusConfig: Record<
   deployed: {
     label: "Déployé",
     icon: <CheckCircle className="h-4 w-4" />,
-    color: "bg-emerald-100 text-emerald-800",
+    color: "bg-secondary text-primary",
   },
   rejected: {
     label: "Rejeté",
@@ -230,7 +230,7 @@ export function EquipmentCard({ equipment, onView, onEdit, onOrder }: EquipmentC
           {onOrder && ["pending", "approved"].includes(equipment.status) && (
             <Button
               size="sm"
-              className="bg-emerald-500 hover:bg-emerald-600"
+              className="bg-primary hover:bg-primary"
               onClick={() => onOrder(equipment)}
             >
               <ShoppingCart className="h-4 w-4 mr-1" />

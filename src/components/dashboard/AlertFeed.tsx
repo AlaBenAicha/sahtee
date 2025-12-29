@@ -168,7 +168,7 @@ function AlertItem({ alert, userId, onMarkRead, onDismiss, onClick }: AlertItemP
               {getTypeLabel(alert.type)}
             </Badge>
             {alert.actionRequired && (
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+              <Badge variant="outline" className="text-xs bg-secondary text-primary border-secondary">
                 Action requise
               </Badge>
             )}
@@ -192,7 +192,7 @@ function AlertItem({ alert, userId, onMarkRead, onDismiss, onClick }: AlertItemP
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 -mr-2"
+                className="h-6 text-xs text-primary hover:text-primary hover:bg-secondary -mr-2"
                 onClick={(e) => {
                   e.stopPropagation();
                   window.location.href = alert.actionUrl!;
@@ -221,7 +221,7 @@ function AlertItem({ alert, userId, onMarkRead, onDismiss, onClick }: AlertItemP
 
         {/* Unread indicator */}
         {!isRead && (
-          <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-blue-500" />
+          <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary" />
         )}
       </div>
     </div>
@@ -280,7 +280,7 @@ export function AlertFeed({
             <Bell className="h-5 w-5" />
             Alertes
             {unreadCount > 0 && (
-              <Badge className="bg-blue-500 text-white text-xs">
+              <Badge className="bg-primary text-white text-xs">
                 {unreadCount}
               </Badge>
             )}
@@ -380,7 +380,7 @@ export function AlertBadge({
         "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
         criticalCount && criticalCount > 0
           ? "bg-red-100 text-red-700"
-          : "bg-blue-100 text-blue-700"
+          : "bg-secondary text-primary"
       )}
     >
       <Bell className="h-3 w-3" />

@@ -44,14 +44,14 @@ import {
 // Color palette for charts
 const CHART_COLORS = {
   primary: "#4f46e5",
-  secondary: "#10b981",
+  secondary: "#1f4993",
   warning: "#f59e0b",
   danger: "#ef4444",
   info: "#3b82f6",
   muted: "#94a3b8",
 };
 
-const PIE_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
+const PIE_COLORS = ["#1f4993", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 interface TrendCardProps {
   title: string;
@@ -71,9 +71,9 @@ function TrendCard({ title, value, change, status, subtitle, invertColors = fals
   if (status === "stable") {
     trendColor = "text-slate-500";
   } else if (invertColors) {
-    trendColor = status === "up" ? "text-emerald-500" : "text-red-500";
+    trendColor = status === "up" ? "text-primary" : "text-red-500";
   } else {
-    trendColor = status === "down" ? "text-emerald-500" : "text-red-500";
+    trendColor = status === "down" ? "text-primary" : "text-red-500";
   }
 
   return (
@@ -583,8 +583,8 @@ export function HealthTrendCharts({ className }: HealthTrendChartsProps) {
                   <span className="text-2xl font-bold text-slate-800">{visitStats.scheduled}</span>
                   <p className="text-xs text-slate-500">Planifiées</p>
                 </div>
-                <div className="rounded-lg border bg-emerald-50 p-3 text-center">
-                  <span className="text-2xl font-bold text-emerald-600">{visitStats.completed}</span>
+                <div className="rounded-lg border bg-secondary p-3 text-center">
+                  <span className="text-2xl font-bold text-primary">{visitStats.completed}</span>
                   <p className="text-xs text-slate-500">Effectuées</p>
                 </div>
                 <div className="rounded-lg border bg-red-50 p-3 text-center">

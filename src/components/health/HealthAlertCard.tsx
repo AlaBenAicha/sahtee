@@ -31,7 +31,7 @@ import { useAcknowledgeHealthAlert, useResolveHealthAlert } from "@/hooks/useHea
 import type { HealthAlert, HealthAlertSeverity, HealthAlertType } from "@/types/health";
 
 const SEVERITY_CONFIG: Record<HealthAlertSeverity, { label: string; color: string; icon: React.ElementType }> = {
-  info: { label: "Info", color: "bg-blue-100 text-blue-700 border-blue-200", icon: Bell },
+  info: { label: "Info", color: "bg-secondary text-primary border-secondary", icon: Bell },
   warning: { label: "Attention", color: "bg-amber-100 text-amber-700 border-amber-200", icon: AlertTriangle },
   critical: { label: "Critique", color: "bg-red-100 text-red-700 border-red-200", icon: AlertCircle },
 };
@@ -104,7 +104,7 @@ export function HealthAlertCard({
                 ? "bg-red-100"
                 : alert.severity === "warning"
                 ? "bg-amber-100"
-                : "bg-blue-100"
+                : "bg-secondary"
             )}
           >
             <SeverityIcon
@@ -114,7 +114,7 @@ export function HealthAlertCard({
                   ? "text-red-600"
                   : alert.severity === "warning"
                   ? "text-amber-600"
-                  : "text-blue-600"
+                  : "text-primary"
               )}
             />
           </div>
@@ -254,16 +254,16 @@ export function HealthAlertCard({
 
             {/* Resolved Info */}
             {alert.status === "resolved" && (
-              <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2">
-                <div className="flex items-center gap-2 text-emerald-700">
+              <div className="mt-3 rounded-lg border border-secondary bg-secondary p-2">
+                <div className="flex items-center gap-2 text-primary">
                   <CheckCircle className="h-4 w-4" />
                   <span className="text-sm font-medium">Résolue</span>
                 </div>
                 {alert.resolutionNotes && (
-                  <p className="text-sm text-emerald-600 mt-1">{alert.resolutionNotes}</p>
+                  <p className="text-sm text-primary mt-1">{alert.resolutionNotes}</p>
                 )}
                 {alert.resolvedAt && (
-                  <p className="text-xs text-emerald-500 mt-1">
+                  <p className="text-xs text-primary mt-1">
                     {format(alert.resolvedAt.toDate(), "d MMMM yyyy à HH:mm", { locale: fr })}
                   </p>
                 )}

@@ -104,7 +104,7 @@ const FEATURE_CONFIGS: FeatureConfig[] = [
     label: "Tableau de bord", 
     icon: LayoutDashboard, 
     description: "Vue d'ensemble et statistiques",
-    color: "text-blue-600" 
+    color: "text-primary" 
   },
   { 
     key: "incidents", 

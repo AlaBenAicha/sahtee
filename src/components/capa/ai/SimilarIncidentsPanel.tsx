@@ -227,7 +227,7 @@ export function SimilarIncidentsPanel({
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {analysis.trainingRecommendations.map((training, index) => (
-                  <Badge key={index} variant="outline" className="bg-blue-50">
+                  <Badge key={index} variant="outline" className="bg-secondary">
                     {training}
                   </Badge>
                 ))}

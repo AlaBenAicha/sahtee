@@ -28,8 +28,8 @@ import { useMedicalVisits } from "@/hooks/useHealth";
 import type { MedicalVisit, MedicalVisitStatus, ExaminationType } from "@/types/health";
 
 const VISIT_STATUS_CONFIG: Record<MedicalVisitStatus, { label: string; color: string; icon: React.ElementType }> = {
-  scheduled: { label: "Planifiée", color: "bg-blue-100 text-blue-700", icon: CalendarIcon },
-  completed: { label: "Effectuée", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
+  scheduled: { label: "Planifiée", color: "bg-secondary text-primary", icon: CalendarIcon },
+  completed: { label: "Effectuée", color: "bg-secondary text-primary", icon: CheckCircle },
   cancelled: { label: "Annulée", color: "bg-slate-100 text-slate-700", icon: XCircle },
   no_show: { label: "Absent", color: "bg-red-100 text-red-700", icon: AlertCircle },
   overdue: { label: "En retard", color: "bg-red-100 text-red-700", icon: Clock },
@@ -100,8 +100,8 @@ export function VisitCalendar({ onSelectVisit, onCreateVisit }: VisitCalendarPro
               className={cn(
                 "h-1.5 w-1.5 rounded-full",
                 hasOverdue ? "bg-red-500" :
-                hasScheduled ? "bg-blue-500" :
-                allCompleted ? "bg-emerald-500" : "bg-slate-400"
+                hasScheduled ? "bg-primary" :
+                allCompleted ? "bg-primary" : "bg-slate-400"
               )}
             />
             {dayVisits.length > 1 && (
@@ -195,11 +195,11 @@ export function VisitCalendar({ onSelectVisit, onCreateVisit }: VisitCalendarPro
             {/* Legend */}
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-blue-500" />
+                <div className="h-3 w-3 rounded-full bg-primary" />
                 <span className="text-slate-600">Planifiée</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                <div className="h-3 w-3 rounded-full bg-primary" />
                 <span className="text-slate-600">Effectuée</span>
               </div>
               <div className="flex items-center gap-2">
@@ -277,13 +277,13 @@ export function VisitCalendar({ onSelectVisit, onCreateVisit }: VisitCalendarPro
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-slate-500">Planifiées:</span>
-                  <span className="ml-1 font-medium text-blue-600">
+                  <span className="ml-1 font-medium text-primary">
                     {visits?.filter(v => v.status === "scheduled").length || 0}
                   </span>
                 </div>
                 <div>
                   <span className="text-slate-500">Effectuées:</span>
-                  <span className="ml-1 font-medium text-emerald-600">
+                  <span className="ml-1 font-medium text-primary">
                     {visits?.filter(v => v.status === "completed").length || 0}
                   </span>
                 </div>

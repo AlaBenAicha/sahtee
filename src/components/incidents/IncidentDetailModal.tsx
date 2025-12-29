@@ -203,7 +203,7 @@ export function IncidentDetailModal({
               {incident.immediateActions && (
                 <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-blue-500" />
+                    <Shield className="h-4 w-4 text-primary" />
                     Actions immédiates prises
                   </h3>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -245,7 +245,7 @@ export function IncidentDetailModal({
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <User className="h-4 w-4 text-blue-500" />
+                      <User className="h-4 w-4 text-primary" />
                       Témoins ({incident.witnesses.length})
                     </CardTitle>
                   </CardHeader>

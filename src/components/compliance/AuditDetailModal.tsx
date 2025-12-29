@@ -53,7 +53,7 @@ interface AuditDetailModalProps {
 const STATUS_CONFIG: Record<AuditStatus, { label: string; color: string; icon: React.ReactNode }> = {
   planned: {
     label: "Planifié",
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
     icon: <Calendar className="h-4 w-4" />,
   },
   in_progress: {
@@ -68,7 +68,7 @@ const STATUS_CONFIG: Record<AuditStatus, { label: string; color: string; icon: R
   },
   completed: {
     label: "Terminé",
-    color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
     icon: <CheckCircle2 className="h-4 w-4" />,
   },
   cancelled: {
@@ -342,7 +342,7 @@ export function AuditDetailModal({
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold text-blue-600">
+                    <p className="text-2xl font-bold text-primary">
                       {calculatedSummary.observations}
                     </p>
                     <p className="text-xs text-muted-foreground">Observations</p>
@@ -350,7 +350,7 @@ export function AuditDetailModal({
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold text-emerald-600">
+                    <p className="text-2xl font-bold text-primary">
                       {calculatedSummary.opportunities}
                     </p>
                     <p className="text-xs text-muted-foreground">Pistes d'amélioration</p>
@@ -375,7 +375,7 @@ export function AuditDetailModal({
                       className={cn(
                         "text-sm",
                         audit.summary.overallConclusion === "pass"
-                          ? "bg-emerald-100 text-emerald-800"
+                          ? "bg-secondary text-primary"
                           : audit.summary.overallConclusion === "conditional_pass"
                           ? "bg-amber-100 text-amber-800"
                           : "bg-red-100 text-red-800"

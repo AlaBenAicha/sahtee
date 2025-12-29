@@ -10,7 +10,7 @@ export function CTAFinal() {
             Découvrez SAHTEE en action
           </h2>
           
-          <p className="text-xl md:text-2xl mb-12 text-blue-100 leading-relaxed max-w-4xl mx-auto">
+          <p className="text-xl md:text-2xl mb-12 text-secondary leading-relaxed max-w-4xl mx-auto">
             Voyez comment SAHTEE peut transformer la santé et sécurité au travail 
             dans votre organisation
           </p>
@@ -27,7 +27,7 @@ export function CTAFinal() {
             <Button 
               variant="outline"
               size="lg" 
-              className="border-white text-white hover:bg-white hover:text-blue-900 px-8 py-4 text-lg rounded-lg transition-all duration-300 group"
+              className="border-white text-white hover:bg-white hover:text-primary px-8 py-4 text-lg rounded-lg transition-all duration-300 group"
             >
               <Play className="mr-2 w-5 h-5 group-hover:scale-110 transition-transform" />
               Voir la vidéo
@@ -35,11 +35,11 @@ export function CTAFinal() {
           </div>
           
           {/* Trust indicators */}
-          <div className="mt-16 pt-8 border-t border-blue-800">
-            <p className="text-blue-200 mb-4">
+          <div className="mt-16 pt-8 border-t border-primary">
+            <p className="text-secondary mb-4">
               Déjà adopté par plus de 100 entreprises
             </p>
-            <div className="flex justify-center items-center gap-8 text-blue-300">
+            <div className="flex justify-center items-center gap-8 text-secondary">
               <div className="text-center">
                 <div className="text-2xl">99.9%</div>
                 <div className="text-sm">Disponibilité</div>

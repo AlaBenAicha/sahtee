@@ -54,7 +54,7 @@ export default function CRUDGuard({
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-slate-500">Vérification des permissions...</p>
         </div>
       </div>

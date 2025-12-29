@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
         <Card className="w-full max-w-md shadow-2xl">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center space-y-4">
-              <div className="rounded-full bg-blue-100 p-4">
+              <div className="rounded-full bg-secondary p-4">
                 <Mail className="h-12 w-12 text-[var(--sahtee-blue-primary)]" />
               </div>
               <h2 className="text-2xl font-bold text-[var(--sahtee-blue-primary)]">Email envoyé !</h2>

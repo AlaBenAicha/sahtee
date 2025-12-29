@@ -51,7 +51,7 @@ const categoryConfig: Record<
   epi: {
     label: "EPI",
     icon: <HardHat className="h-5 w-5" />,
-    color: "bg-blue-500 text-white",
+    color: "bg-primary text-white",
   },
   ergonomie: {
     label: "Ergonomie",
@@ -97,7 +97,7 @@ const statusConfig: Record<
   ordered: {
     label: "Commandé",
     icon: <ShoppingCart className="h-4 w-4" />,
-    color: "bg-blue-100 text-blue-800",
+    color: "bg-secondary text-primary",
   },
   received: {
     label: "Reçu",
@@ -107,7 +107,7 @@ const statusConfig: Record<
   deployed: {
     label: "Déployé",
     icon: <CheckCircle className="h-4 w-4" />,
-    color: "bg-emerald-100 text-emerald-800",
+    color: "bg-secondary text-primary",
   },
   rejected: {
     label: "Rejeté",
@@ -288,7 +288,7 @@ export function EquipmentDetailModal({
                 <>
                   <div>
                     <p className="text-xs text-slate-500">Coût réel</p>
-                    <p className="text-lg font-semibold text-emerald-600">
+                    <p className="text-lg font-semibold text-primary">
                       {formatCurrency(equipment.actualCost)}
                     </p>
                   </div>
@@ -379,7 +379,7 @@ export function EquipmentDetailModal({
               <>
                 {onApprove && (
                   <Button
-                    className="bg-emerald-500 hover:bg-emerald-600"
+                    className="bg-primary hover:bg-primary"
                     onClick={onApprove}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
@@ -396,7 +396,7 @@ export function EquipmentDetailModal({
             )}
             {["pending", "approved"].includes(equipment.status) && onOrder && (
               <Button
-                className="bg-blue-500 hover:bg-blue-600"
+                className="bg-primary hover:bg-primary"
                 onClick={onOrder}
               >
                 <ShoppingCart className="h-4 w-4 mr-2" />

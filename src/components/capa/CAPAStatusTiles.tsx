@@ -55,8 +55,8 @@ export function CAPAStatusTiles() {
       label: "En Cours",
       value: counts.inProgress,
       icon: <PlayCircle className="h-5 w-5" />,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-950/30",
+      color: "text-primary",
+      bgColor: "bg-secondary dark:bg-primary/30",
       description: "Actions actuellement en traitement",
     },
     {
@@ -64,8 +64,8 @@ export function CAPAStatusTiles() {
       label: "Clôturées à Temps",
       value: `${closedOnTimeRate}%`,
       icon: <CheckCircle2 className="h-5 w-5" />,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50 dark:bg-emerald-950/30",
+      color: "text-primary",
+      bgColor: "bg-secondary dark:bg-primary/30",
       description: "Taux de clôture dans les délais",
     },
   ];

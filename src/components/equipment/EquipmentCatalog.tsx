@@ -33,7 +33,7 @@ const categoryConfig: Record<
   EquipmentCategory,
   { icon: React.ReactNode; color: string }
 > = {
-  epi: { icon: <HardHat className="h-5 w-5" />, color: "bg-blue-500" },
+  epi: { icon: <HardHat className="h-5 w-5" />, color: "bg-primary" },
   ergonomie: { icon: <Settings className="h-5 w-5" />, color: "bg-purple-500" },
   securite: { icon: <AlertTriangle className="h-5 w-5" />, color: "bg-amber-500" },
   signalisation: { icon: <AlertTriangle className="h-5 w-5" />, color: "bg-orange-500" },
@@ -155,12 +155,12 @@ export function EquipmentCatalog({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500">Coût estimé</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-2xl font-bold text-primary">
                   {formatCurrency(stats.totalCost)}
                 </p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <Euro className="h-5 w-5 text-blue-600" />
+              <div className="p-3 bg-secondary rounded-full">
+                <Euro className="h-5 w-5 text-primary" />
               </div>
             </div>
           </CardContent>
@@ -171,12 +171,12 @@ export function EquipmentCatalog({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500">Déployés</p>
-                <p className="text-2xl font-bold text-emerald-600">
+                <p className="text-2xl font-bold text-primary">
                   {stats.byStatus["deployed"] || 0}
                 </p>
               </div>
-              <div className="p-3 bg-emerald-100 rounded-full">
-                <TrendingUp className="h-5 w-5 text-emerald-600" />
+              <div className="p-3 bg-secondary rounded-full">
+                <TrendingUp className="h-5 w-5 text-primary" />
               </div>
             </div>
           </CardContent>

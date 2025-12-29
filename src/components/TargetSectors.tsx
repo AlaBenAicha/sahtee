@@ -17,35 +17,30 @@ export function TargetSectors({ sectorImages }: TargetSectorsProps) {
 
   const sectors = [
     {
-      icon: "🧵",
       title: "Textile",
       description:
         "Prévention des troubles musculo-squelettiques et amélioration de l'ergonomie des postes dans les ateliers de production textile.",
       image: sectorImages.textile,
     },
     {
-      icon: "🍞",
       title: "Agroalimentaire",
       description:
         "Sécurité sanitaire, prévention des risques biologiques et maîtrise des procédés de production et de manutention.",
       image: sectorImages.food,
     },
     {
-      icon: "🌾",
       title: "Agricole",
       description:
         "Protection contre les pesticides, prévention des accidents liés aux machines et aux conditions climatiques.",
       image: sectorImages.agriculture,
     },
     {
-      icon: "🏗️",
       title: "BTP (Bâtiment & Travaux Publics)",
       description:
         "Réduction des risques de chute, sécurité des manutentions et conformité réglementaire sur site.",
       image: sectorImages.construction,
     },
     {
-      icon: "💊",
       title: "Pharmaceutique",
       description:
         "Sécurité biologique et chimique, traçabilité des procédés et conformité aux standards internationaux.",
@@ -95,7 +90,6 @@ export function TargetSectors({ sectorImages }: TargetSectorsProps) {
                     <div className="grid lg:grid-cols-2 gap-8 items-center min-h-[500px]">
                       <div className="order-2 lg:order-1 px-8">
                         <div className="flex items-center gap-4 mb-6">
-                          <span className="text-5xl">{sector.icon}</span>
                           <h3 className="text-3xl text-gray-900">
                             {sector.title}
                           </h3>
@@ -131,11 +125,10 @@ export function TargetSectors({ sectorImages }: TargetSectorsProps) {
                   onClick={() => setCurrentSlide(index)}
                   type="button"
                   aria-label={`Go to slide ${index + 1}`}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    index === currentSlide
+                  className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlide
                       ? "bg-[var(--sahtee-blue-primary)] scale-125"
                       : "bg-gray-300 hover:bg-gray-400"
-                  }`}
+                    }`}
                 />
               ))}
             </div>

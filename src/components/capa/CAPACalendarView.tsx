@@ -38,10 +38,10 @@ const priorityConfig: Record<ActionPriority, { label: string; color: string; dot
 const statusConfig: Record<ActionStatus, { label: string; color: string; bgColor: string }> = {
   draft: { label: "Brouillon", color: "text-gray-600", bgColor: "bg-gray-100" },
   pending_approval: { label: "En attente", color: "text-amber-600", bgColor: "bg-amber-100" },
-  approved: { label: "Approuvé", color: "text-blue-600", bgColor: "bg-blue-100" },
+  approved: { label: "Approuvé", color: "text-primary", bgColor: "bg-secondary" },
   in_progress: { label: "En cours", color: "text-indigo-600", bgColor: "bg-indigo-100" },
   blocked: { label: "Bloqué", color: "text-red-600", bgColor: "bg-red-100" },
-  completed: { label: "Terminé", color: "text-emerald-600", bgColor: "bg-emerald-100" },
+  completed: { label: "Terminé", color: "text-primary", bgColor: "bg-secondary" },
   verified: { label: "Vérifié", color: "text-teal-600", bgColor: "bg-teal-100" },
   closed: { label: "Clôturé", color: "text-gray-500", bgColor: "bg-gray-100" },
 };
@@ -113,7 +113,7 @@ export function CAPACalendarView({ onCAPAClick, onCreateClick }: CAPACalendarVie
                 "h-1.5 w-1.5 rounded-full",
                 hasOverdue ? "bg-red-500" :
                 hasCritique ? "bg-orange-500" :
-                allCompleted ? "bg-emerald-500" : "bg-blue-500"
+                allCompleted ? "bg-primary" : "bg-primary"
               )}
             />
             {dayCapas.length > 1 && (
@@ -235,7 +235,7 @@ export function CAPACalendarView({ onCAPAClick, onCreateClick }: CAPACalendarVie
             {/* Legend */}
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-blue-500" />
+                <div className="h-3 w-3 rounded-full bg-primary" />
                 <span className="text-muted-foreground">Planifiée</span>
               </div>
               <div className="flex items-center gap-2">
@@ -243,7 +243,7 @@ export function CAPACalendarView({ onCAPAClick, onCreateClick }: CAPACalendarVie
                 <span className="text-muted-foreground">Critique</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                <div className="h-3 w-3 rounded-full bg-primary" />
                 <span className="text-muted-foreground">Terminée</span>
               </div>
               <div className="flex items-center gap-2">
@@ -346,7 +346,7 @@ export function CAPACalendarView({ onCAPAClick, onCreateClick }: CAPACalendarVie
               <h5 className="text-sm font-medium mb-3">Résumé du mois</h5>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4 text-blue-500" />
+                  <CalendarIcon className="h-4 w-4 text-primary" />
                   <div>
                     <span className="text-xs text-muted-foreground">Total:</span>
                     <span className="ml-1 font-medium">{monthStats.total}</span>
@@ -367,10 +367,10 @@ export function CAPACalendarView({ onCAPAClick, onCreateClick }: CAPACalendarVie
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
                   <div>
                     <span className="text-xs text-muted-foreground">Terminées:</span>
-                    <span className="ml-1 font-medium text-emerald-600">{monthStats.completed}</span>
+                    <span className="ml-1 font-medium text-primary">{monthStats.completed}</span>
                   </div>
                 </div>
               </div>

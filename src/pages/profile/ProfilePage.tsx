@@ -2,21 +2,16 @@
  * Profile Page - User profile management
  */
 
-import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Mail, Phone, Building2, Camera } from "lucide-react";
+import { UserAvatar } from "@/components/common";
+import { User, Mail, Building2, Camera } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, userProfile } = useAuth();
-
-  const initials = userProfile 
-    ? `${userProfile.firstName?.[0] || ""}${userProfile.lastName?.[0] || ""}`
-    : user?.email?.[0]?.toUpperCase() || "U";
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -30,12 +25,12 @@ export default function ProfilePage() {
         <CardContent className="pt-6">
           <div className="flex items-center gap-6">
             <div className="relative">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={user?.photoURL || undefined} />
-                <AvatarFallback className="bg-emerald-500 text-white text-2xl">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                user={user || undefined}
+                userProfile={userProfile}
+                className="h-24 w-24"
+                variant="profile"
+              />
               <Button
                 size="icon"
                 variant="secondary"
@@ -97,13 +92,13 @@ export default function ProfilePage() {
               <Label htmlFor="department">Département</Label>
               <Input
                 id="department"
-                defaultValue={userProfile?.department || ""}
+                defaultValue={userProfile?.departmentId || ""}
                 className="mt-2"
               />
             </div>
           </div>
 
-          <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+          <Button className="bg-primary hover:bg-primary text-white">
             Sauvegarder les modifications
           </Button>
         </CardContent>
@@ -144,7 +139,7 @@ export default function ProfilePage() {
             />
           </div>
 
-          <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+          <Button className="bg-primary hover:bg-primary text-white">
             Sauvegarder les modifications
           </Button>
         </CardContent>
@@ -163,7 +158,7 @@ export default function ProfilePage() {
           <div className="bg-slate-50 rounded-lg p-4">
             <p className="font-medium text-slate-900">Entreprise Demo</p>
             <p className="text-sm text-slate-500 mt-1">
-              Rôle: {userProfile?.role === "admin" ? "Administrateur" : "Utilisateur"}
+              Rôle: {userProfile?.role === "org_admin" ? "Administrateur" : "Utilisateur"}
             </p>
           </div>
         </CardContent>

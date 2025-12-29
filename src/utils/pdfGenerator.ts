@@ -17,8 +17,8 @@ declare module "jspdf" {
 
 // Brand colors
 const COLORS = {
-  primary: "#10b981", // emerald-500
-  primaryDark: "#059669", // emerald-600
+  primary: "#1f4993", // primary
+  primaryDark: "#3a70b7", // primary
   text: "#1e293b", // slate-800
   textLight: "#64748b", // slate-500
   border: "#e2e8f0", // slate-200

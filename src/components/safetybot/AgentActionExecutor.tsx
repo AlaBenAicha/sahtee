@@ -198,19 +198,19 @@ export function AgentActionExecutor({
     <div
       className={cn(
         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
-        "bg-emerald-500/10 border border-emerald-500/20",
+        "bg-primary/10 border border-primary/20",
         hasError && "bg-red-500/10 border-red-500/20"
       )}
     >
       {/* Status icon */}
       {state.isExecuting ? (
-        <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
       ) : hasError ? (
         <XCircle className="h-4 w-4 text-red-500" />
       ) : state.executionState === "waiting_confirm" ? (
         <AlertCircle className="h-4 w-4 text-amber-500" />
       ) : completedActions > 0 ? (
-        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        <CheckCircle2 className="h-4 w-4 text-primary" />
       ) : (
         <Loader2 className="h-4 w-4 text-muted-foreground" />
       )}

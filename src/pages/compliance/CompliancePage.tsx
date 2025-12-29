@@ -134,7 +134,7 @@ export default function CompliancePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-3">
-            <Shield className="h-8 w-8 text-emerald-600" />
+            <Shield className="h-8 w-8 text-primary" />
             Conformité
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
@@ -146,7 +146,7 @@ export default function CompliancePage() {
             <TooltipTrigger asChild>
               <span>
                 <Button
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-primary hover:bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={!canCreate}
                   onClick={handleCreateAudit}
                 >

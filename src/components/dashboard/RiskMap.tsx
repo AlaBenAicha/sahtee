@@ -44,7 +44,7 @@ function getCellColor(severity: number, likelihood: number, count: number): stri
   if (riskScore >= 3) {
     return "bg-yellow-300 hover:bg-yellow-400 text-slate-900"; // Low
   }
-  return "bg-emerald-200 hover:bg-emerald-300 text-slate-900"; // Negligible
+  return "bg-secondary hover:bg-secondary text-slate-900"; // Negligible
 }
 
 /**
@@ -293,7 +293,7 @@ export function RiskMap({
         <div className="flex items-center gap-2 mt-3 text-xs">
           <span className="text-slate-500">Niveau:</span>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-emerald-200" />
+            <div className="w-4 h-4 rounded bg-secondary" />
             <span className="text-slate-600">Négligeable</span>
           </div>
           <div className="flex items-center gap-1">

@@ -42,7 +42,7 @@ export function OccupationalHealth() {
       category: "Troubles auditifs",
       cases: 4,
       trend: "0%",
-      color: "bg-blue-500",
+      color: "bg-primary",
     },
     {
       category: "Stress professionnel",
@@ -128,7 +128,7 @@ export function OccupationalHealth() {
       case "Faible":
         return "bg-green-100 text-green-800";
       case "Acceptable":
-        return "bg-blue-100 text-blue-800";
+        return "bg-secondary text-primary";
       case "Modéré":
         return "bg-orange-100 text-orange-800";
       case "Élevé":
@@ -145,7 +145,7 @@ export function OccupationalHealth() {
       case "Amélioration":
         return "bg-green-100 text-green-800";
       case "Surveillance":
-        return "bg-blue-100 text-blue-800";
+        return "bg-secondary text-primary";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -341,11 +341,11 @@ export function OccupationalHealth() {
                         Taux absentéisme santé
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-center p-4 bg-secondary rounded-lg">
+                      <div className="text-2xl font-bold text-primary">
                         72h
                       </div>
-                      <div className="text-sm text-blue-700">
+                      <div className="text-sm text-primary">
                         Durée moyenne arrêt
                       </div>
                     </div>

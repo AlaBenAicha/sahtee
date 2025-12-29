@@ -28,7 +28,7 @@ export default function AccessDeniedPage() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link to="/app/dashboard">
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+            <Button className="bg-primary hover:bg-primary text-white">
               <Home className="mr-2 h-4 w-4" />
               Retour au tableau de bord
             </Button>
@@ -47,7 +47,7 @@ export default function AccessDeniedPage() {
           <p>Besoin d'aide ?</p>
           <a 
             href="mailto:support@sahtee.com" 
-            className="text-emerald-400 hover:underline inline-flex items-center gap-1"
+            className="text-primary hover:underline inline-flex items-center gap-1"
           >
             <Mail className="h-3 w-3" />
             Contactez le support

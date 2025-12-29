@@ -7,28 +7,28 @@ export function OurPrinciples() {
       title: "Accessibilité",
       description:
         "Une plateforme simple, fluide et intuitive, conçue pour tous les profils d'utilisateurs.",
-      color: "from-blue-400 to-blue-600",
+      bgColor: "#1f4993",
     },
     {
       icon: Lightbulb,
       title: "Innovation digitale",
       description:
         "Technologies de pointe pour révolutionner la santé et sécurité au travail",
-      color: "from-blue-400 to-blue-600",
+      bgColor: "#3a70b7",
     },
     {
       icon: HandHeart,
       title: "Participation",
       description:
         "Impliquer activement les entreprises, les travailleurs et les experts pour construire ensemble une culture de sécurité vivante.",
-      color: "from-blue-500 to-blue-700",
+      bgColor: "#5a8fd1",
     },
     {
       icon: Scale,
       title: "Éthique & inclusion",
       description:
         "Protéger les données, respecter la diversité culturelle et valoriser l'inclusion.",
-      color: "from-blue-300 to-blue-500",
+      bgColor: "#1f4993",
     },
   ];
 
@@ -50,12 +50,13 @@ export function OurPrinciples() {
               className="text-center group hover:-translate-y-2 transition-all duration-300"
             >
               <div
-                className={`bg-gradient-to-br ${principle.color} rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}
+                className="rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg"
+                style={{ backgroundColor: principle.bgColor }}
               >
                 <principle.icon className="w-10 h-10 text-white" />
               </div>
 
-              <h3 className="text-xl mb-4 text-gray-900 group-hover:text-green-600 transition-colors">
+              <h3 className="text-xl mb-4 text-gray-900 group-hover:text-[#1f4993] transition-colors">
                 {principle.title}
               </h3>
 

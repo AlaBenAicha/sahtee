@@ -115,7 +115,7 @@ export function Training() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'Ergonomie': return 'bg-blue-100 text-blue-800';
+      case 'Ergonomie': return 'bg-secondary text-primary';
       case 'Chimique': return 'bg-orange-100 text-orange-800';
       case 'Machines': return 'bg-green-100 text-green-800';
       case 'Psychosocial': return 'bg-purple-100 text-purple-800';
@@ -351,7 +351,7 @@ export function Training() {
                               <h4 className="font-semibold">{course.title}</h4>
                               <p className="text-sm text-gray-600">{course.category}</p>
                             </div>
-                            <Badge className={training.status === 'Terminé' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}>
+                            <Badge className={training.status === 'Terminé' ? 'bg-green-100 text-green-800' : 'bg-secondary text-primary'}>
                               {training.status}
                             </Badge>
                           </div>
