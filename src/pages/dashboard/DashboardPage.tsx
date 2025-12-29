@@ -62,30 +62,30 @@ export default function DashboardPage() {
 
   // Dashboard data hooks - pass viewMode to get correct risk map data
   const { kpis, riskMap, isLoading, error, refetch } = useDashboardData(riskMapViewMode);
-  
+
   // Real-time alerts
-  const { 
-    alerts, 
-    isLoading: alertsLoading 
+  const {
+    alerts,
+    isLoading: alertsLoading
   } = useRealtimeAlerts({ limit: 20 });
-  
+
   // Alert mutations
   const markAlertRead = useMarkAlertRead();
   const dismissAlert = useDismissAlert();
 
   // AI recommendations - real data from Firestore
-  const { 
-    recommendations: realRecommendations, 
-    isLoading: recommendationsLoading 
+  const {
+    recommendations: realRecommendations,
+    isLoading: recommendationsLoading
   } = useRealtimeAIRecommendations(10);
-  
+
   // AI recommendation actions
   const acceptRecommendation = useAcceptRecommendation();
   const dismissRecommendation = useDismissRecommendation();
-  
+
   // Use real recommendations, or mock if empty (for demo purposes)
-  const recommendations = realRecommendations.length > 0 
-    ? realRecommendations 
+  const recommendations = realRecommendations.length > 0
+    ? realRecommendations
     : getMockRecommendations();
 
   // Use real alerts only - no mock fallback
@@ -123,9 +123,9 @@ export default function DashboardPage() {
   const handleExportPDF = useCallback(async () => {
     const now = new Date();
     const period = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-    
+
     toast.info("Génération du rapport...", { id: "report-generation" });
-    
+
     try {
       const blob = await generateMonthlyReport({
         organizationName: userProfile?.organizationId || "Organisation",
@@ -140,7 +140,7 @@ export default function DashboardPage() {
         capas: [],
         trainings: { completed: 45, inProgress: 12, planned: 8 },
       });
-      
+
       downloadBlob(blob, `rapport-sst-${now.toISOString().slice(0, 7)}.pdf`);
       toast.success("Rapport généré avec succès", { id: "report-generation" });
     } catch (error) {
@@ -210,7 +210,7 @@ export default function DashboardPage() {
             </Button>
             <Button
               onClick={() => navigate("/app/incidents?action=new")}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white gap-2"
+              className="bg-primary hover:bg-primary text-white gap-2"
             >
               <ClipboardList className="h-4 w-4" />
               Déclarer un incident
@@ -338,8 +338,8 @@ export default function DashboardPage() {
       {/* Error display */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          Une erreur est survenue lors du chargement des données. 
-          <button 
+          Une erreur est survenue lors du chargement des données.
+          <button
             onClick={handleRefresh}
             className="ml-2 underline hover:no-underline"
           >

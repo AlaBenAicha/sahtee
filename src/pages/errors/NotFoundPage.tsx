@@ -12,7 +12,7 @@ export default function NotFoundPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <div className="text-center">
         <div className="flex justify-center mb-8">
-          <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-emerald-500 text-white font-bold text-4xl shadow-lg shadow-emerald-500/30">
+          <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-primary text-white font-bold text-4xl shadow-lg shadow-primary/30">
             404
           </div>
         </div>
@@ -24,7 +24,7 @@ export default function NotFoundPage() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link to="/">
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+            <Button className="bg-primary hover:bg-primary text-white">
               <Home className="mr-2 h-4 w-4" />
               Retour à l'accueil
             </Button>
@@ -41,7 +41,7 @@ export default function NotFoundPage() {
 
         <div className="mt-12 text-slate-500 text-sm">
           <p>Besoin d'aide ?</p>
-          <Link to="/support" className="text-emerald-400 hover:underline">
+          <Link to="/support" className="text-primary hover:underline">
             Contactez le support
           </Link>
         </div>

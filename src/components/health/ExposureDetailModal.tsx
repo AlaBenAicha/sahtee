@@ -50,8 +50,8 @@ import { useMeasurementsByExposure } from "@/hooks/useHealth";
 import type { OrganizationExposure, HazardCategory, ExposureMeasurement } from "@/types/health";
 
 const ALERT_LEVEL_CONFIG = {
-  low: { label: "Faible", color: "bg-emerald-100 text-emerald-700", chartColor: "#10b981" },
-  moderate: { label: "Modéré", color: "bg-blue-100 text-blue-700", chartColor: "#3b82f6" },
+  low: { label: "Faible", color: "bg-secondary text-primary", chartColor: "#1f4993" },
+  moderate: { label: "Modéré", color: "bg-secondary text-primary", chartColor: "#3b82f6" },
   elevated: { label: "Élevé", color: "bg-amber-100 text-amber-700", chartColor: "#f59e0b" },
   critical: { label: "Critique", color: "bg-red-100 text-red-700", chartColor: "#ef4444" },
 };
@@ -113,7 +113,7 @@ export function ExposureDetailModal({
 
   const trend = getTrend();
   const TrendIcon = trend.direction === "up" ? TrendingUp : trend.direction === "down" ? TrendingDown : Minus;
-  const trendColor = trend.direction === "up" ? "text-red-500" : trend.direction === "down" ? "text-emerald-500" : "text-slate-400";
+  const trendColor = trend.direction === "up" ? "text-red-500" : trend.direction === "down" ? "text-primary" : "text-slate-400";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -355,7 +355,7 @@ export function ExposureDetailModal({
                     {exposure.controlMeasures.map((measure, index) => (
                       <div key={index} className="rounded-lg border bg-slate-50 p-3">
                         <div className="flex items-start gap-2">
-                          <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5" />
+                          <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
                           <span className="text-sm text-slate-700">{measure}</span>
                         </div>
                       </div>

@@ -19,7 +19,7 @@ export function SafetyBotTrigger({ isOpen, onClick, className }: SafetyBotTrigge
       onClick={onClick}
       className={cn(
         "fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg transition-all duration-300",
-        "bg-emerald-500 hover:bg-emerald-600 text-white",
+        "bg-primary hover:bg-primary text-white",
         "hover:scale-105 active:scale-95",
         isOpen && "bg-slate-600 hover:bg-slate-700",
         className

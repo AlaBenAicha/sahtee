@@ -39,7 +39,7 @@ import { ExposureDisplay } from "@/components/health/ExposureSelector";
 import type { HealthRecord, FitnessStatus, MedicalVisitStatus } from "@/types/health";
 
 const FITNESS_STATUS_CONFIG: Record<FitnessStatus, { label: string; color: string; icon: React.ElementType }> = {
-  fit: { label: "Apte", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
+  fit: { label: "Apte", color: "bg-secondary text-primary", icon: CheckCircle },
   fit_with_restrictions: { label: "Apte avec restrictions", color: "bg-amber-100 text-amber-700", icon: AlertCircle },
   temporarily_unfit: { label: "Inapte temporaire", color: "bg-red-100 text-red-700", icon: Clock },
   permanently_unfit: { label: "Inapte définitif", color: "bg-red-100 text-red-700", icon: XCircle },
@@ -276,7 +276,7 @@ export function MedicalRecordDetail({
                   {record.vaccinations.map((vaccine) => (
                     <div key={vaccine.id} className="flex items-center justify-between rounded-lg border p-3">
                       <div className="flex items-center gap-2">
-                        <Syringe className="h-4 w-4 text-blue-500" />
+                        <Syringe className="h-4 w-4 text-primary" />
                         <span className="text-sm font-medium text-slate-700">{vaccine.name}</span>
                       </div>
                       <div className="text-right">
@@ -472,9 +472,9 @@ function getVisitStatusLabel(status: MedicalVisitStatus): string {
 function getVisitStatusStyle(status: MedicalVisitStatus): string {
   switch (status) {
     case "completed":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      return "bg-secondary text-primary border-secondary";
     case "scheduled":
-      return "bg-blue-100 text-blue-700 border-blue-200";
+      return "bg-secondary text-primary border-secondary";
     case "cancelled":
     case "no_show":
       return "bg-slate-100 text-slate-700 border-slate-200";

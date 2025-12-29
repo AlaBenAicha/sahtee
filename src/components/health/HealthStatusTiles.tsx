@@ -44,11 +44,11 @@ function StatusTile({
 }: StatusTileProps) {
   const statusColors = {
     good: {
-      bg: "bg-emerald-50",
-      border: "border-emerald-200",
-      text: "text-emerald-700",
-      icon: "text-emerald-600",
-      iconBg: "bg-emerald-100",
+      bg: "bg-secondary",
+      border: "border-secondary",
+      text: "text-primary",
+      icon: "text-primary",
+      iconBg: "bg-secondary",
     },
     warning: {
       bg: "bg-amber-50",
@@ -79,7 +79,7 @@ function StatusTile({
     ? "text-slate-500"
     : change > 0
     ? "text-red-500"
-    : "text-emerald-500";
+    : "text-primary";
 
   return (
     <Card

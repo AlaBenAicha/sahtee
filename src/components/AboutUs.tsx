@@ -29,12 +29,12 @@ export function AboutUs() {
       {/* Decorative elements */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--sahtee-blue-primary)]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-[var(--sahtee-blue-secondary)]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-      
+
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl text-[var(--sahtee-blue-primary)] mb-6">
-            Qui sommes-nous
+            Qui sommes-nous ?
           </h2>
           <div className="w-24 h-1 bg-gradient-to-r from-[var(--sahtee-blue-primary)] to-[var(--sahtee-blue-secondary)] mx-auto mb-8"></div>
         </div>
@@ -48,7 +48,7 @@ export function AboutUs() {
                 <div className="w-2 h-full bg-gradient-to-b from-[var(--sahtee-blue-primary)] to-[var(--sahtee-blue-secondary)] rounded-full"></div>
                 <div>
                   <p className="text-lg leading-relaxed text-gray-700">
-                    <span className="text-[var(--sahtee-blue-primary)]">SAHTEE</span> est une plateforme dédiée à l'amélioration de la santé et de la sécurité au travail dans les environnements professionnels.
+                    <span className="text-[var(--sahtee-blue-primary)]">SAHTEE</span> est une plateforme dédiée à la gestion de la santé et de la sécurité au travail dans les environnements professionnels.
                   </p>
                 </div>
               </div>
@@ -59,7 +59,7 @@ export function AboutUs() {
                 <Target className="w-6 h-6" />
                 Notre Mission
               </h3>
-              <p className="text-lg leading-relaxed text-blue-50">
+              <p className="text-lg leading-relaxed text-secondary">
                 Accompagner les entreprises dans l'automatisation de leurs processus SST, la réduction des risques opérationnels, le respect des exigences réglementaires et l'ancrage durable d'une culture de prévention et de sécurité au sein de leurs organisations.
               </p>
             </div>
@@ -70,7 +70,7 @@ export function AboutUs() {
             {highlights.map((item, index) => {
               const Icon = item.icon;
               return (
-                <div 
+                <div
                   key={index}
                   className="bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[var(--sahtee-blue-primary)]/10 group"
                 >

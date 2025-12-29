@@ -36,7 +36,7 @@ interface TrendAnalysisCardProps {
 }
 
 const SEVERITY_CONFIG = {
-  low: { label: "Faible", color: "bg-emerald-100 text-emerald-700" },
+  low: { label: "Faible", color: "bg-secondary text-primary" },
   medium: { label: "Modéré", color: "bg-amber-100 text-amber-700" },
   high: { label: "Élevé", color: "bg-red-100 text-red-700" },
 };
@@ -65,13 +65,13 @@ export function TrendAnalysisCard({ trend, onClick }: TrendAnalysisCardProps) {
   const trendColor = trend.direction === "increasing"
     ? "text-red-500"
     : trend.direction === "decreasing"
-    ? "text-emerald-500"
+    ? "text-primary"
     : "text-slate-400";
 
   const trendBgColor = trend.direction === "increasing"
     ? "bg-red-100"
     : trend.direction === "decreasing"
-    ? "bg-emerald-100"
+    ? "bg-secondary"
     : "bg-slate-100";
 
   return (

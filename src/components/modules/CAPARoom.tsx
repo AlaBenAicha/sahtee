@@ -836,7 +836,7 @@ export function CAPARoom() {
     {
       id: "inprogress",
       title: "En cours",
-      color: "bg-blue-100",
+      color: "bg-secondary",
       count: actionPlans.filter((p) => p.status === "inprogress").length,
     },
     {
@@ -865,7 +865,7 @@ export function CAPARoom() {
       case "Correctif":
         return "bg-red-50 text-red-700 border-red-200";
       case "Préventif":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "bg-secondary text-primary border-secondary";
       default:
         return "bg-gray-50 text-gray-700 border-gray-200";
     }
@@ -874,7 +874,7 @@ export function CAPARoom() {
   const getTrainingCategoryColor = (category: string) => {
     switch (category) {
       case "Ergonomie":
-        return "bg-blue-100 text-blue-800";
+        return "bg-secondary text-primary";
       case "Chimique":
         return "bg-orange-100 text-orange-800";
       case "Machines":
@@ -908,7 +908,7 @@ export function CAPARoom() {
       case "moderate":
         return "bg-yellow-100 text-yellow-800";
       case "minor":
-        return "bg-blue-100 text-blue-800";
+        return "bg-secondary text-primary";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -934,7 +934,7 @@ export function CAPARoom() {
       case "resolved":
         return "bg-green-100 text-green-800";
       case "action_plan_created":
-        return "bg-blue-100 text-blue-800";
+        return "bg-secondary text-primary";
       case "investigating":
         return "bg-yellow-100 text-yellow-800";
       case "reported":
@@ -967,7 +967,7 @@ export function CAPARoom() {
       case "medium":
         return "bg-yellow-500";
       case "low":
-        return "bg-blue-500";
+        return "bg-primary";
       default:
         return "bg-gray-500";
     }
@@ -978,7 +978,7 @@ export function CAPARoom() {
       case "available":
         return "bg-green-100 text-green-800";
       case "normal":
-        return "bg-blue-100 text-blue-800";
+        return "bg-secondary text-primary";
       case "overloaded":
         return "bg-red-100 text-red-800";
       default:
@@ -1215,9 +1215,9 @@ export function CAPARoom() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">En cours</p>
-                      <p className="text-2xl font-bold text-blue-500">2</p>
+                      <p className="text-2xl font-bold text-primary">2</p>
                     </div>
-                    <Clock className="w-6 h-6 text-blue-500" />
+                    <Clock className="w-6 h-6 text-primary" />
                   </div>
                 </CardContent>
               </Card>
@@ -1318,7 +1318,7 @@ export function CAPARoom() {
                               action.status === "done"
                                 ? "bg-green-500"
                                 : action.status === "inprogress"
-                                ? "bg-blue-500"
+                                ? "bg-primary"
                                 : "bg-gray-400"
                             }`}
                           ></div>
@@ -1605,7 +1605,7 @@ export function CAPARoom() {
                                     className={
                                       training.status === "Terminé"
                                         ? "bg-green-100 text-green-800"
-                                        : "bg-blue-100 text-blue-800"
+                                        : "bg-secondary text-primary"
                                     }
                                   >
                                     {training.status}
@@ -1717,7 +1717,7 @@ export function CAPARoom() {
           <TabsContent value="equipment">
             <div className="space-y-6">
               {/* AI Recommendations Section */}
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6">
+              <div className="bg-gradient-to-r from-purple-50 to-secondary border border-purple-200 rounded-lg p-6">
                 <div className="flex items-start gap-4">
                   <div className="bg-purple-100 p-3 rounded-lg">
                     <Bot className="w-6 h-6 text-purple-600" />
@@ -2466,7 +2466,7 @@ export function CAPARoom() {
                                     {incident.linkedActionPlanId && (
                                       <Badge
                                         variant="outline"
-                                        className="text-blue-600 border-blue-600"
+                                        className="text-primary border-primary"
                                       >
                                         <Target className="w-3 h-3 mr-1" />
                                         {incident.linkedActionPlanId}
@@ -3233,7 +3233,7 @@ export function CAPARoom() {
           <TabsContent value="scheduler">
             <div className="space-y-6">
               {/* AI Scheduling Header */}
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6">
+              <div className="bg-gradient-to-r from-purple-50 to-secondary border border-purple-200 rounded-lg p-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
@@ -3299,14 +3299,14 @@ export function CAPARoom() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Complétées</p>
-                        <p className="text-3xl font-bold text-blue-500">
+                        <p className="text-3xl font-bold text-primary">
                           {
                             scheduledActions.filter((a) => a.progress === 100)
                               .length
                           }
                         </p>
                       </div>
-                      <CheckCircle className="w-8 h-8 text-blue-500" />
+                      <CheckCircle className="w-8 h-8 text-primary" />
                     </div>
                   </CardContent>
                 </Card>
@@ -3465,12 +3465,12 @@ export function CAPARoom() {
                       </Card>
 
                       {/* Quadrant 2: Not Urgent but Important */}
-                      <Card className="bg-blue-50 border-blue-200">
+                      <Card className="bg-secondary border-secondary">
                         <CardHeader>
-                          <CardTitle className="text-blue-700">
+                          <CardTitle className="text-primary">
                             Important mais non urgent
                           </CardTitle>
-                          <p className="text-sm text-blue-600">À planifier</p>
+                          <p className="text-sm text-primary">À planifier</p>
                         </CardHeader>
                         <CardContent className="space-y-2 max-h-[400px] overflow-y-auto">
                           {scheduledActions
@@ -3638,7 +3638,7 @@ export function CAPARoom() {
                                     ? "bg-red-100"
                                     : suggestion.priority === "medium"
                                     ? "bg-yellow-100"
-                                    : "bg-blue-100"
+                                    : "bg-secondary"
                                 }`}
                               >
                                 <Bot
@@ -3647,7 +3647,7 @@ export function CAPARoom() {
                                       ? "text-red-600"
                                       : suggestion.priority === "medium"
                                       ? "text-yellow-600"
-                                      : "text-blue-600"
+                                      : "text-primary"
                                   }`}
                                 />
                               </div>
@@ -3666,7 +3666,7 @@ export function CAPARoom() {
                                   ? "bg-red-100 text-red-800"
                                   : suggestion.priority === "medium"
                                   ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-blue-100 text-blue-800"
+                                  : "bg-secondary text-primary"
                               }
                             >
                               {suggestion.priority === "high" &&

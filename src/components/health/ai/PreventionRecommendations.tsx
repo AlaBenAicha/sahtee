@@ -49,8 +49,8 @@ interface PreventionRecommendationsProps {
 }
 
 const TYPE_CONFIG = {
-  prevention: { label: "Prévention", icon: Lightbulb, color: "text-emerald-600 bg-emerald-100" },
-  training: { label: "Formation", icon: GraduationCap, color: "text-blue-600 bg-blue-100" },
+  prevention: { label: "Prévention", icon: Lightbulb, color: "text-primary bg-secondary" },
+  training: { label: "Formation", icon: GraduationCap, color: "text-primary bg-secondary" },
   equipment: { label: "Équipement", icon: Wrench, color: "text-amber-600 bg-amber-100" },
   procedure: { label: "Procédure", icon: FileText, color: "text-purple-600 bg-purple-100" },
   monitoring: { label: "Surveillance", icon: Activity, color: "text-indigo-600 bg-indigo-100" },
@@ -59,11 +59,11 @@ const TYPE_CONFIG = {
 const PRIORITY_CONFIG = {
   haute: { label: "Haute", color: "bg-red-100 text-red-700" },
   moyenne: { label: "Moyenne", color: "bg-amber-100 text-amber-700" },
-  basse: { label: "Basse", color: "bg-emerald-100 text-emerald-700" },
+  basse: { label: "Basse", color: "bg-secondary text-primary" },
 };
 
 const IMPACT_CONFIG = {
-  high: { label: "Élevé", color: "text-emerald-600" },
+  high: { label: "Élevé", color: "text-primary" },
   medium: { label: "Modéré", color: "text-amber-600" },
   low: { label: "Faible", color: "text-slate-600" },
 };
@@ -92,7 +92,7 @@ function RecommendationCard({
   return (
     <Card className={cn(
       "border transition-all",
-      isAccepted && "border-emerald-200 bg-emerald-50/50",
+      isAccepted && "border-secondary bg-secondary/50",
       isRejected && "opacity-60"
     )}>
       <CardContent className="p-4">
@@ -114,7 +114,7 @@ function RecommendationCard({
                     Priorité {priorityConfig.label.toLowerCase()}
                   </Badge>
                   {isAccepted && (
-                    <Badge className="bg-emerald-100 text-emerald-700 text-xs">
+                    <Badge className="bg-secondary text-primary text-xs">
                       <CheckCircle className="mr-1 h-3 w-3" />
                       Acceptée
                     </Badge>

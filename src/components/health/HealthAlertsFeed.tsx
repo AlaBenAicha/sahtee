@@ -307,7 +307,7 @@ export function HealthAlertsFeed({
                 <div className="py-8 text-center text-slate-500">
                   {activeTab === "active" ? (
                     <>
-                      <CheckCircle className="mx-auto h-12 w-12 text-emerald-300" />
+                      <CheckCircle className="mx-auto h-12 w-12 text-secondary" />
                       <p className="mt-2">Aucune alerte active</p>
                       <p className="mt-1 text-xs text-slate-400">
                         Des expositions ou visites en retard existent ?

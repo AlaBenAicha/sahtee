@@ -94,8 +94,8 @@ const FRAMEWORK_OPTIONS: Array<{ value: RegulatoryFramework; label: string }> = 
 ];
 
 const FRAMEWORK_COLORS: Record<RegulatoryFramework, string> = {
-  iso_45001: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  iso_14001: "bg-blue-100 text-blue-800 border-blue-300",
+  iso_45001: "bg-secondary text-primary border-secondary",
+  iso_14001: "bg-secondary text-primary border-secondary",
   iso_9001: "bg-purple-100 text-purple-800 border-purple-300",
   ohsas_18001: "bg-indigo-100 text-indigo-800 border-indigo-300",
   tunisian_labor: "bg-amber-100 text-amber-800 border-amber-300",
@@ -240,7 +240,7 @@ export function NormFormModal({ open, onOpenChange, onSuccess }: NormFormModalPr
       <DialogContent className="sm:max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-emerald-600" />
+            <BookOpen className="h-5 w-5 text-primary" />
             Ajouter une norme
           </DialogTitle>
           <DialogDescription>
@@ -276,7 +276,7 @@ export function NormFormModal({ open, onOpenChange, onSuccess }: NormFormModalPr
               )}
 
               {importSuccess.length > 0 && (
-                <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
+                <Alert className="border-secondary bg-secondary text-primary">
                   <Check className="h-4 w-4" />
                   <AlertDescription>
                     Importation réussie : {importSuccess.join(", ")}
@@ -296,8 +296,8 @@ export function NormFormModal({ open, onOpenChange, onSuccess }: NormFormModalPr
                         className={cn(
                           "cursor-pointer transition-all",
                           isImported && "opacity-50 cursor-not-allowed",
-                          isSelected && !isImported && "ring-2 ring-emerald-500 border-emerald-500",
-                          !isSelected && !isImported && "hover:border-emerald-300"
+                          isSelected && !isImported && "ring-2 ring-primary border-primary",
+                          !isSelected && !isImported && "hover:border-secondary"
                         )}
                         onClick={() => !isImported && toggleFrameworkSelection(fw.framework)}
                       >
@@ -308,7 +308,7 @@ export function NormFormModal({ open, onOpenChange, onSuccess }: NormFormModalPr
                                 className={cn(
                                   "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
                                   isSelected
-                                    ? "bg-emerald-500 border-emerald-500"
+                                    ? "bg-primary border-primary"
                                     : "border-gray-300"
                                 )}
                               >

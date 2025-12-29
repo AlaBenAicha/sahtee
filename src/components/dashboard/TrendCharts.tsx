@@ -210,7 +210,7 @@ export function TrendChart({
             {kpi.target && (
               <div>
                 <span className="text-slate-500">Objectif: </span>
-                <span className="font-semibold text-emerald-600">
+                <span className="font-semibold text-primary">
                   {kpi.target}
                   {kpi.unit && ` ${kpi.unit}`}
                 </span>

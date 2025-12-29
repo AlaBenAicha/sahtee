@@ -48,7 +48,7 @@ interface TrainingDetailModalProps {
 const priorityConfig = {
   obligatoire: { label: "Obligatoire", color: "bg-red-100 text-red-700" },
   recommandee: { label: "Recommandée", color: "bg-amber-100 text-amber-700" },
-  optionnelle: { label: "Optionnelle", color: "bg-blue-100 text-blue-700" },
+  optionnelle: { label: "Optionnelle", color: "bg-secondary text-primary" },
 };
 
 const sourceLabels: Record<string, string> = {
@@ -188,8 +188,8 @@ export function TrainingDetailModal({
                     </div>
                     <div className="text-xs text-muted-foreground">Terminés</div>
                   </div>
-                  <div className="p-2 bg-blue-50 rounded">
-                    <div className="text-lg font-bold text-blue-600">
+                  <div className="p-2 bg-secondary rounded">
+                    <div className="text-lg font-bold text-primary">
                       {training.completionStatus.inProgress}
                     </div>
                     <div className="text-xs text-muted-foreground">En cours</div>

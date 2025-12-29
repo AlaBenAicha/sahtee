@@ -61,12 +61,12 @@ const FRAMEWORK_LABELS: Record<RegulatoryFramework, string> = {
 const STATUS_CONFIG: Record<NormStatus, { label: string; color: string; icon: React.ReactNode }> = {
   compliant: {
     label: "Conforme",
-    color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
     icon: <Check className="h-3 w-3" />,
   },
   in_progress: {
     label: "En cours",
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
     icon: <Clock className="h-3 w-3" />,
   },
   non_compliant: {

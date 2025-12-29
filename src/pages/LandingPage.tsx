@@ -79,7 +79,9 @@ export default function LandingPage() {
         </section>
 
         {/* Section 5 - Nos principes */}
-        <OurPrinciples />
+        <section id="principles">
+          <OurPrinciples />
+        </section>
 
         {/* Section 6 - Secteurs visés */}
         <section id="sectors">
@@ -88,9 +90,6 @@ export default function LandingPage() {
 
         {/* Section 7 - CTA intermédiaire */}
         <CTAIntermediate />
-
-        {/* Section 8 - CTA final */}
-        <CTAFinal />
       </main>
 
       {/* Section 10 - Footer */}

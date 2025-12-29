@@ -40,8 +40,8 @@ import { useExposures, useCriticalExposures } from "@/hooks/useHealth";
 import type { OrganizationExposure, HazardCategory } from "@/types/health";
 
 const ALERT_LEVEL_CONFIG = {
-  low: { label: "Faible", color: "bg-emerald-100 text-emerald-700", progressColor: "bg-emerald-500" },
-  moderate: { label: "Modéré", color: "bg-blue-100 text-blue-700", progressColor: "bg-blue-500" },
+  low: { label: "Faible", color: "bg-secondary text-primary", progressColor: "bg-primary" },
+  moderate: { label: "Modéré", color: "bg-secondary text-primary", progressColor: "bg-primary" },
   elevated: { label: "Élevé", color: "bg-amber-100 text-amber-700", progressColor: "bg-amber-500" },
   critical: { label: "Critique", color: "bg-red-100 text-red-700", progressColor: "bg-red-500" },
 };

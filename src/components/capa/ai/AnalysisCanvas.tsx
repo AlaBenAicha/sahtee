@@ -73,7 +73,7 @@ const methodologyConfig: Record<
   "5why": {
     icon: <ChevronRight className="h-4 w-4" />,
     label: "5 Pourquoi",
-    color: "bg-blue-500",
+    color: "bg-primary",
   },
   ishikawa: {
     icon: <Network className="h-4 w-4" />,
@@ -357,7 +357,7 @@ function IshikawaVisualization({
   onNodeClick,
 }: IshikawaVisualizationProps) {
   const categoryColors: Record<string, string> = {
-    man: "bg-blue-100 border-blue-400 text-blue-800",
+    man: "bg-secondary border-primary text-primary",
     machine: "bg-red-100 border-red-400 text-red-800",
     method: "bg-green-100 border-green-400 text-green-800",
     material: "bg-yellow-100 border-yellow-400 text-yellow-800",
@@ -617,7 +617,7 @@ function FaultTreeNodeComponent({
   const nodeTypeStyles: Record<string, string> = {
     top_event: "bg-red-500 text-white border-red-600",
     intermediate: "bg-orange-100 border-orange-400 text-orange-800",
-    basic: "bg-blue-100 border-blue-400 text-blue-800",
+    basic: "bg-secondary border-primary text-primary",
     undeveloped: "bg-slate-100 border-slate-400 text-slate-600",
     conditioning: "bg-purple-100 border-purple-400 text-purple-800",
     transfer: "bg-green-100 border-green-400 text-green-800",
@@ -949,9 +949,9 @@ function FiveWhysVisualization({
   return (
     <div className="flex flex-col items-center gap-4">
       {/* Problem Statement */}
-      <div className="bg-blue-100 border-2 border-blue-400 rounded-lg p-4 max-w-lg">
-        <h4 className="font-semibold text-blue-800 mb-1">Problème Initial</h4>
-        <p className="text-sm text-blue-700">{data.problem}</p>
+      <div className="bg-secondary border-2 border-primary rounded-lg p-4 max-w-lg">
+        <h4 className="font-semibold text-primary mb-1">Problème Initial</h4>
+        <p className="text-sm text-primary">{data.problem}</p>
       </div>
 
       {/* Why Chain */}

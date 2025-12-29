@@ -81,7 +81,7 @@ export default function EquipmentPage() {
         </div>
         {canCreateEquipment && (
           <Button
-            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            className="bg-primary hover:bg-primary text-white"
             onClick={() => handleOpenEquipmentForm()}
           >
             <Plus className="mr-2 h-4 w-4" />

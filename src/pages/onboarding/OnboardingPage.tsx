@@ -146,8 +146,8 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
-              <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                <Users className="h-8 w-8 text-emerald-600" />
+              <div className="mx-auto w-16 h-16 bg-secondary rounded-full flex items-center justify-center mb-4">
+                <Users className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900">
                 Bienvenue, {userProfile?.firstName || ""}! 👋
@@ -187,8 +187,8 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
-              <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                <Shield className="h-8 w-8 text-emerald-600" />
+              <div className="mx-auto w-16 h-16 bg-secondary rounded-full flex items-center justify-center mb-4">
+                <Shield className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900">Vos préférences</h2>
               <p className="text-slate-500 mt-2">Personnalisez votre expérience SAHTEE</p>
@@ -205,7 +205,7 @@ export default function OnboardingPage() {
                       onClick={() => toggleModule(module.id)}
                       className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                         data.safetyModules.includes(module.id)
-                          ? "border-emerald-500 bg-emerald-50"
+                          ? "border-primary bg-secondary"
                           : "border-slate-200 hover:border-slate-300"
                       }`}
                     >
@@ -241,8 +241,8 @@ export default function OnboardingPage() {
       case 3:
         return (
           <div className="space-y-6 text-center">
-            <div className="mx-auto w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
-              <Sparkles className="h-10 w-10 text-emerald-600" />
+            <div className="mx-auto w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6">
+              <Sparkles className="h-10 w-10 text-primary" />
             </div>
             <h2 className="text-3xl font-bold text-slate-900">Tout est prêt ! 🎉</h2>
             <p className="text-slate-500 max-w-md mx-auto">
@@ -272,7 +272,7 @@ export default function OnboardingPage() {
         <CardHeader className="border-b flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white font-bold">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white font-bold">
                 S
               </div>
               <span className="font-bold text-xl text-slate-900">SAHTEE</span>
@@ -289,15 +289,15 @@ export default function OnboardingPage() {
               <div
                 key={step.id}
                 className={`flex flex-col items-center ${
-                  step.id <= currentStep ? "text-emerald-600" : "text-slate-400"
+                  step.id <= currentStep ? "text-primary" : "text-slate-400"
                 }`}
               >
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
                     step.id < currentStep
-                      ? "bg-emerald-500 text-white"
+                      ? "bg-primary text-white"
                       : step.id === currentStep
-                      ? "bg-emerald-100 text-emerald-600 border-2 border-emerald-500"
+                      ? "bg-secondary text-primary border-2 border-primary"
                       : "bg-slate-100 text-slate-400"
                   }`}
                 >
@@ -331,7 +331,7 @@ export default function OnboardingPage() {
 
           <Button
             onClick={currentStep < steps.length ? handleNext : handleComplete}
-            className="!bg-emerald-500 hover:!bg-emerald-600 !text-white"
+            className="!bg-primary hover:!bg-primary !text-white"
             disabled={
               (currentStep === 1 && !data.jobTitle) ||
               (currentStep === steps.length && isLoading)

@@ -13,7 +13,6 @@ import {
   Eye,
   Pencil,
   Trash2,
-  CheckCircle2,
   Sparkles,
 } from "lucide-react";
 import {
@@ -28,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/common";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,10 +78,10 @@ const priorityConfig: Record<ActionPriority, { label: string; color: string }> =
 const statusConfig: Record<ActionStatus, { label: string; color: string }> = {
   draft: { label: "Brouillon", color: "bg-gray-100 text-gray-700 dark:bg-gray-800" },
   pending_approval: { label: "En attente", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40" },
-  approved: { label: "Approuvé", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40" },
+  approved: { label: "Approuvé", color: "bg-secondary text-primary dark:bg-primary/40" },
   in_progress: { label: "En cours", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40" },
   blocked: { label: "Bloqué", color: "bg-red-100 text-red-700 dark:bg-red-900/40" },
-  completed: { label: "Terminé", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40" },
+  completed: { label: "Terminé", color: "bg-secondary text-primary dark:bg-primary/40" },
   verified: { label: "Vérifié", color: "bg-teal-100 text-teal-700 dark:bg-teal-900/40" },
   closed: { label: "Clôturé", color: "bg-gray-100 text-gray-500 dark:bg-gray-800" },
 };
@@ -249,12 +248,6 @@ export function CAPAListView({ filters, onCAPAClick, onEditClick }: CAPAListView
             const status = statusConfig[capa.status];
             const dueDate = capa.dueDate.toDate();
             const isOverdue = dueDate < new Date() && !["completed", "verified", "closed"].includes(capa.status);
-            const assigneeInitials = capa.assigneeName
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase()
-              .slice(0, 2);
 
             return (
               <TableRow
@@ -318,11 +311,12 @@ export function CAPAListView({ filters, onCAPAClick, onEditClick }: CAPAListView
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-[10px]">
-                        {assigneeInitials}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar
+                      user={{ photoURL: null, email: null }}
+                      userProfile={{ firstName: capa.assigneeName, lastName: "" }}
+                      className="h-6 w-6"
+                      fallbackClassName="text-[10px]"
+                    />
                     <span className="text-sm truncate max-w-[100px]">
                       {capa.assigneeName}
                     </span>

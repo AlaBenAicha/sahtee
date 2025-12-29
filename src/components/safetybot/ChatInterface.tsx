@@ -96,7 +96,7 @@ export function ChatInterface({
               <div
                 className={cn(
                   "absolute top-8 left-1/4 w-32 h-32 rounded-full blur-3xl opacity-20",
-                  mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+                  mode === "agent" ? "bg-violet-400" : "bg-primary"
                 )}
               />
               <div
@@ -108,7 +108,7 @@ export function ChatInterface({
               <div
                 className={cn(
                   "absolute top-1/2 right-8 w-16 h-16 rounded-full blur-xl opacity-10",
-                  mode === "agent" ? "bg-indigo-400" : "bg-emerald-300"
+                  mode === "agent" ? "bg-indigo-400" : "bg-secondary"
                 )}
               />
             </div>
@@ -122,7 +122,7 @@ export function ChatInterface({
                   "border-2 transition-all duration-300",
                   mode === "agent"
                     ? "bg-gradient-to-br from-violet-500 to-purple-600 border-violet-300/50"
-                    : "bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-300/50"
+                    : "bg-gradient-to-br from-primary to-teal-600 border-secondary/50"
                 )}
               >
                 {mode === "agent" ? (
@@ -134,7 +134,7 @@ export function ChatInterface({
                 <Sparkles
                   className={cn(
                     "absolute -top-2 -right-2 h-5 w-5",
-                    mode === "agent" ? "text-violet-400" : "text-emerald-400"
+                    mode === "agent" ? "text-violet-400" : "text-primary"
                   )}
                 />
               </div>
@@ -143,7 +143,7 @@ export function ChatInterface({
               <h3
                 className={cn(
                   "text-xl font-bold mb-2",
-                  mode === "agent" ? "text-violet-900" : "text-emerald-900"
+                  mode === "agent" ? "text-violet-900" : "text-primary"
                 )}
               >
                 {mode === "agent" ? "Mode Agent activé" : "Bienvenue !"}
@@ -167,7 +167,7 @@ export function ChatInterface({
                       "transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
                       mode === "agent"
                         ? "border-violet-100 hover:border-violet-200"
-                        : "border-emerald-100 hover:border-emerald-200"
+                        : "border-secondary hover:border-secondary"
                     )}
                   >
                     <div
@@ -175,7 +175,7 @@ export function ChatInterface({
                         "w-8 h-8 rounded-lg flex items-center justify-center mb-2",
                         mode === "agent"
                           ? "bg-violet-100 text-violet-600"
-                          : "bg-emerald-100 text-emerald-600"
+                          : "bg-secondary text-primary"
                       )}
                     >
                       <action.icon className="h-4 w-4" />
@@ -260,7 +260,7 @@ function ExamplePrompt({ text, mode }: { text: string; mode: SafetyBotMode }) {
         "border cursor-default transition-colors",
         mode === "agent"
           ? "bg-violet-50 border-violet-200 text-violet-700"
-          : "bg-emerald-50 border-emerald-200 text-emerald-700"
+          : "bg-secondary border-secondary text-primary"
       )}
     >
       <span>{text}</span>

@@ -12,8 +12,6 @@ import { z } from "zod";
 import { Timestamp } from "firebase/firestore";
 import {
   Calendar,
-  User,
-  AlertCircle,
   Sparkles,
 } from "lucide-react";
 import {
@@ -27,7 +25,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -49,7 +46,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useCreateCAPA, useUpdateCAPA } from "@/hooks/useCAPAs";
+import { EmployeeSelector } from "@/components/common";
 import type { ActionPlan, ActionPriority, ActionCategory, ActionStatus } from "@/types/capa";
+import type { User } from "@/types/user";
 
 const formSchema = z.object({
   title: z.string().min(5, "Le titre doit contenir au moins 5 caractères"),
@@ -58,11 +57,11 @@ const formSchema = z.object({
   priority: z.enum(["critique", "haute", "moyenne", "basse"]),
   assigneeId: z.string().min(1, "Un responsable est requis"),
   assigneeName: z.string().min(1, "Un responsable est requis"),
-  dueDate: z.date({ required_error: "Une date d'échéance est requise" }),
-  riskDescription: z.string().optional(),
+  dueDate: z.date(),
+  riskDescription: z.string().optional().or(z.literal("")),
   sourceType: z.enum(["incident", "audit", "risk_assessment", "observation", "ai_suggestion", "manual"]),
-  sourceIncidentId: z.string().optional(),
-  aiGenerated: z.boolean().default(false),
+  sourceIncidentId: z.string().optional().or(z.literal("")),
+  aiGenerated: z.boolean(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -106,12 +105,7 @@ const sourceOptions = [
   { value: "ai_suggestion", label: "Suggestion IA" },
 ];
 
-// Mock users - in production, fetch from userService
-const mockUsers = [
-  { id: "user-1", name: "Jean Dupont" },
-  { id: "user-2", name: "Marie Martin" },
-  { id: "user-3", name: "Pierre Durand" },
-];
+// Source options for CAPA actions
 
 export function CAPAForm({ capa, prefill, open, onOpenChange, onSuccess }: CAPAFormProps) {
   const isEditing = !!capa;
@@ -127,7 +121,7 @@ export function CAPAForm({ capa, prefill, open, onOpenChange, onSuccess }: CAPAF
       priority: "moyenne",
       assigneeId: "",
       assigneeName: "",
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2 weeks from now
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       riskDescription: "",
       sourceType: "manual",
       sourceIncidentId: "",
@@ -185,13 +179,24 @@ export function CAPAForm({ capa, prefill, open, onOpenChange, onSuccess }: CAPAF
     }
   }, [capa, prefill, form]);
 
-  const handleAssigneeChange = (userId: string) => {
-    const user = mockUsers.find((u) => u.id === userId);
+  const handleAssigneeChange = (user: User | null) => {
     if (user) {
-      form.setValue("assigneeId", user.id);
-      form.setValue("assigneeName", user.name);
+      form.setValue("assigneeId", user.id, { shouldValidate: true });
+      form.setValue("assigneeName", user.displayName, { shouldValidate: true });
+    } else {
+      form.setValue("assigneeId", "", { shouldValidate: true });
+      form.setValue("assigneeName", "", { shouldValidate: true });
     }
   };
+
+  // Watch for assignee changes to keep EmployeeSelector in sync
+  const watcherAssigneeId = form.watch("assigneeId");
+  const watcherAssigneeName = form.watch("assigneeName");
+
+  const selectedUser = watcherAssigneeId ? {
+    id: watcherAssigneeId,
+    displayName: watcherAssigneeName,
+  } as User : null;
 
   const onSubmit = (data: FormData) => {
     if (isEditing && capa) {
@@ -370,33 +375,17 @@ export function CAPAForm({ capa, prefill, open, onOpenChange, onSuccess }: CAPAF
               <FormField
                 control={form.control}
                 name="assigneeId"
-                render={({ field }) => (
+                render={() => (
                   <FormItem>
                     <FormLabel>Responsable *</FormLabel>
-                    <Select
-                      onValueChange={handleAssigneeChange}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner...">
-                            {field.value && (
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                {form.watch("assigneeName")}
-                              </div>
-                            )}
-                          </SelectValue>
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {mockUsers.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <EmployeeSelector
+                        value={selectedUser}
+                        onSelect={handleAssigneeChange}
+                        placeholder="Sélectionner un responsable..."
+                        error={form.formState.errors.assigneeId?.message}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -532,8 +521,8 @@ export function CAPAForm({ capa, prefill, open, onOpenChange, onSuccess }: CAPAF
                 {isCreating || isUpdating
                   ? "Enregistrement..."
                   : isEditing
-                  ? "Mettre à jour"
-                  : "Créer l'action"}
+                    ? "Mettre à jour"
+                    : "Créer l'action"}
               </Button>
             </DialogFooter>
           </form>

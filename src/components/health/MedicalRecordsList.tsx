@@ -43,7 +43,7 @@ import { useHealthRecords, useIsPhysician } from "@/hooks/useHealth";
 import type { HealthRecord, FitnessStatus } from "@/types/health";
 
 const FITNESS_STATUS_CONFIG: Record<FitnessStatus, { label: string; color: string; icon: React.ElementType }> = {
-  fit: { label: "Apte", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
+  fit: { label: "Apte", color: "bg-secondary text-primary", icon: CheckCircle },
   fit_with_restrictions: { label: "Apte avec restrictions", color: "bg-amber-100 text-amber-700", icon: AlertCircle },
   temporarily_unfit: { label: "Inapte temporaire", color: "bg-red-100 text-red-700", icon: Clock },
   permanently_unfit: { label: "Inapte définitif", color: "bg-red-100 text-red-700", icon: XCircle },

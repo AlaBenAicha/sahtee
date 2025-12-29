@@ -153,7 +153,7 @@ export function PlatformPreview({ dashboardImage }: PlatformPreviewProps) {
                 onClick={() => setActiveModule(index)}
                 className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
                   activeModule === index
-                    ? "bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-[var(--sahtee-blue-primary)] shadow-md"
+                    ? "bg-gradient-to-r from-secondary to-secondary border-2 border-[var(--sahtee-blue-primary)] shadow-md"
                     : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
                 }`}
               >

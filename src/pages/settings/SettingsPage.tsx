@@ -111,7 +111,7 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
-              <Button variant="default" className="bg-emerald-500 hover:bg-emerald-600 text-white">
+              <Button variant="default" className="bg-primary hover:bg-primary text-white">
                 Français
               </Button>
               <Button variant="outline">

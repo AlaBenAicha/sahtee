@@ -195,7 +195,7 @@ export function IntelligenceDashboard({
 
   // Health score color
   const getHealthColor = (score: number) => {
-    if (score >= 80) return "text-emerald-500";
+    if (score >= 80) return "text-primary";
     if (score >= 60) return "text-amber-500";
     if (score >= 40) return "text-orange-500";
     return "text-red-500";
@@ -205,7 +205,7 @@ export function IntelligenceDashboard({
   const getHealthBadge = (status: string) => {
     switch (status) {
       case "healthy":
-        return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Sain</Badge>;
+        return <Badge className="bg-secondary text-primary border-secondary">Sain</Badge>;
       case "at_risk":
         return <Badge className="bg-amber-100 text-amber-700 border-amber-200">À risque</Badge>;
       case "critical":
@@ -221,7 +221,7 @@ export function IntelligenceDashboard({
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case "improving":
-        return <TrendingUp className="h-4 w-4 text-emerald-500" />;
+        return <TrendingUp className="h-4 w-4 text-primary" />;
       case "declining":
         return <TrendingDown className="h-4 w-4 text-red-500" />;
       default:
@@ -295,7 +295,7 @@ export function IntelligenceDashboard({
                 <p className="text-sm font-medium text-muted-foreground">CAPAs Ouvertes</p>
                 <p className="text-3xl font-bold">{portfolioHealth?.openCapas || 0}</p>
               </div>
-              <Target className="h-10 w-10 text-blue-500" />
+              <Target className="h-10 w-10 text-primary" />
             </div>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-muted-foreground">
@@ -328,11 +328,11 @@ export function IntelligenceDashboard({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Efficacité</p>
-                <p className="text-3xl font-bold text-emerald-500">
+                <p className="text-3xl font-bold text-primary">
                   {portfolioHealth?.effectivenessRate || 0}%
                 </p>
               </div>
-              <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+              <CheckCircle2 className="h-10 w-10 text-primary" />
             </div>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-muted-foreground">
@@ -412,7 +412,7 @@ export function IntelligenceDashboard({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-blue-500" />
+                  <BarChart3 className="h-5 w-5 text-primary" />
                   Distribution Santé
                 </CardTitle>
                 <CardDescription>
@@ -425,16 +425,16 @@ export function IntelligenceDashboard({
                   <div>
                     <div className="flex justify-between mb-2">
                       <span className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
                         <span className="text-sm font-medium">Saines</span>
                       </span>
-                      <span className="text-sm font-medium text-emerald-500">
+                      <span className="text-sm font-medium text-primary">
                         {(portfolioHealth?.openCapas || 0) - (portfolioHealth?.atRiskCapas || 0) - (portfolioHealth?.criticalCapas || 0) - (portfolioHealth?.overdueCapas || 0)}
                       </span>
                     </div>
                     <Progress
                       value={portfolioHealth?.openCapas ? (((portfolioHealth.openCapas - portfolioHealth.atRiskCapas - portfolioHealth.criticalCapas - portfolioHealth.overdueCapas) / portfolioHealth.openCapas) * 100) : 0}
-                      className="h-2 bg-emerald-100 [&>div]:bg-emerald-500"
+                      className="h-2 bg-secondary [&>div]:bg-primary"
                     />
                   </div>
 
@@ -515,7 +515,7 @@ export function IntelligenceDashboard({
                           "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
                           escalation.status === "pending" && "bg-red-100 text-red-700",
                           escalation.status === "acknowledged" && "bg-amber-100 text-amber-700",
-                          escalation.status === "resolved" && "bg-emerald-100 text-emerald-700"
+                          escalation.status === "resolved" && "bg-secondary text-primary"
                         )}>
                           <Bell className="h-4 w-4" />
                         </div>
@@ -542,7 +542,7 @@ export function IntelligenceDashboard({
                     ))}
                     {(!portfolioHealth?.recentEscalations || portfolioHealth.recentEscalations.length === 0) && (
                       <div className="text-center py-8 text-muted-foreground">
-                        <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-emerald-500 opacity-50" />
+                        <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-primary opacity-50" />
                         <p>Aucune escalade récente</p>
                       </div>
                     )}
@@ -597,7 +597,7 @@ export function IntelligenceDashboard({
                           "h-3",
                           predictions.riskScore > 70 && "[&>div]:bg-red-500",
                           predictions.riskScore <= 70 && predictions.riskScore > 30 && "[&>div]:bg-amber-500",
-                          predictions.riskScore <= 30 && "[&>div]:bg-emerald-500"
+                          predictions.riskScore <= 30 && "[&>div]:bg-primary"
                         )}
                       />
                     </div>
@@ -677,7 +677,7 @@ export function IntelligenceDashboard({
                     ))}
                     {(!predictions?.alerts || predictions.alerts.length === 0) && (
                       <div className="text-center py-8 text-muted-foreground">
-                        <Shield className="h-12 w-12 mx-auto mb-2 text-emerald-500 opacity-50" />
+                        <Shield className="h-12 w-12 mx-auto mb-2 text-primary opacity-50" />
                         <p>Aucune alerte active</p>
                       </div>
                     )}
@@ -695,7 +695,7 @@ export function IntelligenceDashboard({
               <Card key={pattern.id}>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
-                    <GitBranch className="h-4 w-4 text-blue-500" />
+                    <GitBranch className="h-4 w-4 text-primary" />
                     {pattern.name}
                   </CardTitle>
                   <CardDescription>
@@ -770,7 +770,7 @@ export function IntelligenceDashboard({
                         "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center",
                         escalation.status === "pending" && "bg-red-100 text-red-700",
                         escalation.status === "acknowledged" && "bg-amber-100 text-amber-700",
-                        escalation.status === "resolved" && "bg-emerald-100 text-emerald-700"
+                        escalation.status === "resolved" && "bg-secondary text-primary"
                       )}>
                         <Bell className="h-5 w-5" />
                       </div>
@@ -831,7 +831,7 @@ export function IntelligenceDashboard({
                   ))}
                   {(!portfolioHealth?.recentEscalations || portfolioHealth.recentEscalations.length === 0) && (
                     <div className="text-center py-12 text-muted-foreground">
-                      <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-emerald-500 opacity-50" />
+                      <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-primary opacity-50" />
                       <p className="font-medium">Aucune escalade</p>
                       <p className="text-sm">
                         Toutes les CAPAs sont dans un état satisfaisant.
@@ -867,7 +867,7 @@ export function IntelligenceDashboard({
                         "p-4 rounded-lg border-l-4",
                         insight.riskScore >= 80 && "border-l-red-500 bg-red-50 dark:bg-red-950/20",
                         insight.riskScore >= 60 && insight.riskScore < 80 && "border-l-amber-500 bg-amber-50 dark:bg-amber-950/20",
-                        insight.riskScore >= 40 && insight.riskScore < 60 && "border-l-blue-500 bg-blue-50 dark:bg-blue-950/20",
+                        insight.riskScore >= 40 && insight.riskScore < 60 && "border-l-primary bg-secondary dark:bg-primary/20",
                         insight.riskScore < 40 && "border-l-gray-500 bg-gray-50 dark:bg-gray-950/20"
                       )}
                     >
@@ -945,7 +945,7 @@ export function IntelligenceDashboard({
             <Card className="md:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-blue-500" />
+                  <Zap className="h-5 w-5 text-primary" />
                   Actions Rapides
                 </CardTitle>
                 <CardDescription>
@@ -971,7 +971,7 @@ export function IntelligenceDashboard({
                     className="h-auto py-4 flex-col gap-2"
                     onClick={() => onViewDetails?.("report")}
                   >
-                    <FileText className="h-6 w-6 text-blue-500" />
+                    <FileText className="h-6 w-6 text-primary" />
                     <span className="text-xs">Générer rapport</span>
                   </Button>
 
@@ -989,7 +989,7 @@ export function IntelligenceDashboard({
                     className="h-auto py-4 flex-col gap-2"
                     onClick={() => onViewDetails?.("schedule")}
                   >
-                    <Calendar className="h-6 w-6 text-emerald-500" />
+                    <Calendar className="h-6 w-6 text-primary" />
                     <span className="text-xs">Optimiser planning</span>
                   </Button>
                 </div>

@@ -102,12 +102,12 @@ const CATEGORY_CONFIG: Record<FindingCategory, { label: string; color: string; i
   },
   observation: {
     label: "Observation",
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
     icon: <Info className="h-4 w-4" />,
   },
   opportunity_for_improvement: {
     label: "Piste d'amélioration",
-    color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
     icon: <Lightbulb className="h-4 w-4" />,
   },
   positive_finding: {

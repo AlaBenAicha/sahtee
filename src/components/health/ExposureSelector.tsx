@@ -41,8 +41,8 @@ const HAZARD_TYPE_CONFIG: Record<HazardCategory, { label: string; color: string 
 };
 
 const ALERT_LEVEL_CONFIG = {
-  low: { label: "Faible", color: "bg-emerald-100 text-emerald-700" },
-  moderate: { label: "Modéré", color: "bg-blue-100 text-blue-700" },
+  low: { label: "Faible", color: "bg-secondary text-primary" },
+  moderate: { label: "Modéré", color: "bg-secondary text-primary" },
   elevated: { label: "Élevé", color: "bg-amber-100 text-amber-700" },
   critical: { label: "Critique", color: "bg-red-100 text-red-700" },
 };

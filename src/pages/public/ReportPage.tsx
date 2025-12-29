@@ -228,13 +228,13 @@ export default function ReportPage() {
   // Success state
   if (step === "success") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-emerald-100 p-4 mb-4">
-              <CheckCircle2 className="h-16 w-16 text-emerald-600" />
+            <div className="rounded-full bg-secondary p-4 mb-4">
+              <CheckCircle2 className="h-16 w-16 text-primary" />
             </div>
-            <h2 className="text-xl font-semibold text-emerald-700">
+            <h2 className="text-xl font-semibold text-primary">
               Signalement enregistré !
             </h2>
             <p className="text-muted-foreground mt-2">

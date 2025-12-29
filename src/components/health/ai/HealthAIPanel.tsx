@@ -203,25 +203,25 @@ export function HealthAIPanel({ className }: HealthAIPanelProps) {
             </p>
             <p className="text-xs text-amber-500">identifiés</p>
           </div>
-          <div className="rounded-lg border bg-gradient-to-br from-emerald-50 to-green-50 p-4">
-            <div className="flex items-center gap-2 text-emerald-600">
+          <div className="rounded-lg border bg-gradient-to-br from-secondary to-green-50 p-4">
+            <div className="flex items-center gap-2 text-primary">
               <Lightbulb className="h-4 w-4" />
               <span className="text-sm font-medium">Recommandations</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-700 mt-1">
+            <p className="text-2xl font-bold text-primary mt-1">
               {analysis.recommendations.length}
             </p>
-            <p className="text-xs text-emerald-500">proposées</p>
+            <p className="text-xs text-primary">proposées</p>
           </div>
-          <div className="rounded-lg border bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
-            <div className="flex items-center gap-2 text-blue-600">
+          <div className="rounded-lg border bg-gradient-to-br from-secondary to-indigo-50 p-4">
+            <div className="flex items-center gap-2 text-primary">
               <Activity className="h-4 w-4" />
               <span className="text-sm font-medium">Employés concernés</span>
             </div>
-            <p className="text-2xl font-bold text-blue-700 mt-1">
+            <p className="text-2xl font-bold text-primary mt-1">
               {totalAffectedEmployees}
             </p>
-            <p className="text-xs text-blue-500">personnes</p>
+            <p className="text-xs text-primary">personnes</p>
           </div>
         </div>
 

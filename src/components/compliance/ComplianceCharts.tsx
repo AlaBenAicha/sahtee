@@ -36,7 +36,7 @@ const FRAMEWORK_LABELS: Record<string, string> = {
 };
 
 const FRAMEWORK_COLORS: Record<string, string> = {
-  iso_45001: "#10b981",
+  iso_45001: "#1f4993",
   iso_14001: "#3b82f6",
   iso_9001: "#8b5cf6",
   tunisian_labor: "#f59e0b",
@@ -50,7 +50,7 @@ const FINDING_CATEGORY_COLORS: Record<string, string> = {
   major_nonconformity: "#ef4444",
   minor_nonconformity: "#f59e0b",
   observation: "#3b82f6",
-  opportunity_for_improvement: "#10b981",
+  opportunity_for_improvement: "#1f4993",
   positive_finding: "#8b5cf6",
 };
 

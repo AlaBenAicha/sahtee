@@ -764,7 +764,7 @@ export function MobileInvestigation({
                         className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center",
                           isActive && "bg-primary text-primary-foreground",
-                          isPast && "bg-emerald-100 text-emerald-700",
+                          isPast && "bg-secondary text-primary",
                           !isActive && !isPast && "bg-muted"
                         )}
                       >
@@ -784,7 +784,7 @@ export function MobileInvestigation({
                         <Badge variant="secondary">En cours</Badge>
                       )}
                       {isPast && (
-                        <Badge variant="outline" className="text-emerald-700">
+                        <Badge variant="outline" className="text-primary">
                           Terminé
                         </Badge>
                       )}

@@ -19,11 +19,11 @@ interface IncidentSeverityBadgeProps {
 }
 
 const statusConfig: Record<IncidentStatus, { label: string; color: string; bgColor: string }> = {
-  reported: { label: "Signalé", color: "text-blue-700", bgColor: "bg-blue-100 dark:bg-blue-900/40" },
+  reported: { label: "Signalé", color: "text-primary", bgColor: "bg-secondary dark:bg-primary/40" },
   acknowledged: { label: "Pris en compte", color: "text-indigo-700", bgColor: "bg-indigo-100 dark:bg-indigo-900/40" },
   investigating: { label: "En investigation", color: "text-amber-700", bgColor: "bg-amber-100 dark:bg-amber-900/40" },
   action_plan_created: { label: "CAPA créé", color: "text-purple-700", bgColor: "bg-purple-100 dark:bg-purple-900/40" },
-  resolved: { label: "Résolu", color: "text-emerald-700", bgColor: "bg-emerald-100 dark:bg-emerald-900/40" },
+  resolved: { label: "Résolu", color: "text-primary", bgColor: "bg-secondary dark:bg-primary/40" },
   closed: { label: "Clôturé", color: "text-gray-600", bgColor: "bg-gray-100 dark:bg-gray-800" },
 };
 

@@ -53,7 +53,7 @@ interface AuditBoardProps {
 const STATUS_CONFIG: Record<AuditStatus, { label: string; color: string; icon: React.ReactNode }> = {
   planned: {
     label: "Planifié",
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
     icon: <Calendar className="h-3 w-3" />,
   },
   in_progress: {
@@ -68,7 +68,7 @@ const STATUS_CONFIG: Record<AuditStatus, { label: string; color: string; icon: R
   },
   completed: {
     label: "Terminé",
-    color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
     icon: <CheckCircle2 className="h-3 w-3" />,
   },
   cancelled: {

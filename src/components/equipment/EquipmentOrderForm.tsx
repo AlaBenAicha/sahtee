@@ -118,7 +118,7 @@ export function EquipmentOrderForm({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-emerald-600" />
+            <ShoppingCart className="h-5 w-5 text-primary" />
             Commander un équipement
           </DialogTitle>
           <DialogDescription>
@@ -130,7 +130,7 @@ export function EquipmentOrderForm({
           <p className="font-medium text-slate-900">{equipment.name}</p>
           <p className="text-sm text-slate-500">{equipment.category}</p>
           {equipment.estimatedCost && (
-            <p className="text-sm text-emerald-600 mt-1">
+            <p className="text-sm text-primary mt-1">
               Prix estimé: {equipment.estimatedCost.toLocaleString("fr-FR")} €
             </p>
           )}
@@ -206,7 +206,7 @@ export function EquipmentOrderForm({
               </Button>
               <Button
                 type="submit"
-                className="bg-emerald-500 hover:bg-emerald-600"
+                className="bg-primary hover:bg-primary"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (

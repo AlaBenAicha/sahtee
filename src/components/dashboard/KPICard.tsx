@@ -55,18 +55,18 @@ function getKPIIcon(iconName?: string) {
 function getStatusClasses(status: "good" | "warning" | "critical", category: "lead" | "lag") {
   if (status === "good") {
     return {
-      bg: "bg-emerald-100",
-      text: "text-emerald-600",
-      border: "border-emerald-200",
-      icon: "text-emerald-600",
+      bg: "bg-secondary",
+      text: "text-primary",
+      border: "border-secondary",
+      icon: "text-primary",
     };
   }
   if (status === "warning") {
     return {
-      bg: category === "lead" ? "bg-blue-100" : "bg-amber-100",
-      text: category === "lead" ? "text-blue-600" : "text-amber-600",
-      border: category === "lead" ? "border-blue-200" : "border-amber-200",
-      icon: category === "lead" ? "text-blue-600" : "text-amber-600",
+      bg: category === "lead" ? "bg-secondary" : "bg-amber-100",
+      text: category === "lead" ? "text-primary" : "text-amber-600",
+      border: category === "lead" ? "border-secondary" : "border-amber-200",
+      icon: category === "lead" ? "text-primary" : "text-amber-600",
     };
   }
   // critical
@@ -96,7 +96,7 @@ function getTrendDisplay(trend: DashboardKPI["trend"], kpiId: string) {
   if (trend.direction === "up") {
     return {
       icon: TrendingUp,
-      color: lowerIsBetter ? "text-red-500" : "text-emerald-500",
+      color: lowerIsBetter ? "text-red-500" : "text-primary",
       label: lowerIsBetter ? "En hausse (négatif)" : "En hausse",
     };
   }
@@ -104,7 +104,7 @@ function getTrendDisplay(trend: DashboardKPI["trend"], kpiId: string) {
   // down
   return {
     icon: TrendingDown,
-    color: lowerIsBetter ? "text-emerald-500" : "text-red-500",
+    color: lowerIsBetter ? "text-primary" : "text-red-500",
     label: lowerIsBetter ? "En baisse (positif)" : "En baisse",
   };
 }
@@ -143,7 +143,7 @@ export function KPICard({ kpi, onClick, className }: KPICardProps) {
   // Determine sparkline color based on status
   const sparklineColor =
     kpi.status === "good"
-      ? "#10b981"
+      ? "#1f4993"
       : kpi.status === "warning"
       ? kpi.category === "lead"
         ? "#3b82f6"
