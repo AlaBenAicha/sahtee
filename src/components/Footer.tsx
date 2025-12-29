@@ -61,10 +61,10 @@ export function Footer({ onNavigate }: FooterProps) {
                   <Globe className="w-4 h-4 text-primary" />
                 </div>
                 <a
-                  href="https://www.sahtee.tn"
+                  href="https://www.sahtee.com"
                   className="text-gray-600 hover:text-primary transition-colors"
                 >
-                  www.sahtee.tn
+                  www.sahtee.com
                 </a>
               </div>
 
@@ -73,7 +73,7 @@ export function Footer({ onNavigate }: FooterProps) {
                   <Mail className="w-4 h-4 text-green-600" />
                 </div>
                 <a
-                  href="mailto:contact@sahtee.tn"
+                  href="mailto:contact@sahtee.com"
                   className="text-gray-600 hover:text-green-600 transition-colors"
                 >
                   contact@sahtee.com
