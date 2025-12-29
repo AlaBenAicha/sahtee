@@ -46,8 +46,8 @@ export function ThinkingDisplay({
     <div
       className={cn(
         "rounded-lg border overflow-hidden transition-all duration-300",
-        "bg-gradient-to-br from-blue-500/5 to-purple-500/5",
-        "border-blue-200/50 dark:border-blue-800/50",
+        "bg-gradient-to-br from-primary/5 to-purple-500/5",
+        "border-secondary/50 dark:border-primary/50",
         className
       )}
     >
@@ -57,7 +57,7 @@ export function ThinkingDisplay({
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
           "w-full flex items-center justify-between p-3",
-          "hover:bg-blue-500/5 transition-colors",
+          "hover:bg-primary/5 transition-colors",
           "text-left"
         )}
       >
@@ -65,7 +65,7 @@ export function ThinkingDisplay({
           <div
             className={cn(
               "p-1.5 rounded-md",
-              "bg-gradient-to-br from-blue-500 to-purple-500",
+              "bg-gradient-to-br from-primary to-purple-500",
               isThinking && "animate-pulse"
             )}
           >
@@ -76,8 +76,8 @@ export function ThinkingDisplay({
           </span>
           {isThinking && (
             <div className="flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-blue-500 animate-pulse" />
-              <span className="text-xs text-blue-600 dark:text-blue-400">
+              <Sparkles className="h-3 w-3 text-primary animate-pulse" />
+              <span className="text-xs text-primary dark:text-primary">
                 En cours...
               </span>
             </div>
@@ -102,7 +102,7 @@ export function ThinkingDisplay({
           ref={contentRef}
           className={cn(
             "px-3 pb-3 max-h-52 overflow-y-auto",
-            "scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent"
+            "scrollbar-thin scrollbar-thumb-secondary scrollbar-track-transparent"
           )}
         >
           {/* Thinking content with typewriter effect */}
@@ -116,7 +116,7 @@ export function ThinkingDisplay({
                 ))}
               </div>
             ) : isThinking ? (
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <div className="flex items-center gap-2 text-primary dark:text-primary">
                 <ThinkingAnimation />
                 <span>L'agent analyse la situation...</span>
               </div>
@@ -142,15 +142,15 @@ function ThinkingDots() {
   return (
     <div className="flex items-center gap-1">
       <div 
-        className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce"
+        className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce"
         style={{ animationDelay: "0ms" }}
       />
       <div 
-        className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce"
+        className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce"
         style={{ animationDelay: "150ms" }}
       />
       <div 
-        className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce"
+        className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce"
         style={{ animationDelay: "300ms" }}
       />
     </div>
@@ -163,9 +163,9 @@ function ThinkingDots() {
 function ThinkingAnimation() {
   return (
     <div className="relative">
-      <Brain className="h-4 w-4 text-blue-500" />
+      <Brain className="h-4 w-4 text-primary" />
       <div className="absolute inset-0 animate-ping">
-        <Brain className="h-4 w-4 text-blue-500 opacity-50" />
+        <Brain className="h-4 w-4 text-primary opacity-50" />
       </div>
     </div>
   );
@@ -204,11 +204,11 @@ export function ThinkingSection({ thinking }: { thinking: string }) {
     : thinking;
 
   return (
-    <div className="mt-2 rounded-md bg-blue-50/50 dark:bg-blue-950/30 p-2">
+    <div className="mt-2 rounded-md bg-secondary/50 dark:bg-primary/30 p-2">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+        className="flex items-center gap-1.5 text-xs text-primary dark:text-primary hover:underline"
       >
         <Brain className="h-3 w-3" />
         <span>Voir le raisonnement</span>

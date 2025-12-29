@@ -40,7 +40,7 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useCreateMedicalVisit, useUpdateMedicalVisit, useIsPhysician } from "@/hooks/useHealth";
 import { useAuth } from "@/contexts/AuthContext";
-import { EmployeeSelector } from "@/components/health/EmployeeSelector";
+import { EmployeeSelector } from "@/components/common/EmployeeSelector";
 import type { MedicalVisit, ExaminationType, MedicalVisitStatus } from "@/types/health";
 import type { User } from "@/types/user";
 
@@ -98,10 +98,10 @@ export function VisitForm({
   const isPhysician = useIsPhysician();
   const { user, userProfile } = useAuth();
   const isEditing = !!visit;
-  
+
   // Selected employee state (for linking to User document)
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
-  
+
   const createVisit = useCreateMedicalVisit();
   const updateVisit = useUpdateMedicalVisit();
 

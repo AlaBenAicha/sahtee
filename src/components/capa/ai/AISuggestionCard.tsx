@@ -42,7 +42,7 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
 };
 
 const categoryConfig: Record<string, { label: string; color: string }> = {
-  correctif: { label: "Correctif", color: "bg-blue-100 text-blue-800" },
+  correctif: { label: "Correctif", color: "bg-secondary text-primary" },
   preventif: { label: "Préventif", color: "bg-purple-100 text-purple-800" },
 };
 
@@ -176,7 +176,7 @@ export function AISuggestionCard({
         <div className="flex gap-2 pt-2 border-t">
           <Button
             size="sm"
-            className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+            className="flex-1 bg-primary hover:bg-primary"
             onClick={() => onAccept(suggestion)}
             disabled={isProcessing}
           >

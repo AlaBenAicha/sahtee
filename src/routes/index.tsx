@@ -16,7 +16,7 @@ import { Loader2 } from "lucide-react";
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
-    <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
   </div>
 );
 
@@ -33,9 +33,7 @@ const ReportPage = lazy(() => import("@/pages/public/ReportPage"));
 
 // Lazy-loaded App Pages
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage"));
-const IncidentsPage = lazy(() => import("@/pages/incidents/IncidentsPage"));
 const CAPAPage = lazy(() => import("@/pages/capa/CAPAPage"));
-const TrainingPage = lazy(() => import("@/pages/training/TrainingPage"));
 const EquipmentPage = lazy(() => import("@/pages/equipment/EquipmentPage"));
 const CompliancePage = lazy(() => import("@/pages/compliance/CompliancePage"));
 const HealthPage = lazy(() => import("@/pages/health/HealthPage"));
@@ -118,14 +116,9 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            // Incidents redirect to CAPA Room (incidents is now a tab in CAPA)
             path: "incidents",
-            element: (
-              <FeatureGuard feature="incidents">
-                <Suspense fallback={<PageLoader />}>
-                  <IncidentsPage />
-                </Suspense>
-              </FeatureGuard>
-            ),
+            element: <Navigate to="/app/capa" replace />,
           },
           {
             path: "capa",
@@ -138,14 +131,9 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            // Training redirect to CAPA Room (training is now a tab in CAPA)
             path: "training",
-            element: (
-              <FeatureGuard feature="training">
-                <Suspense fallback={<PageLoader />}>
-                  <TrainingPage />
-                </Suspense>
-              </FeatureGuard>
-            ),
+            element: <Navigate to="/app/capa" replace />,
           },
           {
             path: "equipment",

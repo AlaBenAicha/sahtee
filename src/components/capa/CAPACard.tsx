@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/common";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -41,10 +41,10 @@ const priorityConfig: Record<ActionPriority, { label: string; color: string; bgC
 const statusConfig: Record<ActionStatus, { label: string; color: string }> = {
   draft: { label: "Brouillon", color: "text-gray-500" },
   pending_approval: { label: "En attente", color: "text-amber-500" },
-  approved: { label: "Approuvé", color: "text-blue-500" },
+  approved: { label: "Approuvé", color: "text-primary" },
   in_progress: { label: "En cours", color: "text-indigo-500" },
   blocked: { label: "Bloqué", color: "text-red-500" },
-  completed: { label: "Terminé", color: "text-emerald-500" },
+  completed: { label: "Terminé", color: "text-primary" },
   verified: { label: "Vérifié", color: "text-teal-500" },
   closed: { label: "Clôturé", color: "text-gray-400" },
 };
@@ -77,13 +77,6 @@ export function CAPACard({ capa, onClick, isDraggable = false, className }: CAPA
     const dueTime = capa.dueDate.toMillis();
     return dueTime > now && dueTime < now + threeDays && !["completed", "verified", "closed"].includes(capa.status);
   }, [capa.dueDate, capa.status]);
-
-  const assigneeInitials = capa.assigneeName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   return (
     <TooltipProvider>
@@ -182,8 +175,8 @@ export function CAPACard({ capa, onClick, isDraggable = false, className }: CAPA
                 {isOverdue
                   ? "En retard"
                   : isDueSoon
-                  ? "Échéance proche"
-                  : "Date d'échéance"}
+                    ? "Échéance proche"
+                    : "Date d'échéance"}
               </TooltipContent>
             </Tooltip>
 
@@ -224,24 +217,25 @@ export function CAPACard({ capa, onClick, isDraggable = false, className }: CAPA
               {(capa.linkedTrainingIds.length > 0 ||
                 capa.linkedEquipmentIds.length > 0 ||
                 capa.linkedDocumentIds.length > 0) && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Paperclip className="h-3 w-3" />
-                  </TooltipTrigger>
-                  <TooltipContent>Éléments liés</TooltipContent>
-                </Tooltip>
-              )}
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Paperclip className="h-3 w-3" />
+                    </TooltipTrigger>
+                    <TooltipContent>Éléments liés</TooltipContent>
+                  </Tooltip>
+                )}
             </div>
           </div>
 
           {/* Assignee */}
           <div className="flex items-center justify-between pt-2 border-t gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Avatar className="h-6 w-6 shrink-0">
-                <AvatarFallback className="text-[10px] bg-primary/10">
-                  {assigneeInitials}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                user={{ photoURL: null, email: null }}
+                userProfile={{ firstName: capa.assigneeName, lastName: "" }}
+                className="h-6 w-6 shrink-0"
+                fallbackClassName="text-[10px]"
+              />
               <span className="text-xs text-muted-foreground truncate">
                 {capa.assigneeName}
               </span>

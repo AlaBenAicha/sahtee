@@ -77,9 +77,9 @@ const TYPE_LABELS: Record<AIAnalysisType, string> = {
 
 const TYPE_COLORS: Record<AIAnalysisType, string> = {
   gap_analysis: "bg-purple-100 text-purple-800",
-  audit_planning: "bg-blue-100 text-blue-800",
+  audit_planning: "bg-secondary text-primary",
   capa_suggestions: "bg-amber-100 text-amber-800",
-  compliance_report: "bg-emerald-100 text-emerald-800",
+  compliance_report: "bg-secondary text-primary",
 };
 
 interface AIAnalysisHistoryProps {
@@ -355,7 +355,7 @@ export function AIAnalysisHistory({ className }: AIAnalysisHistoryProps) {
                       <TableCell className="text-center">
                         <span className={cn(
                           "font-bold",
-                          analysis.overallScore >= 80 && "text-emerald-600",
+                          analysis.overallScore >= 80 && "text-primary",
                           analysis.overallScore >= 50 && analysis.overallScore < 80 && "text-amber-600",
                           analysis.overallScore < 50 && "text-red-600"
                         )}>
@@ -422,7 +422,7 @@ export function AIAnalysisHistory({ className }: AIAnalysisHistoryProps) {
                   <Card>
                     <CardContent className="pt-4">
                       <div className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-emerald-600" />
+                        <TrendingUp className="h-5 w-5 text-primary" />
                         <div>
                           <p className="text-2xl font-bold">{selectedAnalysis.overallScore}%</p>
                           <p className="text-xs text-muted-foreground">Score</p>
@@ -455,7 +455,7 @@ export function AIAnalysisHistory({ className }: AIAnalysisHistoryProps) {
                   <Card>
                     <CardContent className="pt-4">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-blue-600" />
+                        <Calendar className="h-5 w-5 text-primary" />
                         <div>
                           <p className="text-2xl font-bold">{selectedAnalysis.auditRecommendations.length}</p>
                           <p className="text-xs text-muted-foreground">Audits suggérés</p>
@@ -479,7 +479,7 @@ export function AIAnalysisHistory({ className }: AIAnalysisHistoryProps) {
                               "text-xs",
                               gap.severity === "critical" && "bg-red-100 text-red-800",
                               gap.severity === "major" && "bg-amber-100 text-amber-800",
-                              gap.severity === "minor" && "bg-blue-100 text-blue-800"
+                              gap.severity === "minor" && "bg-secondary text-primary"
                             )}>
                               {gap.severity === "critical" ? "Critique" : 
                                gap.severity === "major" ? "Majeur" : "Mineur"}
@@ -509,7 +509,7 @@ export function AIAnalysisHistory({ className }: AIAnalysisHistoryProps) {
                               "text-xs",
                               rec.priority === "high" && "bg-red-100 text-red-800",
                               rec.priority === "medium" && "bg-amber-100 text-amber-800",
-                              rec.priority === "low" && "bg-blue-100 text-blue-800"
+                              rec.priority === "low" && "bg-secondary text-primary"
                             )}>
                               {rec.priority === "high" ? "Haute" : 
                                rec.priority === "medium" ? "Moyenne" : "Basse"}

@@ -423,7 +423,7 @@ export function AdvancedAnalytics() {
                       </div>
                       <div className="flex justify-between">
                         <span>Formation ergonomie</span>
-                        <span className="text-blue-600">2 semaines</span>
+                        <span className="text-primary">2 semaines</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Réévaluation complète</span>
@@ -558,9 +558,9 @@ export function AdvancedAnalytics() {
                     </div>
                   </div>
                   
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <h5 className="font-medium text-blue-900 mb-2">Simulation d'amélioration</h5>
-                    <div className="text-sm text-blue-700">
+                  <div className="p-3 bg-secondary rounded-lg">
+                    <h5 className="font-medium text-primary mb-2">Simulation d'amélioration</h5>
+                    <div className="text-sm text-primary">
                       <p>Avec les modifications proposées :</p>
                       <p>• Nouveau RWL estimé : 15.8 kg</p>
                       <p>• Nouvel LI estimé : 0.95</p>
@@ -720,7 +720,7 @@ export function AdvancedAnalytics() {
                           <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                             <span>Phase: {project.phase}</span>
                             <span>Timeline: {project.timeline}</span>
-                            <Badge className={project.status === 'Complété' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}>
+                            <Badge className={project.status === 'Complété' ? 'bg-green-100 text-green-800' : 'bg-secondary text-primary'}>
                               {project.status}
                             </Badge>
                           </div>
@@ -757,7 +757,7 @@ export function AdvancedAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="grid lg:grid-cols-5 gap-4">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-center p-3 bg-secondary rounded-lg">
                     <div className="font-bold text-[var(--sahtee-blue-primary)]">D</div>
                     <div className="text-sm mt-1">Définir</div>
                     <div className="text-xs text-gray-600">Problème identifié</div>
@@ -860,7 +860,7 @@ export function AdvancedAnalytics() {
                     <h4 className="font-medium mb-3">Plan d'action prioritaire</h4>
                     <div className="space-y-2">
                       {jsaAnalysis.recommendations.map((rec, index) => (
-                        <div key={index} className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+                        <div key={index} className="flex items-start gap-2 p-3 bg-secondary rounded-lg">
                           <div className="bg-[var(--sahtee-blue-primary)] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                             {index + 1}
                           </div>

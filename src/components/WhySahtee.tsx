@@ -17,7 +17,7 @@ export function WhySahtee({ dashboardImage }: WhySahteeProps) {
       icon: Database,
       verb: "COLLECTER",
       description: "les données du terrain",
-      color: "from-blue-500 to-blue-600",
+      color: "from-primary to-primary",
       angle: 0, // Top (12 o'clock)
     },
     {
@@ -76,8 +76,7 @@ export function WhySahtee({ dashboardImage }: WhySahteeProps) {
               Pourquoi SAHTEE ?
             </h2>
             <p className="text-xl text-gray-600 leading-relaxed">
-              Parce que chaque entreprise doit transformer la prévention en
-              levier de performance durable.
+              parce que la santé des travailleurs fait la santé des entreprises.
             </p>
           </div>
 
@@ -155,9 +154,8 @@ export function WhySahtee({ dashboardImage }: WhySahteeProps) {
                             width: "1px",
                             height: "70px",
                             background: "rgba(156, 163, 175, 0.6)",
-                            transform: `translate(-50%, -50%) rotate(${
-                              step.angle + 90
-                            }deg)`,
+                            transform: `translate(-50%, -50%) rotate(${step.angle + 90
+                              }deg)`,
                             transformOrigin: "center",
                           }}
                         ></div>

@@ -79,9 +79,6 @@ export function AppRouter() {
 
         {/* Section 7 - CTA intermédiaire */}
         <CTAIntermediate />
-
-        {/* Section 8 - CTA final */}
-        <CTAFinal />
       </main>
 
       {/* Section 10 - Footer */}

@@ -52,7 +52,7 @@ const kpiIcons: Record<string, React.ReactNode> = {
 function TrendIcon({ direction }: { direction: "up" | "down" | "stable" }) {
   switch (direction) {
     case "up":
-      return <TrendingUp className="h-4 w-4 text-emerald-500" />;
+      return <TrendingUp className="h-4 w-4 text-primary" />;
     case "down":
       return <TrendingDown className="h-4 w-4 text-red-500" />;
     default:
@@ -74,7 +74,7 @@ function KPIDetailView({ kpi }: { kpi: DashboardKPI }) {
   }));
 
   const statusColors = {
-    good: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    good: "bg-secondary text-primary border-secondary",
     warning: "bg-amber-100 text-amber-700 border-amber-200",
     critical: "bg-red-100 text-red-700 border-red-200",
   };
@@ -88,7 +88,7 @@ function KPIDetailView({ kpi }: { kpi: DashboardKPI }) {
             <div className="flex items-center gap-3">
               <div className={cn(
                 "p-3 rounded-lg",
-                kpi.status === "good" && "bg-emerald-100",
+                kpi.status === "good" && "bg-secondary",
                 kpi.status === "warning" && "bg-amber-100",
                 kpi.status === "critical" && "bg-red-100",
               )}>
@@ -190,9 +190,9 @@ function KPIDetailView({ kpi }: { kpi: DashboardKPI }) {
                 {kpi.target && (
                   <ReferenceLine 
                     y={kpi.target} 
-                    stroke="#10b981" 
+                    stroke="#1f4993" 
                     strokeDasharray="5 5"
-                    label={{ value: "Objectif", fill: "#10b981", fontSize: 12 }}
+                    label={{ value: "Objectif", fill: "#1f4993", fontSize: 12 }}
                   />
                 )}
                 <Line
@@ -287,7 +287,7 @@ export default function AnalyticsPage() {
                 <div className="flex items-baseline gap-2">
                   <span className={cn(
                     "text-2xl font-bold",
-                    kpi.status === "good" && "text-emerald-600",
+                    kpi.status === "good" && "text-primary",
                     kpi.status === "warning" && "text-amber-600",
                     kpi.status === "critical" && "text-red-600",
                   )}>

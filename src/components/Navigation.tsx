@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Menu, X } from "lucide-react";
 
 // Import du nouveau logo SAHTEE
-import sahteeLogoMain from "figma:asset/da3a2e0089c3ad8d081375417ace1d5ec5c73acd.png";
+import sahteeLogoMain from "../assets/sahtee-logo-full.png";
 
 interface NavigationProps {
   onNavigate?: (view: string) => void;
@@ -13,10 +13,11 @@ export function Navigation({ onNavigate }: NavigationProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const menuItems = [
-    { label: "Pourquoi SAHTEE", href: "#home" },
-    { label: "Fonctionnalités", href: "#features" },
-    { label: "Secteurs", href: "#sectors" },
     { label: "À propos", href: "#about" },
+    { label: "Pourquoi SAHTEE", href: "#home" },
+    { label: "Fonctionnalités clés", href: "#features" },
+    { label: "Principes", href: "#principles" },
+    { label: "Secteurs", href: "#sectors" },
     { label: "Contact", href: "#contact" }
   ];
 
@@ -26,14 +27,13 @@ export function Navigation({ onNavigate }: NavigationProps) {
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img 
+            <img
               src={sahteeLogoMain}
               alt="SAHTEE"
-              className="h-12"
+              className="h-10"
             />
-            <span className="text-2xl text-[var(--sahtee-blue-primary)]">SAHTEE</span>
           </div>
-          
+
           {/* Desktop Menu */}
           <div className="hidden lg:flex items-center space-x-8">
             {menuItems.map((item, index) => (
@@ -46,26 +46,26 @@ export function Navigation({ onNavigate }: NavigationProps) {
               </a>
             ))}
           </div>
-          
+
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center space-x-4">
-            <Button 
+            <Button
               variant="outline"
               className="border-[var(--sahtee-blue-primary)] text-[var(--sahtee-blue-primary)] hover:bg-[var(--sahtee-blue-primary)] hover:text-white"
               onClick={() => onNavigate?.('login')}
             >
               Connexion
             </Button>
-            <Button 
+            <Button
               className="bg-[var(--sahtee-blue-primary)] hover:bg-[var(--sahtee-blue-secondary)] text-white"
               onClick={() => onNavigate?.('dashboard')}
             >
               Démonstration
             </Button>
           </div>
-          
+
           {/* Mobile Menu Button */}
-          <button 
+          <button
             className="lg:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
@@ -76,7 +76,7 @@ export function Navigation({ onNavigate }: NavigationProps) {
             )}
           </button>
         </div>
-        
+
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="lg:hidden border-t border-gray-200 py-4">
@@ -91,9 +91,9 @@ export function Navigation({ onNavigate }: NavigationProps) {
                   {item.label}
                 </a>
               ))}
-              
+
               <div className="pt-4 space-y-2">
-                <Button 
+                <Button
                   variant="outline"
                   className="w-full border-[var(--sahtee-blue-primary)] text-[var(--sahtee-blue-primary)] hover:bg-[var(--sahtee-blue-primary)] hover:text-white"
                   onClick={() => {
@@ -103,7 +103,7 @@ export function Navigation({ onNavigate }: NavigationProps) {
                 >
                   Connexion
                 </Button>
-                <Button 
+                <Button
                   className="w-full bg-[var(--sahtee-blue-primary)] hover:bg-[var(--sahtee-blue-secondary)] text-white"
                   onClick={() => {
                     onNavigate?.('dashboard');

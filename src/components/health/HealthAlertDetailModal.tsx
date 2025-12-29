@@ -45,7 +45,7 @@ import {
 import type { HealthAlert, HealthAlertSeverity, HealthAlertType } from "@/types/health";
 
 const SEVERITY_CONFIG: Record<HealthAlertSeverity, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
-  info: { label: "Information", color: "text-blue-700", bgColor: "bg-blue-100", icon: Bell },
+  info: { label: "Information", color: "text-primary", bgColor: "bg-secondary", icon: Bell },
   warning: { label: "Attention", color: "text-amber-700", bgColor: "bg-amber-100", icon: AlertTriangle },
   critical: { label: "Critique", color: "text-red-700", bgColor: "bg-red-100", icon: AlertCircle },
 };
@@ -86,7 +86,7 @@ const ALERT_TYPE_CONFIG: Record<HealthAlertType, { label: string; description: s
 const STATUS_CONFIG = {
   active: { label: "Active", color: "bg-red-100 text-red-700 border-red-200" },
   acknowledged: { label: "En cours de traitement", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  resolved: { label: "Résolue", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  resolved: { label: "Résolue", color: "bg-secondary text-primary border-secondary" },
 };
 
 interface HealthAlertDetailModalProps {
@@ -251,8 +251,8 @@ export function HealthAlertDetailModal({
               {/* Resolved */}
               {alert.resolvedAt && (
                 <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                  <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-700">Résolue</p>
@@ -260,7 +260,7 @@ export function HealthAlertDetailModal({
                       {format(alert.resolvedAt.toDate(), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
                     </p>
                     {alert.resolutionNotes && (
-                      <p className="text-sm text-slate-600 mt-1 bg-emerald-50 rounded p-2">
+                      <p className="text-sm text-slate-600 mt-1 bg-secondary rounded p-2">
                         {alert.resolutionNotes}
                       </p>
                     )}
@@ -284,9 +284,9 @@ export function HealthAlertDetailModal({
 
             {/* Resolution Form */}
             {showResolveForm && (
-              <div className="space-y-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <div className="space-y-4 rounded-lg border border-secondary bg-secondary p-4">
                 <div>
-                  <Label htmlFor="resolution-notes" className="text-emerald-700">
+                  <Label htmlFor="resolution-notes" className="text-primary">
                     Notes de résolution
                   </Label>
                   <Textarea
@@ -302,7 +302,7 @@ export function HealthAlertDetailModal({
                   <Button
                     onClick={handleResolve}
                     disabled={resolveAlert.isPending || !resolutionNotes.trim()}
-                    className="bg-emerald-600 hover:bg-emerald-700"
+                    className="bg-primary hover:bg-primary"
                   >
                     {resolveAlert.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckCircle className="mr-2 h-4 w-4" />

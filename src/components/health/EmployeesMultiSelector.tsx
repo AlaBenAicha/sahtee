@@ -18,12 +18,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { UserAvatar } from "@/components/common";
 import { useEmployeeSearch, useOrganizationEmployees } from "@/hooks/useEmployeeSearch";
 import type { User } from "@/types/user";
 
@@ -46,17 +42,6 @@ interface EmployeesMultiSelectorProps {
   error?: string;
 }
 
-/**
- * Get user initials for avatar fallback
- */
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function EmployeesMultiSelector({
   value = [],
@@ -106,7 +91,7 @@ export function EmployeesMultiSelector({
 
   const handleToggle = (user: User) => {
     const isSelected = selectedIds.includes(user.id);
-    
+
     if (isSelected) {
       // Remove user
       onChange(value.filter((u) => u.id !== user.id));
@@ -157,7 +142,7 @@ export function EmployeesMultiSelector({
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               )}
-              
+
               {!isLoading && displayEmployees.length === 0 && (
                 <CommandEmpty>
                   {searchQuery.length >= 2
@@ -171,7 +156,7 @@ export function EmployeesMultiSelector({
                   {displayEmployees.map((employee) => {
                     const isSelected = selectedIds.includes(employee.id);
                     const isDisabledItem = !isSelected && isMaxSelected;
-                    
+
                     return (
                       <CommandItem
                         key={employee.id}
@@ -193,12 +178,7 @@ export function EmployeesMultiSelector({
                         >
                           {isSelected && <Check className="h-3 w-3" />}
                         </div>
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={employee.photoURL} alt={employee.displayName} />
-                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                            {getInitials(employee.displayName)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar user={employee} className="h-8 w-8" />
                         <div className="flex flex-col flex-1 min-w-0">
                           <span className="font-medium truncate">
                             {employee.displayName}
@@ -226,12 +206,7 @@ export function EmployeesMultiSelector({
               variant="secondary"
               className="flex items-center gap-1 py-1 pl-1 pr-2"
             >
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={user.photoURL} alt={user.displayName} />
-                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                  {getInitials(user.displayName)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar user={user} className="h-5 w-5" />
               <span className="truncate max-w-[120px]">{user.displayName}</span>
               <button
                 type="button"
@@ -247,7 +222,7 @@ export function EmployeesMultiSelector({
       )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      
+
       {maxSelection && (
         <p className="text-xs text-muted-foreground">
           {value.length} / {maxSelection} employés sélectionnés

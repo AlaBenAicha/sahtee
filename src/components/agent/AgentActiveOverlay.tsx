@@ -24,7 +24,7 @@ function getOverlayColors(state: string): { primary: string; secondary: string }
     case "thinking":
       return { primary: "#3b82f6", secondary: "#60a5fa" }; // Blue
     case "executing":
-      return { primary: "#10b981", secondary: "#34d399" }; // Green
+      return { primary: "#1f4993", secondary: "#5a8fd1" }; // Green
     case "waiting_confirm":
       return { primary: "#f59e0b", secondary: "#fbbf24" }; // Amber
     case "paused":
@@ -32,7 +32,7 @@ function getOverlayColors(state: string): { primary: string; secondary: string }
     case "error":
       return { primary: "#ef4444", secondary: "#f87171" }; // Red
     default:
-      return { primary: "#10b981", secondary: "#34d399" }; // Green default
+      return { primary: "#1f4993", secondary: "#5a8fd1" }; // Green default
   }
 }
 

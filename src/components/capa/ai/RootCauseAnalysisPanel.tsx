@@ -34,7 +34,7 @@ const methodologyLabels: Record<string, string> = {
 };
 
 const categoryLabels: Record<string, { label: string; color: string }> = {
-  organizational: { label: "Organisationnel", color: "bg-blue-100 text-blue-800" },
+  organizational: { label: "Organisationnel", color: "bg-secondary text-primary" },
   process: { label: "Processus", color: "bg-purple-100 text-purple-800" },
   human: { label: "Facteur humain", color: "bg-orange-100 text-orange-800" },
   equipment: { label: "Équipement", color: "bg-amber-100 text-amber-800" },
@@ -157,7 +157,7 @@ export function RootCauseAnalysisPanel({
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              <CheckCircle2 className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">Actions immédiates</CardTitle>
             </div>
           </CardHeader>
@@ -166,14 +166,14 @@ export function RootCauseAnalysisPanel({
               {analysis.immediateActions.map((action, index) => (
                 <li
                   key={index}
-                  className="flex items-center justify-between gap-2 p-2 rounded-lg bg-emerald-50 border border-emerald-100"
+                  className="flex items-center justify-between gap-2 p-2 rounded-lg bg-secondary border border-secondary"
                 >
-                  <span className="text-sm text-emerald-800">{action}</span>
+                  <span className="text-sm text-primary">{action}</span>
                   {onApplyRecommendation && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 text-emerald-600 hover:text-emerald-700"
+                      className="h-7 text-primary hover:text-primary"
                       onClick={() => onApplyRecommendation(action)}
                     >
                       Appliquer
@@ -191,7 +191,7 @@ export function RootCauseAnalysisPanel({
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
+              <Shield className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">Mesures préventives</CardTitle>
             </div>
           </CardHeader>
@@ -200,14 +200,14 @@ export function RootCauseAnalysisPanel({
               {analysis.preventiveMeasures.map((measure, index) => (
                 <li
                   key={index}
-                  className="flex items-center justify-between gap-2 p-2 rounded-lg bg-blue-50 border border-blue-100"
+                  className="flex items-center justify-between gap-2 p-2 rounded-lg bg-secondary border border-secondary"
                 >
-                  <span className="text-sm text-blue-800">{measure}</span>
+                  <span className="text-sm text-primary">{measure}</span>
                   {onApplyRecommendation && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 text-blue-600 hover:text-blue-700"
+                      className="h-7 text-primary hover:text-primary"
                       onClick={() => onApplyRecommendation(measure)}
                     >
                       Créer CAPA

@@ -24,28 +24,28 @@ const FEATURE_DATA: FeatureCard[] = [
     title: "360° Board",
     description:
       "Pilotez votre santé et sécurité au travail en un seul regard.",
-    accent: "from-blue-500 to-blue-700",
+    accent: "from-primary to-primary",
     layout: "xl:col-span-2",
   },
   {
     icon: ShieldCheck,
     title: "Conformity Room",
     description: "Gardez le contrôle sur vos normes, audits et certifications.",
-    accent: "from-indigo-500 to-blue-600",
+    accent: "from-indigo-500 to-primary",
     layout: "xl:col-span-2",
   },
   {
     icon: RefreshCcw,
     title: "CAPA Room",
     description: "Agissez vite, suivez vos actions préventives et correctives.",
-    accent: "from-cyan-500 to-blue-600",
+    accent: "from-cyan-500 to-primary",
     layout: "xl:col-span-2",
   },
   {
     icon: HeartPulse,
     title: "Health Meter",
     description: "Prenez le pouls du bien-être et de la santé au travail.",
-    accent: "from-blue-500 via-indigo-500 to-blue-700",
+    accent: "from-primary via-indigo-500 to-primary",
     layout: "xl:col-span-4 xl:col-start-2",
     highlight: true,
   },
@@ -54,7 +54,7 @@ const FEATURE_DATA: FeatureCard[] = [
     title: "SafetyBot",
     description:
       "Votre assistant intelligent pour les risques chimiques et la sécurité.",
-    accent: "from-blue-500 to-blue-700",
+    accent: "from-primary to-primary",
     layout: "xl:col-span-2",
   },
   {
@@ -62,14 +62,14 @@ const FEATURE_DATA: FeatureCard[] = [
     title: "ErgoLab",
     description:
       "Analysez et optimisez les postures et environnements de travail.",
-    accent: "from-sky-500 to-blue-600",
+    accent: "from-sky-500 to-primary",
     layout: "xl:col-span-2",
   },
   {
     icon: LineChart,
     title: "Impact Calculator",
     description: "Mesurez vos gains, votre ROI et votre impact durable.",
-    accent: "from-indigo-500 to-blue-700",
+    accent: "from-indigo-500 to-primary",
     layout: "xl:col-span-2",
   },
 ];
@@ -89,8 +89,8 @@ export function KeyFeatures() {
         </div>
 
         {/* Striped non-card layout with balanced last tile */}
-        <div className="relative overflow-hidden rounded-3xl bg-white/40 p-8 ring-1 ring-inset ring-blue-100/60">
-          <div className="pointer-events-none absolute -top-24 left-1/3 h-64 w-64 rounded-full bg-blue-200/30 blur-3xl" />
+        <div className="relative overflow-hidden rounded-3xl bg-white/40 p-8 ring-1 ring-inset ring-secondary/60">
+          <div className="pointer-events-none absolute -top-24 left-1/3 h-64 w-64 rounded-full bg-secondary/30 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 right-1/4 h-72 w-72 rounded-full bg-indigo-200/30 blur-3xl" />
 
           <div className="relative grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-12 gap-y-10">
@@ -107,7 +107,7 @@ export function KeyFeatures() {
                 >
                   <div className="flex items-start gap-5">
                     <span
-                      className={`relative inline-flex items-center justify-center rounded-2xl bg-gradient-to-br ${feature.accent} text-white shadow-lg ring-4 ring-blue-100/60 transition-transform duration-300 group-hover:scale-110 h-14 w-14`}
+                      className={`relative inline-flex items-center justify-center rounded-2xl bg-gradient-to-br ${feature.accent} text-white shadow-lg ring-4 ring-secondary/60 transition-transform duration-300 group-hover:scale-110 h-14 w-14`}
                     >
                       <feature.icon className="h-7 w-7" />
                       <span className="absolute inset-0 rounded-2xl bg-white/20 mix-blend-overlay" />
@@ -122,7 +122,7 @@ export function KeyFeatures() {
                       </p>
 
                       <button
-                        className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                        className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary transition-colors"
                         aria-label={`Découvrir ${feature.title}`}
                       >
                         Découvrir
@@ -131,7 +131,7 @@ export function KeyFeatures() {
                     </div>
                   </div>
 
-                  <div className="mt-6 h-px w-full bg-gradient-to-r from-blue-200/50 via-blue-100/40 to-transparent" />
+                  <div className="mt-6 h-px w-full bg-gradient-to-r from-secondary/50 via-secondary/40 to-transparent" />
                 </div>
               );
             })}

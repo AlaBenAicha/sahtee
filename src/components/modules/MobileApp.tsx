@@ -111,7 +111,7 @@ export function MobileApp() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Résolu': return 'bg-green-100 text-green-800';
-      case 'En traitement': return 'bg-blue-100 text-blue-800';
+      case 'En traitement': return 'bg-secondary text-primary';
       case 'En attente': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -121,7 +121,7 @@ export function MobileApp() {
     switch (type) {
       case 'alert': return 'border-red-200 bg-red-50';
       case 'warning': return 'border-orange-200 bg-orange-50';
-      case 'info': return 'border-blue-200 bg-blue-50';
+      case 'info': return 'border-secondary bg-secondary';
       default: return 'border-gray-200 bg-gray-50';
     }
   };

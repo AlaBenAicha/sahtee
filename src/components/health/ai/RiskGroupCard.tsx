@@ -37,7 +37,7 @@ interface RiskGroupCardProps {
 }
 
 const RISK_LEVEL_CONFIG = {
-  low: { label: "Faible", color: "bg-emerald-100 text-emerald-700", border: "border-emerald-200" },
+  low: { label: "Faible", color: "bg-secondary text-primary", border: "border-secondary" },
   medium: { label: "Modéré", color: "bg-amber-100 text-amber-700", border: "border-amber-200" },
   high: { label: "Élevé", color: "bg-red-100 text-red-700", border: "border-red-200" },
   critical: { label: "Critique", color: "bg-red-100 text-red-700", border: "border-red-300" },
@@ -46,7 +46,7 @@ const RISK_LEVEL_CONFIG = {
 const PRIORITY_CONFIG = {
   immediate: { label: "Immédiate", color: "text-red-600" },
   short_term: { label: "Court terme", color: "text-amber-600" },
-  medium_term: { label: "Moyen terme", color: "text-blue-600" },
+  medium_term: { label: "Moyen terme", color: "text-primary" },
   long_term: { label: "Long terme", color: "text-slate-600" },
 };
 

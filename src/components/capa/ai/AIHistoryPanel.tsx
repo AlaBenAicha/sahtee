@@ -92,7 +92,7 @@ const statusConfig: Record<CAPAAIHistoryStatus, { icon: React.ElementType; color
   completed: { icon: CheckCircle2, color: "text-green-500", label: "Terminé" },
   in_progress: { icon: Clock, color: "text-yellow-500", label: "En cours" },
   failed: { icon: XCircle, color: "text-red-500", label: "Échec" },
-  applied: { icon: FileCheck, color: "text-blue-500", label: "Appliqué" },
+  applied: { icon: FileCheck, color: "text-primary", label: "Appliqué" },
 };
 
 export function AIHistoryPanel({ onApplySuggestion, onViewDetails }: AIHistoryPanelProps) {
@@ -223,10 +223,10 @@ export function AIHistoryPanel({ onApplySuggestion, onViewDetails }: AIHistoryPa
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
+          <Card className="bg-gradient-to-br from-secondary to-secondary/50 dark:from-primary/30 dark:to-primary/20 border-secondary dark:border-primary">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Sparkles className="h-5 w-5 text-primary dark:text-primary" />
                 <span className="text-sm text-muted-foreground">Suggestions</span>
               </div>
               <p className="text-2xl font-bold mt-1">{stats.byType.suggestions || 0}</p>
@@ -333,7 +333,7 @@ export function AIHistoryPanel({ onApplySuggestion, onViewDetails }: AIHistoryPa
                           <div className={cn(
                             "p-2 rounded-lg",
                             entry.type === "suggestions" && "bg-violet-100 dark:bg-violet-900/50",
-                            entry.type === "analysis" && "bg-blue-100 dark:bg-blue-900/50",
+                            entry.type === "analysis" && "bg-secondary dark:bg-primary/50",
                             entry.type === "predictions" && "bg-green-100 dark:bg-green-900/50",
                             entry.type === "patterns" && "bg-amber-100 dark:bg-amber-900/50",
                             entry.type === "investigation" && "bg-rose-100 dark:bg-rose-900/50",
@@ -341,7 +341,7 @@ export function AIHistoryPanel({ onApplySuggestion, onViewDetails }: AIHistoryPa
                             <TypeIcon className={cn(
                               "h-4 w-4",
                               entry.type === "suggestions" && "text-violet-600 dark:text-violet-400",
-                              entry.type === "analysis" && "text-blue-600 dark:text-blue-400",
+                              entry.type === "analysis" && "text-primary dark:text-primary",
                               entry.type === "predictions" && "text-green-600 dark:text-green-400",
                               entry.type === "patterns" && "text-amber-600 dark:text-amber-400",
                               entry.type === "investigation" && "text-rose-600 dark:text-rose-400",
@@ -514,7 +514,7 @@ export function AIHistoryPanel({ onApplySuggestion, onViewDetails }: AIHistoryPa
                 <div className={cn(
                   "p-2 rounded-lg",
                   detailsEntry.type === "suggestions" && "bg-violet-100 dark:bg-violet-900/50",
-                  detailsEntry.type === "analysis" && "bg-blue-100 dark:bg-blue-900/50",
+                  detailsEntry.type === "analysis" && "bg-secondary dark:bg-primary/50",
                   detailsEntry.type === "predictions" && "bg-green-100 dark:bg-green-900/50",
                   detailsEntry.type === "patterns" && "bg-amber-100 dark:bg-amber-900/50",
                   detailsEntry.type === "investigation" && "bg-rose-100 dark:bg-rose-900/50",
@@ -525,7 +525,7 @@ export function AIHistoryPanel({ onApplySuggestion, onViewDetails }: AIHistoryPa
                       <TypeIcon className={cn(
                         "h-5 w-5",
                         detailsEntry.type === "suggestions" && "text-violet-600 dark:text-violet-400",
-                        detailsEntry.type === "analysis" && "text-blue-600 dark:text-blue-400",
+                        detailsEntry.type === "analysis" && "text-primary dark:text-primary",
                         detailsEntry.type === "predictions" && "text-green-600 dark:text-green-400",
                         detailsEntry.type === "patterns" && "text-amber-600 dark:text-amber-400",
                         detailsEntry.type === "investigation" && "text-rose-600 dark:text-rose-400",
@@ -596,9 +596,9 @@ export function AIHistoryPanel({ onApplySuggestion, onViewDetails }: AIHistoryPa
                     </div>
                   )}
                   {detailsEntry.appliedSuggestions && detailsEntry.appliedSuggestions.length > 0 && (
-                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="p-3 bg-secondary dark:bg-primary/20 rounded-lg">
                       <p className="text-xs text-muted-foreground">Suggestions appliquées</p>
-                      <p className="text-lg font-semibold text-blue-600">{detailsEntry.appliedSuggestions.length}</p>
+                      <p className="text-lg font-semibold text-primary">{detailsEntry.appliedSuggestions.length}</p>
                     </div>
                   )}
                 </div>
@@ -671,7 +671,7 @@ export function AIHistoryPanel({ onApplySuggestion, onViewDetails }: AIHistoryPa
                 {detailsEntry.type === "analysis" && detailsEntry.rootCauseAnalysis && (
                   <div>
                     <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                      <Target className="h-4 w-4 text-blue-500" />
+                      <Target className="h-4 w-4 text-primary" />
                       Analyse des causes racines
                     </h4>
                     <div className="space-y-4">

@@ -226,8 +226,8 @@ export function PredictionDashboard({
                   className="mt-2 h-2"
                 />
               </div>
-              <div className="p-4 rounded-full bg-blue-100">
-                <Target className="h-8 w-8 text-blue-600" />
+              <div className="p-4 rounded-full bg-secondary">
+                <Target className="h-8 w-8 text-primary" />
               </div>
             </div>
           </CardContent>
@@ -344,7 +344,7 @@ export function PredictionDashboard({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4 text-blue-600" />
+                <Users className="h-4 w-4 text-primary" />
                 Risques par Département
               </CardTitle>
             </CardHeader>
@@ -489,9 +489,9 @@ function AlertCard({ alert, onClick, compact }: AlertCardProps) {
   const severityConfig = {
     info: {
       icon: <Activity className="h-4 w-4" />,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
+      color: "text-primary",
+      bgColor: "bg-secondary",
+      borderColor: "border-secondary",
     },
     warning: {
       icon: <AlertTriangle className="h-4 w-4" />,

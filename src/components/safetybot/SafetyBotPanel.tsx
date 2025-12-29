@@ -124,7 +124,7 @@ export function SafetyBotPanel({
               "absolute top-0 left-0 right-0 h-1",
               mode === "agent"
                 ? "bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500"
-                : "bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500"
+                : "bg-gradient-to-r from-primary via-green-500 to-teal-500"
             )}
           />
 
@@ -138,7 +138,7 @@ export function SafetyBotPanel({
                   background:
                     mode === "agent"
                       ? "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
-                      : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                      : "linear-gradient(135deg, #1f4993 0%, #3a70b7 100%)",
                 }}
               >
                 {mode === "agent" ? (
@@ -185,7 +185,7 @@ export function SafetyBotPanel({
                           "h-9 w-9 rounded-xl text-slate-500 transition-all duration-200",
                           mode === "agent"
                             ? "hover:text-violet-600 hover:bg-violet-50"
-                            : "hover:text-emerald-600 hover:bg-emerald-50"
+                            : "hover:text-primary hover:bg-secondary"
                         )}
                       >
                         <Plus className="h-5 w-5" />
@@ -213,7 +213,7 @@ export function SafetyBotPanel({
                               "h-9 w-9 rounded-xl text-slate-500 transition-all duration-200",
                               mode === "agent"
                                 ? "hover:text-violet-600 hover:bg-violet-50"
-                                : "hover:text-emerald-600 hover:bg-emerald-50"
+                                : "hover:text-primary hover:bg-secondary"
                             )}
                           >
                             <History className="h-4 w-4" />
@@ -258,7 +258,7 @@ export function SafetyBotPanel({
                               className={cn(
                                 "flex flex-col items-start gap-1 py-2.5 px-3 mx-1 rounded-lg cursor-pointer",
                                 session.id === currentSessionId
-                                  ? "bg-emerald-50 border border-emerald-200"
+                                  ? "bg-secondary border border-secondary"
                                   : "hover:bg-slate-50"
                               )}
                             >

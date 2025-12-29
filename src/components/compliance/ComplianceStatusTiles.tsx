@@ -39,12 +39,12 @@ export function ComplianceStatusTiles() {
       value: `${counts.complianceRate}%`,
       icon: <CheckCircle2 className="h-5 w-5" />,
       color: counts.complianceRate >= 80 
-        ? "text-emerald-600" 
+        ? "text-primary" 
         : counts.complianceRate >= 50 
           ? "text-amber-600" 
           : "text-red-600",
       bgColor: counts.complianceRate >= 80 
-        ? "bg-emerald-50 dark:bg-emerald-950/30" 
+        ? "bg-secondary dark:bg-primary/30" 
         : counts.complianceRate >= 50 
           ? "bg-amber-50 dark:bg-amber-950/30" 
           : "bg-red-50 dark:bg-red-950/30",
@@ -56,12 +56,12 @@ export function ComplianceStatusTiles() {
       value: counts.nonCompliantCount,
       icon: <XCircle className="h-5 w-5" />,
       color: counts.nonCompliantCount === 0 
-        ? "text-emerald-600" 
+        ? "text-primary" 
         : counts.nonCompliantCount <= 5 
           ? "text-amber-600" 
           : "text-red-600",
       bgColor: counts.nonCompliantCount === 0 
-        ? "bg-emerald-50 dark:bg-emerald-950/30" 
+        ? "bg-secondary dark:bg-primary/30" 
         : counts.nonCompliantCount <= 5 
           ? "bg-amber-50 dark:bg-amber-950/30" 
           : "bg-red-50 dark:bg-red-950/30",
@@ -72,8 +72,8 @@ export function ComplianceStatusTiles() {
       label: "Audits Planifiés",
       value: counts.upcomingAudits,
       icon: <Calendar className="h-5 w-5" />,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-950/30",
+      color: "text-primary",
+      bgColor: "bg-secondary dark:bg-primary/30",
       description: "Audits programmés à venir",
     },
     {
@@ -82,12 +82,12 @@ export function ComplianceStatusTiles() {
       value: counts.openFindings,
       icon: <AlertTriangle className="h-5 w-5" />,
       color: counts.openFindings === 0 
-        ? "text-emerald-600" 
+        ? "text-primary" 
         : counts.overdueFindings > 0 
           ? "text-red-600" 
           : "text-amber-600",
       bgColor: counts.openFindings === 0 
-        ? "bg-emerald-50 dark:bg-emerald-950/30" 
+        ? "bg-secondary dark:bg-primary/30" 
         : counts.overdueFindings > 0 
           ? "bg-red-50 dark:bg-red-950/30" 
           : "bg-amber-50 dark:bg-amber-950/30",

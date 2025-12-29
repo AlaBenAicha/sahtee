@@ -120,7 +120,7 @@ export function KPISummary({ kpis, className }: KPISummaryProps) {
   return (
     <div className={cn("flex items-center gap-4 text-sm", className)}>
       <div className="flex items-center gap-1.5">
-        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+        <div className="w-2 h-2 rounded-full bg-primary" />
         <span className="text-slate-600">
           {goodCount} bon{goodCount > 1 ? "s" : ""}
         </span>

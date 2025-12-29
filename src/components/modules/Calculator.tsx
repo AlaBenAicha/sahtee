@@ -378,11 +378,11 @@ export function Calculator() {
                         Coûts actuels annuels
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-center p-4 bg-secondary rounded-lg">
                       <div className="text-2xl font-bold text-[var(--sahtee-blue-primary)]">
                         {roiResults.preventionCosts.toLocaleString("fr-FR")}€
                       </div>
-                      <div className="text-sm text-blue-700">
+                      <div className="text-sm text-primary">
                         Investissement prévention
                       </div>
                     </div>
@@ -655,11 +655,11 @@ export function Calculator() {
                       </p>
                     </div>
 
-                    <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-                      <h4 className="font-medium text-blue-900">
+                    <div className="p-3 bg-secondary rounded-lg border-l-4 border-primary">
+                      <h4 className="font-medium text-primary">
                         Optimisation énergétique
                       </h4>
-                      <p className="text-sm text-blue-700">
+                      <p className="text-sm text-primary">
                         LED + isolation: -200 kg CO₂/mois
                       </p>
                     </div>
@@ -722,11 +722,11 @@ export function Calculator() {
                         kg CO₂/mois actuel
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-center p-4 bg-secondary rounded-lg">
                       <div className="text-xl font-bold text-[var(--sahtee-blue-primary)]">
                         1,665
                       </div>
-                      <div className="text-sm text-blue-700">
+                      <div className="text-sm text-primary">
                         kg CO₂/mois objectif
                       </div>
                     </div>

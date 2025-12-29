@@ -14,7 +14,7 @@ export interface ActionPlan { ... }
 import type { ActionPlan } from "@/types/capa";
 ```
 
-**DON'T:**
+**DO NOT:**
 ```typescript
 // In a component file - FORBIDDEN
 interface ActionPlan { ... } // Never redefine types locally!
@@ -23,7 +23,7 @@ interface ActionPlan { ... } // Never redefine types locally!
 ### Maintainability
 - All modifications to shared types MUST happen only in `/src/types/` to ensure updates propagate globally.
 - When adding a new property to a type, update it in the types directory—never create a local extension or override.
-- Use TypeScript's `type` imports (`import type { ... }`) to make dependencies explicit.
+- Use TypeScript `type` imports (`import type { ... }`) to make dependencies explicit.
 
 ### When to Create New Type Files
 - Create a new file in `/src/types/` when introducing a new domain (e.g., `user.ts`, `audit.ts`).
@@ -32,7 +32,7 @@ interface ActionPlan { ... } // Never redefine types locally!
 
 ### Local Types
 Local types (used only within a single file) are acceptable but should be:
-- Clearly scoped to that file's functionality
+- Clearly scoped to that files functionality
 - Named distinctly to avoid confusion with shared types
 - Converted to shared types if they become used elsewhere
 
@@ -107,6 +107,6 @@ Fix prod bug  → git checkout -b hotfix/SAH-XX-name main
 Link ticket   → "References SAH-XX" in PR description
 Close ticket  → "Fixes SAH-XX" in PR description
 ```
-if you need to login to the app to test something (check if you're already logged in first), use the following credentials:
+if you need to login to the app to test something (check if you are already logged in first), use the following credentials:
 email: ala.ben.aicha23@gmail.com
 password: 12345678

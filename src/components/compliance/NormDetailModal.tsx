@@ -60,11 +60,11 @@ interface NormDetailModalProps {
 const STATUS_CONFIG: Record<NormStatus, { label: string; color: string }> = {
   compliant: {
     label: "Conforme",
-    color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
   },
   in_progress: {
     label: "En cours d'évaluation",
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    color: "bg-secondary text-primary dark:bg-primary/30 dark:text-primary",
   },
   non_compliant: {
     label: "Non conforme",
@@ -79,7 +79,7 @@ const STATUS_CONFIG: Record<NormStatus, { label: string; color: string }> = {
 const COMPLIANCE_STATUS_CONFIG: Record<ComplianceStatus, { label: string; color: string; icon: React.ReactNode }> = {
   compliant: {
     label: "Conforme",
-    color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+    color: "text-primary bg-secondary dark:bg-primary/30",
     icon: <Check className="h-4 w-4" />,
   },
   non_compliant: {
@@ -99,7 +99,7 @@ const COMPLIANCE_STATUS_CONFIG: Record<ComplianceStatus, { label: string; color:
   },
   pending_review: {
     label: "En attente d'évaluation",
-    color: "text-blue-600 bg-blue-50 dark:bg-blue-950/30",
+    color: "text-primary bg-secondary dark:bg-primary/30",
     icon: <Clock className="h-4 w-4" />,
   },
 };
@@ -455,7 +455,7 @@ export function NormDetailModal({
                                               href={ev.file.url}
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                                              className="flex items-center gap-1 text-xs text-primary hover:underline"
                                             >
                                               <Paperclip className="h-3 w-3" />
                                               {ev.title}

@@ -369,8 +369,8 @@ export default function AcceptInvitationPage() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+              <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center mb-4">
+                <CheckCircle2 className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-xl font-semibold text-slate-900 mb-2">
                 Invitation déjà acceptée
@@ -443,8 +443,8 @@ export default function AcceptInvitationPage() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+              <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center mb-4">
+                <CheckCircle2 className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-xl font-semibold text-slate-900 mb-2">
                 Bienvenue chez {invitationData?.organization.name} !
@@ -464,7 +464,7 @@ export default function AcceptInvitationPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-16 w-16 rounded-2xl bg-[var(--sahtee-blue-primary)] flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-500/30">
+            <div className="h-16 w-16 rounded-2xl bg-[var(--sahtee-blue-primary)] flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-primary/30">
               S
             </div>
           </div>
@@ -497,7 +497,7 @@ export default function AcceptInvitationPage() {
               <Shield className="h-5 w-5 text-slate-400" />
               <div>
                 <p className="text-sm text-slate-500">Rôle attribué</p>
-                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 mt-0.5">
+                <Badge variant="secondary" className="bg-secondary text-primary mt-0.5">
                   {invitationData?.role.name}
                 </Badge>
               </div>

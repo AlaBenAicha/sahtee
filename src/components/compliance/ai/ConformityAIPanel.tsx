@@ -222,7 +222,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
 
       // Title
       doc.setFontSize(22);
-      doc.setTextColor(16, 185, 129); // emerald-500
+      doc.setTextColor(31, 73, 147); // primary
       doc.text("RAPPORT DE CONFORMITÉ", pageWidth / 2, yPosition, { align: "center" });
       yPosition += 10;
 
@@ -249,7 +249,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
           ["Écarts ouverts", `${metrics?.openFindings ?? 0}`],
         ],
         theme: "striped",
-        headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+        headStyles: { fillColor: [31, 73, 147], textColor: 255 },
         margin: { left: 14 },
         tableWidth: "auto",
       });
@@ -392,7 +392,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
   const priorityConfig = {
     high: { label: "Haute", color: "bg-red-100 text-red-800" },
     medium: { label: "Moyenne", color: "bg-amber-100 text-amber-800" },
-    low: { label: "Basse", color: "bg-blue-100 text-blue-800" },
+    low: { label: "Basse", color: "bg-secondary text-primary" },
   };
 
   const typeConfig = {
@@ -420,7 +420,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
   return (
     <div className="space-y-4">
       {/* Compact Header */}
-      <Card className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-purple-200 dark:border-purple-800">
+      <Card className="bg-gradient-to-br from-purple-50 to-secondary dark:from-purple-950/20 dark:to-primary/20 border-purple-200 dark:border-purple-800">
         <CardContent className="py-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             {/* Title Section */}
@@ -449,7 +449,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
             {/* Stats - Always Horizontal */}
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                <TrendingUp className="h-4 w-4 text-primary" />
                 <div>
                   <p className="text-lg font-bold leading-none">
                     {gapAnalysis?.overallScore ?? metrics?.overallComplianceRate ?? 0}%
@@ -549,7 +549,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
             <CardContent>
               {recommendations.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-primary" />
                   <p className="font-medium">Excellent !</p>
                   <p className="text-sm">
                     Aucune recommandation critique pour le moment.
@@ -568,7 +568,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
                           ? "bg-red-100 text-red-600" 
                           : rec.priority === "medium"
                           ? "bg-amber-100 text-amber-600"
-                          : "bg-blue-100 text-blue-600"
+                          : "bg-secondary text-primary"
                       )}>
                         {typeConfig[rec.type].icon}
                       </div>
@@ -607,7 +607,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
             <CardContent>
               {(!gapAnalysis?.gaps || gapAnalysis.gaps.length === 0) ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-primary" />
                   <p>Aucun écart critique identifié</p>
                 </div>
               ) : (
@@ -625,7 +625,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
                               "text-xs",
                               gap.severity === "critical" && "bg-red-100 text-red-800",
                               gap.severity === "major" && "bg-amber-100 text-amber-800",
-                              gap.severity === "minor" && "bg-blue-100 text-blue-800"
+                              gap.severity === "minor" && "bg-secondary text-primary"
                             )}
                           >
                             {gap.severity === "critical" ? "Critique" : 
@@ -665,7 +665,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
                ((gapAnalysis?.prioritizedAudits?.length || 0) === 0 && 
                 (auditRecommendations?.length || 0) === 0) ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-3 text-blue-500" />
+                  <Calendar className="h-12 w-12 mx-auto mb-3 text-primary" />
                   <p>Aucun audit recommandé pour le moment</p>
                 </div>
               ) : (
@@ -683,7 +683,7 @@ export function ConformityAIPanel({ onPlanAudit, onCreateCapa }: ConformityAIPan
                               "text-xs",
                               audit.priority === "urgent" && "bg-red-100 text-red-800",
                               audit.priority === "soon" && "bg-amber-100 text-amber-800",
-                              audit.priority === "planned" && "bg-blue-100 text-blue-800"
+                              audit.priority === "planned" && "bg-secondary text-primary"
                             )}
                           >
                             {audit.priority === "urgent" ? "Urgent" : 

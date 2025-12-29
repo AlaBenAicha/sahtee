@@ -159,13 +159,13 @@ export function OptionalModules() {
         );
       case "beta":
         return (
-          <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
+          <Badge variant="secondary" className="bg-secondary text-primary border-secondary">
             Beta
           </Badge>
         );
       case "available":
         return (
-          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200">
+          <Badge variant="secondary" className="bg-secondary text-primary border-secondary">
             Disponible
           </Badge>
         );
@@ -201,8 +201,8 @@ export function OptionalModules() {
                 </div>
 
                 {/* Icon */}
-                <div className="h-12 w-12 rounded-lg bg-emerald-100 flex items-center justify-center mb-3">
-                  <module.icon className="h-6 w-6 text-emerald-600" />
+                <div className="h-12 w-12 rounded-lg bg-secondary flex items-center justify-center mb-3">
+                  <module.icon className="h-6 w-6 text-primary" />
                 </div>
 
                 {/* Title */}
@@ -217,7 +217,7 @@ export function OptionalModules() {
                 <ul className="text-xs text-slate-500 space-y-1 mb-4">
                   {module.features.slice(0, 3).map((feature, index) => (
                     <li key={index} className="flex items-center gap-1.5">
-                      <div className="h-1 w-1 rounded-full bg-emerald-500" />
+                      <div className="h-1 w-1 rounded-full bg-primary" />
                       {feature}
                     </li>
                   ))}
@@ -255,7 +255,7 @@ export function OptionalModules() {
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {selectedModule && <selectedModule.icon className="h-5 w-5 text-emerald-500" />}
+              {selectedModule && <selectedModule.icon className="h-5 w-5 text-primary" />}
               {submitted ? "Demande envoyée !" : `Intéressé par ${selectedModule?.name} ?`}
             </DialogTitle>
             <DialogDescription>
@@ -267,8 +267,8 @@ export function OptionalModules() {
 
           {submitted ? (
             <div className="flex flex-col items-center py-6">
-              <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                <Check className="h-8 w-8 text-emerald-600" />
+              <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center mb-4">
+                <Check className="h-8 w-8 text-primary" />
               </div>
               <p className="text-center text-slate-600">
                 Merci pour votre intérêt !<br />
@@ -322,7 +322,7 @@ export function OptionalModules() {
                 <Button type="button" variant="outline" onClick={() => setContactOpen(false)}>
                   Annuler
                 </Button>
-                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
+                <Button type="submit" className="bg-primary hover:bg-primary">
                   Envoyer
                 </Button>
               </DialogFooter>

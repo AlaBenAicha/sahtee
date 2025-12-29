@@ -86,7 +86,7 @@ export function ChatMessage({
             <span
               className={cn(
                 "mt-2 w-1 h-1 rounded-full flex-shrink-0",
-                mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+                mode === "agent" ? "bg-violet-400" : "bg-primary"
               )}
             />
             <span>{line.replace(/^[-•]\s/, "")}</span>
@@ -106,7 +106,7 @@ export function ChatMessage({
                 "text-xs font-medium mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0",
                 mode === "agent"
                   ? "bg-violet-100 text-violet-600"
-                  : "bg-emerald-100 text-emerald-600"
+                  : "bg-secondary text-primary"
               )}
             >
               {number}
@@ -143,7 +143,7 @@ export function ChatMessage({
           isUser
             ? mode === "agent"
               ? "bg-gradient-to-br from-violet-500 to-purple-600"
-              : "bg-gradient-to-br from-emerald-500 to-teal-600"
+              : "bg-gradient-to-br from-primary to-teal-600"
             : "bg-white border border-slate-200"
         )}
       >
@@ -152,7 +152,7 @@ export function ChatMessage({
         ) : mode === "agent" ? (
           <Wand2 className="h-4 w-4 text-violet-600" />
         ) : (
-          <Bot className="h-4 w-4 text-emerald-600" />
+          <Bot className="h-4 w-4 text-primary" />
         )}
       </div>
 
@@ -165,13 +165,13 @@ export function ChatMessage({
                 "rounded-tr-md ml-auto",
                 mode === "agent"
                   ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
-                  : "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+                  : "bg-gradient-to-br from-primary to-teal-600 text-white"
               )
             : cn(
                 "rounded-tl-md bg-white border mr-auto",
                 mode === "agent"
                   ? "border-l-[3px] border-l-violet-400 border-t-slate-100 border-r-slate-100 border-b-slate-100"
-                  : "border-l-[3px] border-l-emerald-400 border-t-slate-100 border-r-slate-100 border-b-slate-100"
+                  : "border-l-[3px] border-l-primary border-t-slate-100 border-r-slate-100 border-b-slate-100"
               ),
           isError && "bg-red-50 border-l-red-400 border-red-200"
         )}
@@ -197,21 +197,21 @@ export function ChatMessage({
                 <span
                   className={cn(
                     "w-2 h-2 rounded-full animate-bounce",
-                    mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+                    mode === "agent" ? "bg-violet-400" : "bg-primary"
                   )}
                   style={{ animationDelay: "0ms" }}
                 />
                 <span
                   className={cn(
                     "w-2 h-2 rounded-full animate-bounce",
-                    mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+                    mode === "agent" ? "bg-violet-400" : "bg-primary"
                   )}
                   style={{ animationDelay: "150ms" }}
                 />
                 <span
                   className={cn(
                     "w-2 h-2 rounded-full animate-bounce",
-                    mode === "agent" ? "bg-violet-400" : "bg-emerald-400"
+                    mode === "agent" ? "bg-violet-400" : "bg-primary"
                   )}
                   style={{ animationDelay: "300ms" }}
                 />
@@ -233,7 +233,7 @@ export function ChatMessage({
             <Loader2
               className={cn(
                 "h-3 w-3 animate-spin",
-                mode === "agent" ? "text-violet-400" : "text-emerald-400"
+                mode === "agent" ? "text-violet-400" : "text-primary"
               )}
             />
             <span className="text-xs text-slate-400">En train d'écrire...</span>
@@ -283,7 +283,7 @@ export function ChatMessage({
                       "bg-white hover:shadow-sm transition-all",
                       mode === "agent"
                         ? "border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300"
-                        : "border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                        : "border-secondary text-primary hover:bg-secondary hover:border-secondary"
                     )}
                     onClick={() => handleActionClick(action)}
                   >

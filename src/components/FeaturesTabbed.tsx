@@ -134,7 +134,7 @@ export function FeaturesTabbed() {
                   aria-selected={i === selected}
                   aria-controls={`preview-${f.id}`}
                   id={`tab-${f.id}`}
-                  className={`flex items-center gap-3 px-4 py-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  className={`flex items-center gap-3 px-4 py-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     isActive
                       ? "text-gray-900 dark:text-white font-semibold"
                       : "text-gray-600 dark:text-gray-300"
@@ -195,7 +195,7 @@ export function FeaturesTabbed() {
             className="border border-gray-200 dark:border-white/10 rounded-2xl bg-white/70 dark:bg-white/5 p-6 md:p-8 shadow-sm"
           >
             <div className="flex items-start gap-4">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
                 <active.icon className="h-5 w-5" />
               </span>
               <div>
@@ -217,7 +217,7 @@ export function FeaturesTabbed() {
                   className="w-full h-56 object-cover rounded-xl border border-gray-200 dark:border-white/10"
                 />
               ) : (
-                <div className="w-full h-56 rounded-xl border border-dashed border-gray-200 dark:border-white/10 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-white/5 dark:to-white/0 flex items-center justify-center">
+                <div className="w-full h-56 rounded-xl border border-dashed border-gray-200 dark:border-white/10 bg-gradient-to-br from-secondary to-indigo-50 dark:from-white/5 dark:to-white/0 flex items-center justify-center">
                   <div className="text-sm text-gray-500 dark:text-gray-400">
                     Aperçu en direct
                   </div>

@@ -134,7 +134,7 @@ export function ChemicalChatbot() {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "Stockage":
-        return "bg-blue-100 text-blue-800";
+        return "bg-secondary text-primary";
       case "Urgence":
         return "bg-red-100 text-red-800";
       case "EPI":
@@ -313,7 +313,7 @@ export function ChemicalChatbot() {
                             <div
                               className={`text-xs mt-1 ${
                                 message.type === "user"
-                                  ? "text-blue-200"
+                                  ? "text-secondary"
                                   : "text-gray-500"
                               }`}
                             >

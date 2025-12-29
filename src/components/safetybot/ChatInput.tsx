@@ -85,14 +85,14 @@ export function ChatInput({
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                 mode === "chat"
-                  ? "bg-white text-emerald-700 shadow-sm border border-emerald-200"
+                  ? "bg-white text-primary shadow-sm border border-secondary"
                   : "text-slate-500 hover:text-slate-700"
               )}
             >
               <MessageCircle className="h-4 w-4" />
               <span>Chat</span>
               {mode === "chat" && (
-                <Sparkles className="h-3 w-3 text-emerald-400" />
+                <Sparkles className="h-3 w-3 text-primary" />
               )}
             </button>
             <button
@@ -139,7 +139,7 @@ export function ChatInput({
                   "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0",
                   mode === "agent"
                     ? "hover:border-violet-200 focus:border-violet-300"
-                    : "hover:border-emerald-200 focus:border-emerald-300"
+                    : "hover:border-secondary focus:border-secondary"
                 )}
               >
                 <span className="text-slate-700 line-clamp-2 leading-relaxed">
@@ -169,7 +169,7 @@ export function ChatInput({
               "transition-all duration-200",
               mode === "agent"
                 ? "focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 focus:bg-white"
-                : "focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 focus:bg-white",
+                : "focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white",
               "placeholder:text-slate-400"
             )}
           />
@@ -186,7 +186,7 @@ export function ChatInput({
             "hover:scale-105 hover:shadow-lg",
             mode === "agent"
               ? "bg-gradient-to-br from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
-              : "bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700",
+              : "bg-gradient-to-br from-primary to-teal-600 hover:from-primary hover:to-teal-700",
             "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
           )}
         >

@@ -37,20 +37,20 @@ export function injectHighlightStyles(): void {
   style.id = "agent-highlight-styles";
   style.textContent = `
     .${HIGHLIGHT_CLASS} {
-      outline: 3px solid #10b981 !important;
+      outline: 3px solid #1f4993 !important;
       outline-offset: 2px !important;
-      box-shadow: 0 0 20px rgba(16, 185, 129, 0.5) !important;
+      box-shadow: 0 0 20px rgba(31, 73, 147, 0.5) !important;
       transition: all 0.3s ease !important;
       animation: agent-pulse 1s ease-in-out infinite !important;
     }
     
     @keyframes agent-pulse {
       0%, 100% {
-        outline-color: #10b981;
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        outline-color: #1f4993;
+        box-shadow: 0 0 20px rgba(31, 73, 147, 0.5);
       }
       50% {
-        outline-color: #34d399;
+        outline-color: #5a8fd1;
         box-shadow: 0 0 30px rgba(52, 211, 153, 0.7);
       }
     }

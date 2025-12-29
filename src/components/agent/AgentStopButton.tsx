@@ -90,7 +90,7 @@ export function AgentStopButton({
           <div
             className={cn(
               "w-2 h-2 rounded-full animate-pulse",
-              state.executionState === "thinking" && "bg-blue-500",
+              state.executionState === "thinking" && "bg-primary",
               state.executionState === "executing" && "bg-green-500",
               state.executionState === "paused" && "bg-purple-500"
             )}

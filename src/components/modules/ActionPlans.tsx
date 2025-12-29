@@ -78,7 +78,7 @@ export function ActionPlans() {
     {
       id: "inprogress",
       title: "En cours",
-      color: "bg-blue-100",
+      color: "bg-secondary",
       count: actionPlans.filter((p) => p.status === "inprogress").length,
     },
     {
@@ -107,7 +107,7 @@ export function ActionPlans() {
       case "Correctif":
         return "bg-red-50 text-red-700 border-red-200";
       case "Préventif":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "bg-secondary text-primary border-secondary";
       default:
         return "bg-gray-50 text-gray-700 border-gray-200";
     }
@@ -252,9 +252,9 @@ export function ActionPlans() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">En cours</p>
-                  <p className="text-2xl font-bold text-blue-500">2</p>
+                  <p className="text-2xl font-bold text-primary">2</p>
                 </div>
-                <Clock className="w-6 h-6 text-blue-500" />
+                <Clock className="w-6 h-6 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -326,7 +326,7 @@ export function ActionPlans() {
                           action.status === "done"
                             ? "bg-green-500"
                             : action.status === "inprogress"
-                            ? "bg-blue-500"
+                            ? "bg-primary"
                             : "bg-gray-400"
                         }`}
                       ></div>

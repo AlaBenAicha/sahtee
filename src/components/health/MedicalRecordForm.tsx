@@ -41,10 +41,10 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useCreateHealthRecord, useUpdateHealthRecord, useIsPhysician, useEmployeeHasHealthRecord, useSyncHealthRecordExposures } from "@/hooks/useHealth";
-import { EmployeeSelector } from "@/components/health/EmployeeSelector";
+import { EmployeeSelector } from "@/components/common/EmployeeSelector";
 import { ExposureSelector } from "@/components/health/ExposureSelector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { HealthRecord, FitnessStatus, MedicalRestriction, Vaccination, OrganizationExposure } from "@/types/health";
+import type { HealthRecord, FitnessStatus, MedicalRestriction, Vaccination } from "@/types/health";
 import type { User } from "@/types/user";
 
 const formSchema = z.object({
@@ -88,7 +88,7 @@ export function MedicalRecordForm({
 }: MedicalRecordFormProps) {
   const isPhysician = useIsPhysician();
   const isEditing = !!record;
-  
+
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(0);
   const totalSteps = FORM_STEPS.length;
@@ -115,10 +115,10 @@ export function MedicalRecordForm({
     });
     onOpenChange(newOpen);
   };
-  
+
   // Selected employee state (for linking to User document)
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
-  
+
   // Restrictions state
   const [restrictions, setRestrictions] = useState<Partial<MedicalRestriction>[]>(
     record?.restrictions || []
@@ -149,12 +149,11 @@ export function MedicalRecordForm({
   const [exposureIds, setExposureIds] = useState<string[]>(
     record?.exposureIds || []
   );
-  const [selectedExposures, setSelectedExposures] = useState<OrganizationExposure[]>([]);
-  
+
   const createRecord = useCreateHealthRecord();
   const updateRecord = useUpdateHealthRecord();
   const syncExposures = useSyncHealthRecordExposures();
-  
+
   // Check if selected employee already has a health record
   const { data: employeeHasRecord, isLoading: checkingEmployee } = useEmployeeHasHealthRecord(
     selectedEmployee?.id
@@ -195,7 +194,7 @@ export function MedicalRecordForm({
         required: false,
       });
       setExposureIds([]);
-      setSelectedExposures([]);
+
       form.reset({
         employeeId: "",
         employeeName: "",
@@ -234,7 +233,7 @@ export function MedicalRecordForm({
       exposureIds: exposureIds.length,
       timestamp: new Date().toISOString(),
     });
-    
+
     try {
       const recordData = {
         ...data,
@@ -267,8 +266,8 @@ export function MedicalRecordForm({
           };
           // Only add nextDoseDate if it exists (Firebase rejects undefined)
           if (v.nextDoseDate) {
-            vaccine.nextDoseDate = v.nextDoseDate instanceof Timestamp 
-              ? v.nextDoseDate 
+            vaccine.nextDoseDate = v.nextDoseDate instanceof Timestamp
+              ? v.nextDoseDate
               : Timestamp.fromDate(v.nextDoseDate as Date);
           }
           return vaccine;
@@ -282,14 +281,14 @@ export function MedicalRecordForm({
       };
 
       let savedRecordId: string;
-      
+
       if (isEditing && record) {
         await updateRecord.mutateAsync({
           recordId: record.id,
           data: recordData,
         });
         savedRecordId = record.id;
-        
+
         // Sync employee-exposure links for edited records
         await syncExposures.mutateAsync({
           healthRecordId: record.id,
@@ -300,7 +299,7 @@ export function MedicalRecordForm({
       } else {
         const newRecord = await createRecord.mutateAsync(recordData);
         savedRecordId = newRecord.id;
-        
+
         // Sync employee-exposure links for new records
         await syncExposures.mutateAsync({
           healthRecordId: savedRecordId,
@@ -383,9 +382,9 @@ export function MedicalRecordForm({
   };
 
   // Handle exposure selection changes from ExposureSelector
-  const handleExposureChange = (newExposureIds: string[], newExposures: OrganizationExposure[]) => {
+  const handleExposureChange = (newExposureIds: string[]) => {
     setExposureIds(newExposureIds);
-    setSelectedExposures(newExposures);
+
   };
 
   if (!isPhysician) {
@@ -416,7 +415,7 @@ export function MedicalRecordForm({
             submitterText: ((e.nativeEvent as SubmitEvent)?.submitter as HTMLButtonElement)?.textContent,
             timestamp: new Date().toISOString(),
           });
-          
+
           // GUARD: Prevent submission if not on the last step
           if (currentStep < totalSteps - 1) {
             e.preventDefault();
@@ -429,7 +428,7 @@ export function MedicalRecordForm({
             });
             return;
           }
-          
+
           form.handleSubmit(onSubmit, (errors) => {
             console.log(`[MedicalRecordForm] ❌ Form validation errors`, {
               errors,
@@ -458,8 +457,8 @@ export function MedicalRecordForm({
                         index < currentStep
                           ? "bg-primary text-primary-foreground border-primary"
                           : index === currentStep
-                          ? "bg-primary/10 text-primary border-primary"
-                          : "bg-muted/50 text-muted-foreground border-muted-foreground/30 group-hover:border-primary/50 group-hover:text-primary"
+                            ? "bg-primary/10 text-primary border-primary"
+                            : "bg-muted/50 text-muted-foreground border-muted-foreground/30 group-hover:border-primary/50 group-hover:text-primary"
                       )}
                     >
                       {index < currentStep ? (
@@ -474,14 +473,14 @@ export function MedicalRecordForm({
                         index === currentStep
                           ? "text-primary"
                           : index < currentStep
-                          ? "text-foreground"
-                          : "text-muted-foreground group-hover:text-foreground"
+                            ? "text-foreground"
+                            : "text-muted-foreground group-hover:text-foreground"
                       )}
                     >
                       {step.label}
                     </span>
                   </button>
-                  
+
                   {/* Connector line */}
                   {index < FORM_STEPS.length - 1 && (
                     <div className="flex-1 h-0.5 mx-2 mt-[-20px]">
@@ -503,272 +502,272 @@ export function MedicalRecordForm({
             {/* Step 1: Info */}
             {currentStep === 0 && (
               <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-4 duration-300">
-              {/* Employee Selection */}
-              <div className="space-y-2">
-                <Label>Employé</Label>
-                <EmployeeSelector
-                  value={selectedEmployee}
-                  onSelect={handleEmployeeSelect}
-                  placeholder="Rechercher et sélectionner un employé..."
-                  disabled={isEditing}
-                  error={
-                    form.formState.errors.employeeId?.message ||
-                    form.formState.errors.employeeName?.message
-                  }
-                />
-                {/* Show warning if employee already has a health record */}
-                {!isEditing && selectedEmployee && employeeHasRecord && (
-                  <Alert variant="destructive" className="mt-2">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Cet employé a déjà une fiche médicale. Veuillez sélectionner un autre employé ou modifier la fiche existante.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {!isEditing && selectedEmployee && checkingEmployee && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
-                    Vérification en cours...
-                  </p>
-                )}
-                {isEditing && (
-                  <p className="text-xs text-muted-foreground">
-                    L'employé ne peut pas être modifié après la création de la fiche.
-                  </p>
-                )}
-              </div>
-
-              {/* Department and Job Title (read-only from employee profile) */}
-              {selectedEmployee && (
-                <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30 border">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Département</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.departmentId || "Non renseigné"}
+                {/* Employee Selection */}
+                <div className="space-y-2">
+                  <Label>Employé</Label>
+                  <EmployeeSelector
+                    value={selectedEmployee}
+                    onSelect={handleEmployeeSelect}
+                    placeholder="Rechercher et sélectionner un employé..."
+                    disabled={isEditing}
+                    error={
+                      form.formState.errors.employeeId?.message ||
+                      form.formState.errors.employeeName?.message
+                    }
+                  />
+                  {/* Show warning if employee already has a health record */}
+                  {!isEditing && selectedEmployee && employeeHasRecord && (
+                    <Alert variant="destructive" className="mt-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Cet employé a déjà une fiche médicale. Veuillez sélectionner un autre employé ou modifier la fiche existante.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  {!isEditing && selectedEmployee && checkingEmployee && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
+                      Vérification en cours...
                     </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Poste</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.jobTitle || "Non renseigné"}
+                  )}
+                  {isEditing && (
+                    <p className="text-xs text-muted-foreground">
+                      L'employé ne peut pas être modifié après la création de la fiche.
                     </p>
-                  </div>
-                  {/* Hidden input to satisfy form validation */}
-                  <input type="hidden" {...form.register("departmentId")} />
+                  )}
                 </div>
-              )}
 
-              {/* Fitness Status */}
-              <div className="space-y-2">
-                <Label htmlFor="fitnessStatus">Statut d'aptitude</Label>
-                <Select
-                  value={form.watch("fitnessStatus")}
-                  onValueChange={(value) => form.setValue("fitnessStatus", value as FitnessStatus)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un statut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FITNESS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/* Department and Job Title (read-only from employee profile) */}
+                {selectedEmployee && (
+                  <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30 border">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Département</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.departmentId || "Non renseigné"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Poste</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.jobTitle || "Non renseigné"}
+                      </p>
+                    </div>
+                    {/* Hidden input to satisfy form validation */}
+                    <input type="hidden" {...form.register("departmentId")} />
+                  </div>
+                )}
+
+                {/* Fitness Status */}
+                <div className="space-y-2">
+                  <Label htmlFor="fitnessStatus">Statut d'aptitude</Label>
+                  <Select
+                    value={form.watch("fitnessStatus")}
+                    onValueChange={(value) => form.setValue("fitnessStatus", value as FitnessStatus)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FITNESS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Note: Visits are now scheduled separately via the Visites tab */}
+                <p className="text-xs text-muted-foreground italic">
+                  Les visites médicales sont planifiées séparément depuis l'onglet "Visites" ou depuis le détail de la fiche.
+                </p>
               </div>
-
-              {/* Note: Visits are now scheduled separately via the Visites tab */}
-              <p className="text-xs text-muted-foreground italic">
-                Les visites médicales sont planifiées séparément depuis l'onglet "Visites" ou depuis le détail de la fiche.
-              </p>
-            </div>
             )}
 
             {/* Step 2: Restrictions */}
             {currentStep === 1 && (
               <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-4 duration-300">
-              {/* Add Restriction */}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Nouvelle restriction (ex: Port de charges limité à 10kg)"
-                  value={newRestriction}
-                  onChange={(e) => setNewRestriction(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addRestriction();
-                    }
-                  }}
-                />
-                <Button type="button" onClick={addRestriction}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+                {/* Add Restriction */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nouvelle restriction (ex: Port de charges limité à 10kg)"
+                    value={newRestriction}
+                    onChange={(e) => setNewRestriction(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addRestriction();
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addRestriction}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
 
-              {/* Restrictions List */}
-              {restrictions.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">
-                  Aucune restriction médicale
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {restrictions.map((restriction, index) => (
-                    <div
-                      key={restriction.id || index}
-                      className="flex items-center justify-between rounded-lg border bg-slate-50 p-3"
-                    >
-                      <span className="text-sm text-slate-700">{restriction.description}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeRestriction(index)}
+                {/* Restrictions List */}
+                {restrictions.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">
+                    Aucune restriction médicale
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {restrictions.map((restriction, index) => (
+                      <div
+                        key={restriction.id || index}
+                        className="flex items-center justify-between rounded-lg border bg-slate-50 p-3"
                       >
-                        <X className="h-4 w-4 text-slate-400" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                        <span className="text-sm text-slate-700">{restriction.description}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeRestriction(index)}
+                        >
+                          <X className="h-4 w-4 text-slate-400" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              {restrictions.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    {restrictions.length} restriction{restrictions.length > 1 ? "s" : ""}
-                  </Badge>
-                </div>
-              )}
+                {restrictions.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {restrictions.length} restriction{restrictions.length > 1 ? "s" : ""}
+                    </Badge>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Step 3: Vaccinations */}
             {currentStep === 2 && (
               <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-4 duration-300">
-              <div className="space-y-3 rounded-lg border p-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Nom du vaccin</Label>
-                    <Input
-                      placeholder="Hépatite B, Tétanos..."
-                      value={newVaccine.name}
-                      onChange={(e) => setNewVaccine({ ...newVaccine, name: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Date d'administration</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal text-sm",
-                            !newVaccine.date && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-3 w-3" />
-                          {newVaccine.date ? format(newVaccine.date, "dd/MM/yyyy", { locale: fr }) : "Date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={newVaccine.date}
-                          onSelect={(date) => setNewVaccine({ ...newVaccine, date })}
-                          locale={fr}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">N° de lot</Label>
-                    <Input
-                      placeholder="LOT-12345"
-                      value={newVaccine.batchNumber}
-                      onChange={(e) => setNewVaccine({ ...newVaccine, batchNumber: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Administré par</Label>
-                    <Input
-                      placeholder="Dr. Martin"
-                      value={newVaccine.administeredBy}
-                      onChange={(e) => setNewVaccine({ ...newVaccine, administeredBy: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2 pt-5">
-                    <Checkbox
-                      id="required"
-                      checked={newVaccine.required}
-                      onCheckedChange={(checked) => setNewVaccine({ ...newVaccine, required: !!checked })}
-                    />
-                    <Label htmlFor="required" className="text-xs">Obligatoire</Label>
-                  </div>
-                  <Button type="button" onClick={addVaccination} className="w-full">
-                    <Plus className="h-4 w-4 mr-2" /> Ajouter
-                  </Button>
-                </div>
-              </div>
-
-              {vaccinations.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">
-                  Aucun vaccin enregistré
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {vaccinations.map((vaccine, index) => (
-                    <div
-                      key={vaccine.id || index}
-                      className="flex items-center justify-between rounded-lg border bg-slate-50 p-3"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-slate-700">{vaccine.name}</span>
-                          {vaccine.required && (
-                            <Badge variant="destructive" className="text-xs">Obligatoire</Badge>
-                          )}
-                          <Badge variant="outline" className="text-xs">
-                            {vaccine.date instanceof Timestamp
-                              ? format(vaccine.date.toDate(), "dd/MM/yyyy")
-                              : ""}
-                          </Badge>
-                        </div>
-                        {vaccine.batchNumber && (
-                          <p className="text-xs text-slate-500 mt-1">Lot: {vaccine.batchNumber}</p>
-                        )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeVaccination(index)}
-                      >
-                        <X className="h-4 w-4 text-slate-400" />
-                      </Button>
+                <div className="space-y-3 rounded-lg border p-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Nom du vaccin</Label>
+                      <Input
+                        placeholder="Hépatite B, Tétanos..."
+                        value={newVaccine.name}
+                        onChange={(e) => setNewVaccine({ ...newVaccine, name: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                          }
+                        }}
+                      />
                     </div>
-                  ))}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Date d'administration</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal text-sm",
+                              !newVaccine.date && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-3 w-3" />
+                            {newVaccine.date ? format(newVaccine.date, "dd/MM/yyyy", { locale: fr }) : "Date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={newVaccine.date}
+                            onSelect={(date) => setNewVaccine({ ...newVaccine, date })}
+                            locale={fr}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">N° de lot</Label>
+                      <Input
+                        placeholder="LOT-12345"
+                        value={newVaccine.batchNumber}
+                        onChange={(e) => setNewVaccine({ ...newVaccine, batchNumber: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Administré par</Label>
+                      <Input
+                        placeholder="Dr. Martin"
+                        value={newVaccine.administeredBy}
+                        onChange={(e) => setNewVaccine({ ...newVaccine, administeredBy: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2 pt-5">
+                      <Checkbox
+                        id="required"
+                        checked={newVaccine.required}
+                        onCheckedChange={(checked) => setNewVaccine({ ...newVaccine, required: !!checked })}
+                      />
+                      <Label htmlFor="required" className="text-xs">Obligatoire</Label>
+                    </div>
+                    <Button type="button" onClick={addVaccination} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" /> Ajouter
+                    </Button>
+                  </div>
                 </div>
-              )}
+
+                {vaccinations.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">
+                    Aucun vaccin enregistré
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {vaccinations.map((vaccine, index) => (
+                      <div
+                        key={vaccine.id || index}
+                        className="flex items-center justify-between rounded-lg border bg-slate-50 p-3"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-slate-700">{vaccine.name}</span>
+                            {vaccine.required && (
+                              <Badge variant="destructive" className="text-xs">Obligatoire</Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {vaccine.date instanceof Timestamp
+                                ? format(vaccine.date.toDate(), "dd/MM/yyyy")
+                                : ""}
+                            </Badge>
+                          </div>
+                          {vaccine.batchNumber && (
+                            <p className="text-xs text-slate-500 mt-1">Lot: {vaccine.batchNumber}</p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeVaccination(index)}
+                        >
+                          <X className="h-4 w-4 text-slate-400" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -797,7 +796,7 @@ export function MedicalRecordForm({
                 )}
 
                 <p className="text-xs text-muted-foreground italic pt-2">
-                  Les expositions sont gérées de manière centralisée. L'employé sera automatiquement ajouté 
+                  Les expositions sont gérées de manière centralisée. L'employé sera automatiquement ajouté
                   à la liste des personnes exposées pour chaque exposition sélectionnée.
                 </p>
               </div>
@@ -807,9 +806,9 @@ export function MedicalRecordForm({
           {/* Navigation Footer */}
           <DialogFooter className="mt-6 flex items-center justify-between border-t pt-4">
             <div className="flex items-center gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => {
                   console.log(`[MedicalRecordForm] ❌ Annuler button clicked`, {
                     currentStep,
@@ -821,7 +820,7 @@ export function MedicalRecordForm({
                 Annuler
               </Button>
             </div>
-            
+
             <div className="flex items-center gap-2">
               {/* Previous Button */}
               {currentStep > 0 && (
@@ -841,7 +840,7 @@ export function MedicalRecordForm({
                   Précédent
                 </Button>
               )}
-              
+
               {/* Next Button - Always render but hide when on last step */}
               <Button
                 type="button"
@@ -863,10 +862,10 @@ export function MedicalRecordForm({
                 Suivant
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
-              
+
               {/* Submit Button - Always render but hide when not on last step */}
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isSubmitting || (!isEditing && employeeHasRecord)}
                 onClick={(e) => {
                   // Prevent accidental submission if not on the last step

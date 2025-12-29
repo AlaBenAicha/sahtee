@@ -8,7 +8,6 @@
 import { useState } from "react";
 import {
   Calendar,
-  User,
   AlertCircle,
   CheckCircle2,
   MessageSquare,
@@ -29,7 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/common";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,7 +43,7 @@ import {
   useAddCAPAComment,
 } from "@/hooks/useCAPAs";
 import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
-import type { ActionPlan, ActionPriority, ActionStatus } from "@/types/capa";
+import type { ActionPriority, ActionStatus } from "@/types/capa";
 
 interface CAPADetailModalProps {
   capaId: string | null;
@@ -63,10 +62,10 @@ const priorityConfig: Record<ActionPriority, { label: string; color: string; bgC
 const statusConfig: Record<ActionStatus, { label: string; color: string }> = {
   draft: { label: "Brouillon", color: "text-gray-500" },
   pending_approval: { label: "En attente", color: "text-amber-500" },
-  approved: { label: "Approuvé", color: "text-blue-500" },
+  approved: { label: "Approuvé", color: "text-primary" },
   in_progress: { label: "En cours", color: "text-indigo-500" },
   blocked: { label: "Bloqué", color: "text-red-500" },
-  completed: { label: "Terminé", color: "text-emerald-500" },
+  completed: { label: "Terminé", color: "text-primary" },
   verified: { label: "Vérifié", color: "text-teal-500" },
   closed: { label: "Clôturé", color: "text-gray-400" },
 };
@@ -181,7 +180,12 @@ export function CAPADetailModal({
                 {/* Metadata grid */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
+                    <UserAvatar
+                      user={{ photoURL: null, email: null }}
+                      userProfile={{ firstName: capa.assigneeName, lastName: "" }}
+                      className="h-5 w-5"
+                      fallbackClassName="text-[10px]"
+                    />
                     <span className="text-muted-foreground">Assigné à:</span>
                     <span className="font-medium">{capa.assigneeName}</span>
                   </div>
@@ -295,15 +299,11 @@ export function CAPADetailModal({
                       <div className="space-y-3">
                         {capa.comments.map((comment) => (
                           <div key={comment.id} className="flex gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs">
-                                {comment.userName
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <UserAvatar
+                              user={{ photoURL: null, email: null }}
+                              userProfile={{ firstName: comment.userName, lastName: "" }}
+                              className="h-8 w-8"
+                            />
                             <div className="flex-1 space-y-1">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium">

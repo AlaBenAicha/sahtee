@@ -40,8 +40,8 @@ const columns: KanbanColumn[] = [
   {
     id: "todo",
     title: "À faire",
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 dark:bg-blue-950/30",
+    color: "text-primary",
+    bgColor: "bg-secondary dark:bg-primary/30",
   },
   {
     id: "in_progress",
@@ -52,8 +52,8 @@ const columns: KanbanColumn[] = [
   {
     id: "done",
     title: "Terminées",
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50 dark:bg-emerald-950/30",
+    color: "text-primary",
+    bgColor: "bg-secondary dark:bg-primary/30",
   },
 ];
 

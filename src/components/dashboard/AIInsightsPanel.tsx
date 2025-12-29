@@ -73,10 +73,10 @@ function getTypeLabel(type: RecommendationType): string {
 function getTypeColors(type: RecommendationType) {
   const colors: Record<RecommendationType, { bg: string; text: string; border: string }> = {
     training: { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-200" },
-    capa: { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-200" },
+    capa: { bg: "bg-secondary", text: "text-primary", border: "border-secondary" },
     risk_assessment: { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-200" },
     equipment: { bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-200" },
-    compliance: { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
+    compliance: { bg: "bg-secondary", text: "text-primary", border: "border-secondary" },
     optimization: { bg: "bg-cyan-100", text: "text-cyan-700", border: "border-cyan-200" },
   };
   return colors[type];
@@ -86,7 +86,7 @@ function getTypeColors(type: RecommendationType) {
  * Get confidence color
  */
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 80) return "text-emerald-600";
+  if (confidence >= 80) return "text-primary";
   if (confidence >= 60) return "text-amber-600";
   return "text-slate-600";
 }
@@ -185,7 +185,7 @@ function RecommendationCard({
             <Button
               size="sm"
               onClick={onAccept}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-xs h-8"
+              className="flex-1 bg-primary hover:bg-primary text-xs h-8"
             >
               <CheckCircle className="h-3 w-3 mr-1" />
               Accepter
@@ -222,7 +222,7 @@ function RecommendationCard({
           variant="outline"
           className={cn(
             "text-xs",
-            recommendation.status === "accepted" && "bg-emerald-50 text-emerald-700",
+            recommendation.status === "accepted" && "bg-secondary text-primary",
             recommendation.status === "rejected" && "bg-red-50 text-red-700",
             recommendation.status === "dismissed" && "bg-slate-50 text-slate-700"
           )}
@@ -257,7 +257,7 @@ export function AIInsightsPanel({
       <Card className={className}>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-emerald-500" />
+            <Sparkles className="h-5 w-5 text-primary" />
             Suggestions IA
           </CardTitle>
         </CardHeader>
@@ -277,7 +277,7 @@ export function AIInsightsPanel({
       <Card className={className}>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-emerald-500" />
+            <Sparkles className="h-5 w-5 text-primary" />
             Suggestions IA
           </CardTitle>
         </CardHeader>
@@ -299,11 +299,11 @@ export function AIInsightsPanel({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-emerald-500" />
+            <Sparkles className="h-5 w-5 text-primary" />
             Suggestions IA
           </CardTitle>
           {pendingRecommendations.length > 0 && (
-            <Badge className="bg-emerald-100 text-emerald-700">
+            <Badge className="bg-secondary text-primary">
               {pendingRecommendations.length} nouvelle{pendingRecommendations.length > 1 ? "s" : ""}
             </Badge>
           )}
@@ -348,7 +348,7 @@ export function AIInsightsSummary({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100 transition-colors"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-primary text-xs font-medium hover:bg-secondary transition-colors"
     >
       <Sparkles className="h-3.5 w-3.5" />
       {count} suggestion{count > 1 ? "s" : ""} IA

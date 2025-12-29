@@ -169,7 +169,7 @@ export function Dashboard() {
     { type: "Chimiques", value: 15, trend: "-1", color: "bg-orange-500" },
     { type: "Biologiques", value: 8, trend: "0", color: "bg-yellow-500" },
     { type: "Psychosociaux", value: 12, trend: "+3", color: "bg-purple-500" },
-    { type: "Organisationnels", value: 18, trend: "-2", color: "bg-blue-500" },
+    { type: "Organisationnels", value: 18, trend: "-2", color: "bg-primary" },
     { type: "Machines", value: 31, trend: "+1", color: "bg-green-500" },
   ];
 
@@ -200,14 +200,14 @@ export function Dashboard() {
       value: "12,450",
       unit: "h",
       trend: "up",
-      color: "text-blue-600",
+      color: "text-primary",
     },
     {
       label: "Conformité",
       value: "87%",
       unit: "",
       trend: "up",
-      color: "text-blue-600",
+      color: "text-primary",
     },
   ];
 
@@ -499,7 +499,7 @@ export function Dashboard() {
                           <div
                             className={`text-xs mt-1 ${
                               message.type === "user"
-                                ? "text-blue-200"
+                                ? "text-secondary"
                                 : "text-gray-500"
                             }`}
                           >

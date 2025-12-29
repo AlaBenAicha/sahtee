@@ -29,7 +29,7 @@ interface TrainingProgressProps {
 
 const statusConfig = {
   not_started: { label: "Non commencé", color: "text-slate-500 bg-slate-100" },
-  in_progress: { label: "En cours", color: "text-blue-600 bg-blue-100" },
+  in_progress: { label: "En cours", color: "text-primary bg-secondary" },
   completed: { label: "Terminé", color: "text-green-600 bg-green-100" },
   failed: { label: "Échoué", color: "text-red-600 bg-red-100" },
 };
@@ -100,10 +100,10 @@ export function TrainingProgress({ onTrainingClick }: TrainingProgressProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">En cours</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
+            <Clock className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{summary.inProgress}</div>
+            <div className="text-2xl font-bold text-primary">{summary.inProgress}</div>
             <p className="text-xs text-muted-foreground">formations actives</p>
           </CardContent>
         </Card>
@@ -217,7 +217,7 @@ function TrainingRecordItem({ record, onClick }: TrainingRecordItemProps) {
     <div
       className={cn(
         "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50",
-        record.status === "in_progress" && "border-blue-200 bg-blue-50/50"
+        record.status === "in_progress" && "border-secondary bg-secondary/50"
       )}
       onClick={onClick}
     >

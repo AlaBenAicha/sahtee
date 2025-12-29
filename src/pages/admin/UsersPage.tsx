@@ -12,18 +12,18 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/common";
 import {
   Dialog,
   DialogContent,
@@ -60,13 +60,12 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { 
-  Users, 
-  Plus, 
+import {
+  Users,
+  Plus,
   Mail,
   Link2,
   Copy,
-  Trash2, 
   UserCheck,
   Clock,
   XCircle,
@@ -77,8 +76,6 @@ import {
   Send,
   RefreshCw,
   Pencil,
-  Building2,
-  Briefcase,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -120,20 +117,20 @@ const INVITATION_STATUS_CONFIG: Record<string, { label: string; color: string; i
 
 export default function UsersPage() {
   const { session, userProfile } = useAuth();
-  
+
   // State
   const [users, setUsers] = useState<User[]>([]);
   const [invitations, setInvitations] = useState<UserInvitation[]>([]);
   const [roles, setRoles] = useState<CustomRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+
   // Dialog states
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
   const [showCancelInviteDialog, setShowCancelInviteDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
-  
+
   // Form state - Invite
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFirstName, setInviteFirstName] = useState("");
@@ -142,7 +139,7 @@ export default function UsersPage() {
   const [inviteDepartmentId, setInviteDepartmentId] = useState("");
   const [inviteJobTitle, setInviteJobTitle] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
-  
+
   // Form state - Edit User
   const [editUserData, setEditUserData] = useState<{
     firstName: string;
@@ -164,7 +161,7 @@ export default function UsersPage() {
   // Load data
   const loadData = useCallback(async () => {
     if (!userProfile?.organizationId) return;
-    
+
     setLoading(true);
     try {
       const [usersResponse, orgInvitations, orgRoles] = await Promise.all([
@@ -172,12 +169,12 @@ export default function UsersPage() {
         getInvitationsByOrganization(userProfile.organizationId),
         getRolesByOrganization(userProfile.organizationId),
       ]);
-      
+
       // getUsersByOrganization returns PaginatedResponse, extract items array
       setUsers(usersResponse.items || []);
       setInvitations(orgInvitations);
       setRoles(orgRoles);
-      
+
       // Set default role for invitations
       if (orgRoles.length > 0 && !inviteRoleId) {
         const employeeRole = orgRoles.find(r => r.name === "Employé");
@@ -210,21 +207,21 @@ export default function UsersPage() {
       toast.error("Veuillez remplir tous les champs requis");
       return;
     }
-    
+
     // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(inviteEmail)) {
       toast.error("Adresse email invalide");
       return;
     }
-    
+
     // Check if email is already used
     const existingUser = users.find(u => u.email.toLowerCase() === inviteEmail.toLowerCase());
     if (existingUser) {
       toast.error("Un utilisateur avec cette adresse email existe déjà");
       return;
     }
-    
+
     // Check if invitation already exists
     const existingInvitation = invitations.find(
       i => i.email.toLowerCase() === inviteEmail.toLowerCase() && i.status === "pending"
@@ -233,9 +230,9 @@ export default function UsersPage() {
       toast.error("Une invitation est déjà en cours pour cette adresse email");
       return;
     }
-    
+
     if (!userProfile?.organizationId || !userProfile.uid) return;
-    
+
     setSaving(true);
     try {
       const invitation = await createInvitation(
@@ -248,13 +245,13 @@ export default function UsersPage() {
         inviteFirstName || undefined,
         inviteLastName || undefined
       );
-      
+
       setInvitations(prev => [invitation, ...prev]);
-      
+
       // Generate invitation link
       const invitationLink = `${window.location.origin}/accept-invitation?token=${invitation.token}`;
       setGeneratedLink(invitationLink);
-      
+
       toast.success("Invitation envoyée avec succès");
       setInviteEmail("");
     } catch (error) {
@@ -268,7 +265,7 @@ export default function UsersPage() {
   // Handle copy invitation link
   const handleCopyLink = async () => {
     if (!generatedLink) return;
-    
+
     try {
       await navigator.clipboard.writeText(generatedLink);
       toast.success("Lien copié dans le presse-papiers");
@@ -281,17 +278,17 @@ export default function UsersPage() {
   // Handle role change
   const handleRoleChange = async () => {
     if (!selectedUser || !selectedRoleId || !userProfile?.uid) return;
-    
+
     setSaving(true);
     try {
       await updateUserRoleId(selectedUser.id, selectedRoleId, userProfile.uid);
-      
-      setUsers(prev => prev.map(u => 
-        u.id === selectedUser.id 
+
+      setUsers(prev => prev.map(u =>
+        u.id === selectedUser.id
           ? { ...u, roleId: selectedRoleId }
           : u
       ));
-      
+
       setShowRoleChangeDialog(false);
       setSelectedUser(null);
       toast.success("Rôle mis à jour avec succès");
@@ -306,17 +303,17 @@ export default function UsersPage() {
   // Handle cancel invitation
   const handleCancelInvitation = async () => {
     if (!selectedInvitation) return;
-    
+
     setSaving(true);
     try {
       await cancelInvitation(selectedInvitation.id);
-      
-      setInvitations(prev => prev.map(i => 
-        i.id === selectedInvitation.id 
+
+      setInvitations(prev => prev.map(i =>
+        i.id === selectedInvitation.id
           ? { ...i, status: "cancelled" as const }
           : i
       ));
-      
+
       setShowCancelInviteDialog(false);
       setSelectedInvitation(null);
       toast.success("Invitation annulée");
@@ -351,7 +348,7 @@ export default function UsersPage() {
   // Handle edit user
   const handleEditUser = async () => {
     if (!selectedUser || !userProfile?.uid) return;
-    
+
     setSaving(true);
     try {
       await updateUser(selectedUser.uid, {
@@ -362,22 +359,22 @@ export default function UsersPage() {
         departmentId: editUserData.departmentId.trim() || undefined,
         jobTitle: editUserData.jobTitle.trim() || undefined,
       }, userProfile.uid);
-      
+
       // Update local state
-      setUsers(users.map(u => 
-        u.id === selectedUser.id 
-          ? { 
-              ...u, 
-              firstName: editUserData.firstName.trim(),
-              lastName: editUserData.lastName.trim(),
-              displayName: `${editUserData.firstName.trim()} ${editUserData.lastName.trim()}`,
-              roleId: editUserData.roleId,
-              departmentId: editUserData.departmentId.trim() || undefined,
-              jobTitle: editUserData.jobTitle.trim() || undefined,
-            }
+      setUsers(users.map(u =>
+        u.id === selectedUser.id
+          ? {
+            ...u,
+            firstName: editUserData.firstName.trim(),
+            lastName: editUserData.lastName.trim(),
+            displayName: `${editUserData.firstName.trim()} ${editUserData.lastName.trim()}`,
+            roleId: editUserData.roleId,
+            departmentId: editUserData.departmentId.trim() || undefined,
+            jobTitle: editUserData.jobTitle.trim() || undefined,
+          }
           : u
       ));
-      
+
       setShowEditUserDialog(false);
       setSelectedUser(null);
       toast.success("Utilisateur modifié avec succès");
@@ -387,11 +384,6 @@ export default function UsersPage() {
     } finally {
       setSaving(false);
     }
-  };
-
-  // Get user initials
-  const getInitials = (user: User): string => {
-    return `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "U";
   };
 
   // Format date
@@ -433,7 +425,7 @@ export default function UsersPage() {
             </p>
           </div>
         </div>
-        
+
         {canManageUsers && (
           <Dialog open={showInviteDialog} onOpenChange={(open) => {
             setShowInviteDialog(open);
@@ -459,7 +451,7 @@ export default function UsersPage() {
                   Envoyez une invitation par email ou partagez un lien d'invitation
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-4 py-4">
                 <div>
                   <Label htmlFor="email">Adresse email *</Label>
@@ -472,7 +464,7 @@ export default function UsersPage() {
                     className="mt-1.5"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="firstName">Prénom</Label>
@@ -495,7 +487,7 @@ export default function UsersPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="role">Rôle à attribuer *</Label>
                   <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
@@ -514,7 +506,7 @@ export default function UsersPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="department">Département</Label>
@@ -537,7 +529,7 @@ export default function UsersPage() {
                     />
                   </div>
                 </div>
-                
+
                 {generatedLink && (
                   <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                     <div className="flex items-center gap-2 mb-2">
@@ -547,13 +539,13 @@ export default function UsersPage() {
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      <Input 
-                        value={generatedLink} 
-                        readOnly 
+                      <Input
+                        value={generatedLink}
+                        readOnly
                         className="text-xs bg-white"
                       />
-                      <Button 
-                        size="icon" 
+                      <Button
+                        size="icon"
                         variant="outline"
                         onClick={handleCopyLink}
                       >
@@ -566,13 +558,13 @@ export default function UsersPage() {
                   </div>
                 )}
               </div>
-              
+
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
                   Fermer
                 </Button>
-                <Button 
-                  onClick={handleSendInvitation} 
+                <Button
+                  onClick={handleSendInvitation}
                   disabled={saving || !inviteEmail.trim() || !inviteRoleId}
                 >
                   {saving ? (
@@ -603,7 +595,7 @@ export default function UsersPage() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Invitations en attente</CardDescription>
@@ -617,7 +609,7 @@ export default function UsersPage() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Rôles configurés</CardDescription>
@@ -642,7 +634,7 @@ export default function UsersPage() {
           </TabsTrigger>
           <TabsTrigger value="invitations" className="gap-2">
             <Mail className="h-4 w-4" />
-            Invitations 
+            Invitations
             {pendingInvitationsCount > 0 && (
               <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700">
                 {pendingInvitationsCount}
@@ -678,12 +670,11 @@ export default function UsersPage() {
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={user.photoURL} />
-                            <AvatarFallback className="bg-green-100 text-green-600 text-sm">
-                              {getInitials(user)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <UserAvatar
+                            user={user}
+                            userProfile={user}
+                            className="h-9 w-9"
+                          />
                           <div>
                             <p className="font-medium text-slate-900">
                               {user.firstName} {user.lastName}
@@ -713,8 +704,8 @@ export default function UsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge 
-                          variant="secondary" 
+                        <Badge
+                          variant="secondary"
                           className={STATUS_CONFIG[user.status]?.color}
                         >
                           {STATUS_CONFIG[user.status]?.label}
@@ -748,7 +739,7 @@ export default function UsersPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  
+
                   {users.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-slate-500">
@@ -795,7 +786,7 @@ export default function UsersPage() {
                   {invitations.map((invitation) => {
                     const statusConfig = INVITATION_STATUS_CONFIG[invitation.status];
                     const StatusIcon = statusConfig?.icon || Clock;
-                    
+
                     return (
                       <TableRow key={invitation.id}>
                         <TableCell>
@@ -810,8 +801,8 @@ export default function UsersPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className={cn("gap-1", statusConfig?.color)}
                           >
                             <StatusIcon className="h-3 w-3" />
@@ -826,9 +817,9 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           {invitation.status === "pending" && canManageUsers && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={() => {
                                 setSelectedInvitation(invitation);
@@ -842,7 +833,7 @@ export default function UsersPage() {
                       </TableRow>
                     );
                   })}
-                  
+
                   {invitations.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-slate-500">
@@ -866,7 +857,7 @@ export default function UsersPage() {
               Modifier le rôle de {selectedUser?.firstName} {selectedUser?.lastName}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <Label htmlFor="new-role">Nouveau rôle</Label>
             <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
@@ -885,13 +876,13 @@ export default function UsersPage() {
               </SelectContent>
             </Select>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRoleChangeDialog(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={handleRoleChange} 
+            <Button
+              onClick={handleRoleChange}
               disabled={saving || !selectedRoleId}
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -934,7 +925,7 @@ export default function UsersPage() {
               Modifier les informations de {selectedUser?.firstName} {selectedUser?.lastName}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -958,7 +949,7 @@ export default function UsersPage() {
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="edit-role">Rôle</Label>
               <Select value={editUserData.roleId} onValueChange={(value) => setEditUserData({ ...editUserData, roleId: value })}>
@@ -977,7 +968,7 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="edit-department">Département</Label>
@@ -1001,13 +992,13 @@ export default function UsersPage() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditUserDialog(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={handleEditUser} 
+            <Button
+              onClick={handleEditUser}
               disabled={saving || !editUserData.firstName.trim() || !editUserData.lastName.trim()}
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

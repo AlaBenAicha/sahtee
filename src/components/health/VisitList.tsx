@@ -44,8 +44,8 @@ import { useMedicalVisits, useUpcomingVisits, useOverdueVisits, useDeleteMedical
 import type { MedicalVisit, MedicalVisitStatus, ExaminationType } from "@/types/health";
 
 const VISIT_STATUS_CONFIG: Record<MedicalVisitStatus, { label: string; color: string; icon: React.ElementType }> = {
-  scheduled: { label: "Planifiée", color: "bg-blue-100 text-blue-700", icon: Calendar },
-  completed: { label: "Effectuée", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
+  scheduled: { label: "Planifiée", color: "bg-secondary text-primary", icon: Calendar },
+  completed: { label: "Effectuée", color: "bg-secondary text-primary", icon: CheckCircle },
   cancelled: { label: "Annulée", color: "bg-slate-100 text-slate-700", icon: XCircle },
   no_show: { label: "Absent", color: "bg-red-100 text-red-700", icon: AlertCircle },
   overdue: { label: "En retard", color: "bg-red-100 text-red-700", icon: Clock },

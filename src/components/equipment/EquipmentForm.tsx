@@ -354,7 +354,7 @@ export function EquipmentForm({
             </Button>
             <Button
               type="submit"
-              className="bg-emerald-500 hover:bg-emerald-600"
+              className="bg-primary hover:bg-primary"
               disabled={isSubmitting || createMutation.isPending || updateMutation.isPending}
             >
               {isSubmitting || createMutation.isPending || updateMutation.isPending

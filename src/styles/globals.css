@@ -39,7 +39,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  
+
   /* SAHTEE Custom Colors - Logo Inspired */
   --sahtee-blue-primary: #1f4993;
   --sahtee-blue-secondary: #3a70b7;
@@ -92,10 +92,10 @@
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary: #1f4993;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f0f4ff;
+  --color-secondary-foreground: #030213;
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
@@ -193,6 +193,7 @@
 
 html {
   font-size: var(--font-size);
+  scroll-behavior: smooth;
 }
 
 /* Sheet positioning utilities */
@@ -201,6 +202,7 @@ html {
     top: 0 !important;
     bottom: 0 !important;
   }
+
   .inset-x-0 {
     left: 0 !important;
     right: 0 !important;
@@ -210,38 +212,56 @@ html {
 /* Max-width utilities for sheets and dialogs */
 @layer utilities {
   .max-w-sm {
-    max-width: 24rem !important; /* 384px */
+    max-width: 24rem !important;
+    /* 384px */
   }
+
   .max-w-md {
-    max-width: 28rem !important; /* 448px */
+    max-width: 28rem !important;
+    /* 448px */
   }
+
   .max-w-lg {
-    max-width: 32rem !important; /* 512px */
+    max-width: 32rem !important;
+    /* 512px */
   }
+
   .max-w-xl {
-    max-width: 36rem !important; /* 576px */
+    max-width: 36rem !important;
+    /* 576px */
   }
+
   .max-w-2xl {
-    max-width: 42rem !important; /* 672px */
+    max-width: 42rem !important;
+    /* 672px */
   }
 }
 
 /* Responsive max-width variants for sm breakpoint (640px) */
 @media (min-width: 640px) {
   .sm\:max-w-sm {
-    max-width: 24rem !important; /* 384px */
+    max-width: 24rem !important;
+    /* 384px */
   }
+
   .sm\:max-w-md {
-    max-width: 28rem !important; /* 448px */
+    max-width: 28rem !important;
+    /* 448px */
   }
+
   .sm\:max-w-lg {
-    max-width: 32rem !important; /* 512px */
+    max-width: 32rem !important;
+    /* 512px */
   }
+
   .sm\:max-w-xl {
-    max-width: 36rem !important; /* 576px */
+    max-width: 36rem !important;
+    /* 576px */
   }
+
   .sm\:max-w-2xl {
-    max-width: 42rem !important; /* 672px */
+    max-width: 42rem !important;
+    /* 672px */
   }
 }
 
@@ -250,24 +270,31 @@ html {
   .slide-in-from-right {
     --tw-enter-translate-x: 100%;
   }
+
   .slide-out-to-right {
     --tw-exit-translate-x: 100%;
   }
+
   .slide-in-from-left {
     --tw-enter-translate-x: -100%;
   }
+
   .slide-out-to-left {
     --tw-exit-translate-x: -100%;
   }
+
   .slide-in-from-top {
     --tw-enter-translate-y: -100%;
   }
+
   .slide-out-to-top {
     --tw-exit-translate-y: -100%;
   }
+
   .slide-in-from-bottom {
     --tw-enter-translate-y: 100%;
   }
+
   .slide-out-to-bottom {
     --tw-exit-translate-y: 100%;
   }
