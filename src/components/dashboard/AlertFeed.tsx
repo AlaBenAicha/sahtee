@@ -15,7 +15,9 @@ import {
   AlertTriangle,
   Bell,
   CheckCircle,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Clock,
   GraduationCap,
   Heart,
@@ -106,19 +108,27 @@ function getTypeLabel(type: DashboardAlertType): string {
 /**
  * Format relative time
  */
-function formatRelativeTime(timestamp: { toDate: () => Date } | Date): string {
-  const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+function formatRelativeTime(timestamp: { toDate: () => Date } | Date | null | undefined): string {
+  if (!timestamp) {
+    return "Date inconnue";
+  }
+  
+  try {
+    const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return "À l'instant";
-  if (diffMins < 60) return `Il y a ${diffMins} min`;
-  if (diffHours < 24) return `Il y a ${diffHours}h`;
-  if (diffDays < 7) return `Il y a ${diffDays}j`;
-  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+    if (diffMins < 1) return "À l'instant";
+    if (diffMins < 60) return `Il y a ${diffMins} min`;
+    if (diffHours < 24) return `Il y a ${diffHours}h`;
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
+    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+  } catch {
+    return "Date inconnue";
+  }
 }
 
 /**
@@ -231,6 +241,8 @@ function AlertItem({ alert, userId, onMarkRead, onDismiss, onClick }: AlertItemP
 /**
  * Alert Feed Component
  */
+const INITIAL_VISIBLE_ALERTS = 3;
+
 export function AlertFeed({
   alerts,
   userId,
@@ -241,11 +253,20 @@ export function AlertFeed({
   className,
 }: AlertFeedProps) {
   const [filter, setFilter] = useState<DashboardAlertPriority | "all">("all");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Filter alerts
   const filteredAlerts = filter === "all"
     ? alerts
     : alerts.filter((a) => a.priority === filter);
+
+  // Determine which alerts to display
+  const visibleAlerts = isExpanded 
+    ? filteredAlerts 
+    : filteredAlerts.slice(0, INITIAL_VISIBLE_ALERTS);
+  
+  const hiddenCount = filteredAlerts.length - INITIAL_VISIBLE_ALERTS;
+  const hasMoreAlerts = hiddenCount > 0;
 
   // Count unread
   const unreadCount = userId
@@ -279,9 +300,9 @@ export function AlertFeed({
           <CardTitle className="text-lg flex items-center gap-2">
             <Bell className="h-5 w-5" />
             Alertes
-            {unreadCount > 0 && (
+            {filteredAlerts.length > 0 && (
               <Badge className="bg-primary text-white text-xs">
-                {unreadCount}
+                {filteredAlerts.length}
               </Badge>
             )}
           </CardTitle>
@@ -323,20 +344,60 @@ export function AlertFeed({
             <p className="text-sm">Aucune alerte</p>
           </div>
         ) : (
-          <ScrollArea className="h-[400px] pr-3">
-            <div className="space-y-3">
-              {filteredAlerts.map((alert) => (
-                <AlertItem
-                  key={alert.id}
-                  alert={alert}
-                  userId={userId}
-                  onMarkRead={onMarkRead}
-                  onDismiss={onDismiss}
-                  onClick={onAlertClick ? () => onAlertClick(alert) : undefined}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <>
+            {/* Show alerts with optional ScrollArea when expanded */}
+            {isExpanded ? (
+              <ScrollArea className="h-[400px] pr-3">
+                <div className="space-y-3">
+                  {visibleAlerts.map((alert) => (
+                    <AlertItem
+                      key={alert.id}
+                      alert={alert}
+                      userId={userId}
+                      onMarkRead={onMarkRead}
+                      onDismiss={onDismiss}
+                      onClick={onAlertClick ? () => onAlertClick(alert) : undefined}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="space-y-3">
+                {visibleAlerts.map((alert) => (
+                  <AlertItem
+                    key={alert.id}
+                    alert={alert}
+                    userId={userId}
+                    onMarkRead={onMarkRead}
+                    onDismiss={onDismiss}
+                    onClick={onAlertClick ? () => onAlertClick(alert) : undefined}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Show more/less button */}
+            {hasMoreAlerts && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-3 text-primary hover:text-primary hover:bg-secondary"
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="h-4 w-4 mr-1" />
+                    Afficher moins
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4 mr-1" />
+                    Afficher {hiddenCount} alerte{hiddenCount > 1 ? "s" : ""} de plus
+                  </>
+                )}
+              </Button>
+            )}
+          </>
         )}
 
         {/* Mark all as read */}

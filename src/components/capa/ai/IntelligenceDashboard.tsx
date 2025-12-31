@@ -38,8 +38,10 @@ import {
   GitBranch,
   Lightbulb,
   LineChart,
+  Loader2,
   RefreshCcw,
   Shield,
+  Sparkles,
   Target,
   TrendingDown,
   TrendingUp,
@@ -52,10 +54,13 @@ import {
   type PortfolioHealth,
 } from "@/services/ai/capaHealthMonitor";
 import { getPredictionService, type PredictionResult } from "@/services/ai/predictionService";
-import { getPatternService, type PatternCluster } from "@/services/ai/patternService";
+import { getPatternService } from "@/services/ai/patternService";
 import { getRiskIntelligenceHub, type RiskIntelligenceReport } from "@/services/ai/riskIntelligenceHub";
+import { getCAPAAIHistory, saveCAPAAIHistory, generateHistoryTitle } from "@/services/ai/capaAIHistoryService";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import type { PatternCluster } from "@/services/ai/types";
+import { toast } from "sonner";
 
 // Local type for pattern display
 interface PatternDisplay {
@@ -65,6 +70,21 @@ interface PatternDisplay {
   incidentCount: number;
   commonFactors: string[];
   suggestedActions: string[];
+}
+
+// Helper to safely convert various date formats to Date object
+function toDate(value: unknown): Date {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  // Firestore Timestamp
+  if (typeof value === "object" && "toDate" in value && typeof (value as { toDate: () => Date }).toDate === "function") {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  // String or number timestamp
+  if (typeof value === "string" || typeof value === "number") {
+    return new Date(value);
+  }
+  return new Date();
 }
 
 // =============================================================================
@@ -87,110 +107,183 @@ export function IntelligenceDashboard({
   onViewDetails,
 }: IntelligenceDashboardProps) {
   const { session } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCache, setIsLoadingCache] = useState(true);
+  const [hasRunAnalysis, setHasRunAnalysis] = useState(false);
   const [portfolioHealth, setPortfolioHealth] = useState<PortfolioHealth | null>(null);
   const [predictions, setPredictions] = useState<PredictionResult | null>(null);
   const [patterns, setPatterns] = useState<PatternDisplay[]>([]);
   const [riskReport, setRiskReport] = useState<RiskIntelligenceReport | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  // Fetch data
+  // Load cached data from history on mount (does NOT run AI analysis)
   useEffect(() => {
     if (!session?.organizationId) return;
 
-    const fetchData = async () => {
-      setIsLoading(true);
+    const loadCachedData = async () => {
+      setIsLoadingCache(true);
       try {
-        const healthMonitor = getCAPAHealthMonitor();
-        const predictionService = getPredictionService();
-        const patternService = getPatternService();
-        const riskHub = getRiskIntelligenceHub();
+        // Load the most recent analysis from history
+        const analysisHistory = await getCAPAAIHistory(session.organizationId, {
+          type: "analysis",
+          limit: 1,
+        });
 
-        // Initialize services if needed
-        const context = {
-          organizationId: session.organizationId,
-          userId: session.uid,
-          userRole: session.role || "user",
-          userName: session.displayName || "User",
-          language: "fr" as const,
-          permissions: [],
-        };
-
-        healthMonitor.initialize(context);
-        predictionService.initialize(context);
-        patternService.initialize(context);
-        riskHub.initialize(context);
-
-        // Fetch data with error handling for each service
-        let health: PortfolioHealth | null = null;
-        let preds: PredictionResult | null = null;
-        let pats: PatternDisplay[] = [];
-        let report: RiskIntelligenceReport | null = null;
-
-        try {
-          health = await healthMonitor.runHealthCheck();
-        } catch (err) {
-          console.warn("Health monitor error:", err);
+        if (analysisHistory.length > 0) {
+          const lastAnalysis = analysisHistory[0];
+          
+          // Load predictions
+          if (lastAnalysis.predictions && lastAnalysis.predictions.length > 0) {
+            setPredictions(lastAnalysis.predictions[0] || null);
+          }
+          
+          // Load patterns
+          if (lastAnalysis.patterns && lastAnalysis.patterns.length > 0) {
+            const pats = lastAnalysis.patterns.map((cluster: PatternCluster) => ({
+              id: cluster.id,
+              name: cluster.category,
+              description: `${cluster.incidentIds?.length || 0} incidents similaires identifiés`,
+              incidentCount: cluster.incidentIds?.length || 0,
+              commonFactors: cluster.commonFactors || [],
+              suggestedActions: cluster.suggestedActions?.map(a => a.title) || [],
+            }));
+            setPatterns(pats);
+          }
+          
+          // Load portfolio health
+          if (lastAnalysis.portfolioHealth) {
+            setPortfolioHealth(lastAnalysis.portfolioHealth);
+          }
+          
+          // Load risk report
+          if (lastAnalysis.riskReport) {
+            setRiskReport(lastAnalysis.riskReport);
+          }
+          
+          // Set last refresh time from history
+          if (lastAnalysis.createdAt) {
+            setLastRefresh(toDate(lastAnalysis.createdAt));
+          }
+          
+          setHasRunAnalysis(true);
         }
-
-        try {
-          preds = await predictionService.generatePredictions();
-        } catch (err) {
-          console.warn("Prediction service error:", err);
-        }
-
-        try {
-          const patternAnalysis = await patternService.analyzePatterns(365);
-          // Convert clusters to display format
-          pats = patternAnalysis.clusters.map((cluster: PatternCluster) => ({
-            id: cluster.id,
-            name: cluster.category,
-            description: `${cluster.incidentIds.length} incidents similaires identifiés`,
-            incidentCount: cluster.incidentIds.length,
-            commonFactors: cluster.commonFactors,
-            suggestedActions: cluster.suggestedActions.map(a => a.title),
-          }));
-        } catch (err) {
-          console.warn("Pattern service error:", err);
-        }
-
-        try {
-          report = await riskHub.generateIntelligenceReport();
-        } catch (err) {
-          console.warn("Risk intelligence hub error:", err);
-        }
-
-        setPortfolioHealth(health);
-        setPredictions(preds);
-        setPatterns(pats);
-        setRiskReport(report);
-        setLastRefresh(new Date());
       } catch (error) {
-        console.error("Failed to fetch intelligence data:", error);
+        console.warn("Failed to load cached data:", error);
       } finally {
-        setIsLoading(false);
+        setIsLoadingCache(false);
       }
     };
 
-    fetchData();
+    loadCachedData();
   }, [session?.organizationId]);
 
-  // Refresh handler
-  const handleRefresh = async () => {
+  // Run full AI analysis (called manually by user)
+  const runAnalysis = async () => {
     if (!session?.organizationId) return;
+
     setIsLoading(true);
-    
     try {
       const healthMonitor = getCAPAHealthMonitor();
-      const health = await healthMonitor.runHealthCheck();
+      const predictionService = getPredictionService();
+      const patternService = getPatternService();
+      const riskHub = getRiskIntelligenceHub();
+
+      // Initialize services if needed
+      const context = {
+        organizationId: session.organizationId,
+        userId: session.uid,
+        userRole: session.role || "user",
+        userName: session.displayName || "User",
+        language: "fr" as const,
+        permissions: [],
+      };
+
+      healthMonitor.initialize(context);
+      predictionService.initialize(context);
+      patternService.initialize(context);
+      riskHub.initialize(context);
+
+      // Fetch data with error handling for each service
+      let health: PortfolioHealth | null = null;
+      let preds: PredictionResult | null = null;
+      let pats: PatternDisplay[] = [];
+      let patternClusters: PatternCluster[] = [];
+      let report: RiskIntelligenceReport | null = null;
+
+      try {
+        health = await healthMonitor.runHealthCheck();
+      } catch (err) {
+        console.warn("Health monitor error:", err);
+      }
+
+      try {
+        preds = await predictionService.generatePredictions();
+      } catch (err) {
+        console.warn("Prediction service error:", err);
+      }
+
+      try {
+        const patternAnalysis = await patternService.analyzePatterns(365);
+        patternClusters = patternAnalysis?.clusters || [];
+        // Convert clusters to display format
+        pats = patternClusters.map((cluster: PatternCluster) => ({
+          id: cluster.id,
+          name: cluster.category,
+          description: `${cluster.incidentIds.length} incidents similaires identifiés`,
+          incidentCount: cluster.incidentIds.length,
+          commonFactors: cluster.commonFactors,
+          suggestedActions: cluster.suggestedActions?.map(a => a.title) || [],
+        }));
+      } catch (err) {
+        console.warn("Pattern service error:", err);
+      }
+
+      try {
+        report = await riskHub.generateIntelligenceReport();
+      } catch (err) {
+        console.warn("Risk intelligence hub error:", err);
+      }
+
       setPortfolioHealth(health);
+      setPredictions(preds);
+      setPatterns(pats);
+      setRiskReport(report);
       setLastRefresh(new Date());
+      setHasRunAnalysis(true);
+
+      // Save complete analysis to history for future caching
+      try {
+        await saveCAPAAIHistory({
+          organizationId: session.organizationId,
+          type: "analysis",
+          title: generateHistoryTitle("analysis", 1, "Tableau de bord"),
+          description: `Analyse complète du tableau de bord CAPA-AI`,
+          status: "completed",
+          predictions: preds ? [preds] : [],
+          patterns: patternClusters,
+          portfolioHealth: health || undefined,
+          riskReport: report || undefined,
+          confidence: preds?.confidenceLevel ? preds.confidenceLevel / 100 : undefined,
+          createdBy: session.uid,
+          createdByName: session.displayName || "User",
+        });
+      } catch (historyError) {
+        console.warn("Failed to save analysis to history:", historyError);
+      }
+
+      toast.success("Analyse terminée avec succès");
     } catch (error) {
-      console.error("Refresh failed:", error);
+      console.error("Failed to fetch intelligence data:", error);
+      toast.error("Échec de l'analyse. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Refresh handler - runs full analysis
+  const handleRefresh = () => {
+    runAnalysis();
   };
 
   // Health score color
@@ -229,12 +322,80 @@ export function IntelligenceDashboard({
     }
   };
 
-  if (isLoading && !portfolioHealth) {
+  // Loading cached data
+  if (isLoadingCache) {
     return (
       <div className={cn("flex items-center justify-center h-96", className)}>
         <div className="flex flex-col items-center gap-4">
           <Brain className="h-12 w-12 text-primary animate-pulse" />
-          <p className="text-muted-foreground">Chargement de l'intelligence CAPA...</p>
+          <p className="text-muted-foreground">Chargement des données...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state - no analysis has been run yet and no cached data
+  if (!hasRunAnalysis && !portfolioHealth && !predictions && patterns.length === 0) {
+    return (
+      <div className={cn("space-y-6", className)}>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Brain className="h-6 w-6 text-primary" />
+              Intelligence CAPA
+            </h2>
+            <p className="text-muted-foreground">
+              Tableau de bord analytique et prédictif
+            </p>
+          </div>
+        </div>
+
+        {/* Empty state card */}
+        <div className="rounded-lg border bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 p-12">
+          <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+            <div className="rounded-full bg-violet-100 dark:bg-violet-900/50 p-6 mb-6">
+              <Sparkles className="h-12 w-12 text-violet-600 dark:text-violet-400" />
+            </div>
+            <h3 className="text-2xl font-semibold mb-3">Lancer l'analyse IA</h3>
+            <p className="text-muted-foreground mb-6">
+              L'analyse IA évalue la santé de vos CAPAs, détecte les patterns récurrents,
+              génère des prédictions de risque et identifie les corrélations inter-modules.
+            </p>
+            <div className="flex flex-col gap-3 w-full max-w-xs">
+              <Button
+                size="lg"
+                className="gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+                onClick={runAnalysis}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Brain className="h-5 w-5" />
+                )}
+                {isLoading ? "Analyse en cours..." : "Lancer l'analyse"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                ⚠️ L'analyse consomme des crédits API. Utilisez-la avec parcimonie.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state while running analysis
+  if (isLoading) {
+    return (
+      <div className={cn("flex items-center justify-center h-96", className)}>
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 text-violet-600 animate-spin" />
+          <p className="text-lg font-medium">Analyse IA en cours...</p>
+          <p className="text-muted-foreground text-sm">
+            Évaluation de la santé, prédictions et détection de patterns
+          </p>
         </div>
       </div>
     );
@@ -254,12 +415,14 @@ export function IntelligenceDashboard({
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            Dernière MAJ: {lastRefresh.toLocaleTimeString("fr-FR")}
-          </span>
+          {lastRefresh && (
+            <span className="text-sm text-muted-foreground">
+              Dernière analyse: {lastRefresh.toLocaleDateString("fr-FR")} à {lastRefresh.toLocaleTimeString("fr-FR")}
+            </span>
+          )}
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
             <RefreshCcw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-            Actualiser
+            {isLoading ? "Analyse..." : "Relancer l'analyse"}
           </Button>
         </div>
       </div>
@@ -384,7 +547,7 @@ export function IntelligenceDashboard({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {portfolioHealth?.topRiskFactors.map((factor, index) => (
+                  {portfolioHealth?.topRiskFactors?.map((factor, index) => (
                     <div key={factor.factor} className="flex items-center gap-4">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-medium">
                         {index + 1}
@@ -506,7 +669,7 @@ export function IntelligenceDashboard({
               <CardContent>
                 <ScrollArea className="h-[200px]">
                   <div className="space-y-4">
-                    {portfolioHealth?.recentEscalations.map((escalation) => (
+                    {portfolioHealth?.recentEscalations?.map((escalation) => (
                       <div
                         key={escalation.id}
                         className="flex items-start gap-4 p-3 rounded-lg border bg-muted/50"
@@ -525,13 +688,13 @@ export function IntelligenceDashboard({
                             CAPA: {escalation.capaId}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {escalation.triggeredAt.toLocaleString("fr-FR")}
+                            {toDate(escalation.triggeredAt).toLocaleString("fr-FR")}
                           </p>
                         </div>
                         <Badge
                           variant={
                             escalation.status === "pending" ? "destructive" :
-                            escalation.status === "acknowledged" ? "secondary" : "outline"
+                              escalation.status === "acknowledged" ? "secondary" : "outline"
                           }
                         >
                           {escalation.status === "pending" && "En attente"}
@@ -575,7 +738,7 @@ export function IntelligenceDashboard({
                       <Badge
                         variant={
                           predictions.overallRiskLevel === "critical" || predictions.overallRiskLevel === "high" ? "destructive" :
-                          predictions.overallRiskLevel === "medium" ? "secondary" : "outline"
+                            predictions.overallRiskLevel === "medium" ? "secondary" : "outline"
                         }
                       >
                         {predictions.overallRiskLevel === "critical" && "Critique"}
@@ -613,7 +776,7 @@ export function IntelligenceDashboard({
                     <div>
                       <p className="text-sm font-medium mb-2">Prochaine analyse recommandée</p>
                       <p className="text-sm text-muted-foreground">
-                        {predictions.nextRecommendedAnalysis.toLocaleDateString("fr-FR")}
+                        {toDate(predictions.nextRecommendedAnalysis).toLocaleDateString("fr-FR")}
                       </p>
                     </div>
                   </div>
@@ -650,7 +813,7 @@ export function IntelligenceDashboard({
                           <Badge
                             variant={
                               alert.severity === "critical" ? "destructive" :
-                              alert.severity === "warning" ? "secondary" : "outline"
+                                alert.severity === "warning" ? "secondary" : "outline"
                             }
                           >
                             {alert.severity === "critical" && "Critique"}
@@ -663,7 +826,7 @@ export function IntelligenceDashboard({
                         </p>
                         {alert.affectedAreas.length > 0 && (
                           <div className="flex flex-wrap gap-1 mb-2">
-                            {alert.affectedAreas.slice(0, 3).map((area, i) => (
+                            {alert.affectedAreas?.slice(0, 3).map((area, i) => (
                               <Badge key={i} variant="outline" className="text-xs">
                                 {area}
                               </Badge>
@@ -691,7 +854,7 @@ export function IntelligenceDashboard({
         {/* Patterns Tab */}
         <TabsContent value="patterns" className="mt-6">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {patterns.map((pattern) => (
+            {patterns?.map((pattern) => (
               <Card key={pattern.id}>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -711,7 +874,7 @@ export function IntelligenceDashboard({
                       Facteurs communs
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {pattern.commonFactors.map((factor, i) => (
+                      {pattern.commonFactors?.map((factor, i) => (
                         <Badge key={i} variant="secondary" className="text-xs">
                           {factor}
                         </Badge>
@@ -761,7 +924,7 @@ export function IntelligenceDashboard({
             <CardContent>
               <ScrollArea className="h-[400px]">
                 <div className="space-y-4">
-                  {portfolioHealth?.recentEscalations.map((escalation) => (
+                  {portfolioHealth?.recentEscalations?.map((escalation) => (
                     <div
                       key={escalation.id}
                       className="flex items-start gap-4 p-4 rounded-lg border"
@@ -785,7 +948,7 @@ export function IntelligenceDashboard({
                           <Badge
                             variant={
                               escalation.status === "pending" ? "destructive" :
-                              escalation.status === "acknowledged" ? "secondary" : "outline"
+                                escalation.status === "acknowledged" ? "secondary" : "outline"
                             }
                           >
                             {escalation.status === "pending" && "En attente"}
@@ -796,17 +959,17 @@ export function IntelligenceDashboard({
                         <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {escalation.triggeredAt.toLocaleString("fr-FR")}
+                            {toDate(escalation.triggeredAt).toLocaleString("fr-FR")}
                           </span>
                           {escalation.resolvedAt && (
                             <span className="flex items-center gap-1">
                               <CheckCircle2 className="h-3 w-3" />
-                              Résolu le {escalation.resolvedAt.toLocaleString("fr-FR")}
+                              Résolu le {toDate(escalation.resolvedAt).toLocaleString("fr-FR")}
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-3">
-                          {escalation.actions.map((action, i) => (
+                          {escalation.actions?.map((action, i) => (
                             <Badge key={i} variant="outline" className="text-xs">
                               {action.type === "notify" && "Notification"}
                               {action.type === "escalate_manager" && "Escalade manager"}
@@ -860,7 +1023,7 @@ export function IntelligenceDashboard({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {predictions?.insights?.filter(i => i.preventiveActions?.length > 0).slice(0, 5).map((insight, index) => (
+                  {predictions?.insights?.filter(i => i.preventiveActions?.length > 0)?.slice(0, 5).map((insight, index) => (
                     <div
                       key={index}
                       className={cn(
@@ -919,7 +1082,7 @@ export function IntelligenceDashboard({
                   {riskReport?.crossModuleInsights?.map((insight, index) => (
                     <div key={index} className="p-4 rounded-lg bg-muted/50 border">
                       <div className="flex items-center gap-2 mb-2">
-                        {insight.relatedModules.map((mod, i) => (
+                        {insight.involvedModules?.map((mod, i) => (
                           <Badge key={i} variant="outline" className="text-xs">
                             {mod}
                           </Badge>
@@ -965,7 +1128,7 @@ export function IntelligenceDashboard({
                       <Badge variant="destructive">{portfolioHealth.overdueCapas}</Badge>
                     </Button>
                   )}
-                  
+
                   <Button
                     variant="outline"
                     className="h-auto py-4 flex-col gap-2"

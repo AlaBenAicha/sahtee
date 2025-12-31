@@ -47,6 +47,21 @@ import type {
 } from "@/services/ai/predictionService";
 import { cn } from "@/lib/utils";
 
+// Helper to safely convert various date formats to Date object
+function toDate(value: unknown): Date {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  // Firestore Timestamp
+  if (typeof value === "object" && "toDate" in value && typeof (value as { toDate: () => Date }).toDate === "function") {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  // String or number timestamp
+  if (typeof value === "string" || typeof value === "number") {
+    return new Date(value);
+  }
+  return new Date();
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -260,13 +275,13 @@ export function PredictionDashboard({
               <div>
                 <p className="text-sm text-slate-500 mb-1">Prochaine Analyse</p>
                 <p className="text-lg font-bold text-slate-900">
-                  {predictions.nextRecommendedAnalysis.toLocaleDateString("fr-FR", {
+                  {toDate(predictions.nextRecommendedAnalysis).toLocaleDateString("fr-FR", {
                     day: "numeric",
                     month: "short",
                   })}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  {predictions.nextRecommendedAnalysis.toLocaleTimeString("fr-FR", {
+                  {toDate(predictions.nextRecommendedAnalysis).toLocaleTimeString("fr-FR", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
