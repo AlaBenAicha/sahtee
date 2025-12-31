@@ -143,7 +143,7 @@ export function ChatMessage({
           isUser
             ? mode === "agent"
               ? "bg-gradient-to-br from-violet-500 to-purple-600"
-              : "bg-gradient-to-br from-primary to-teal-600"
+              : "bg-gradient-to-br from-[var(--sahtee-blue-primary)] to-[var(--sahtee-blue-secondary)]"
             : "bg-white border border-slate-200"
         )}
       >
@@ -162,17 +162,17 @@ export function ChatMessage({
           "max-w-[85%] rounded-2xl px-4 py-3 shadow-sm",
           isUser
             ? cn(
-                "rounded-tr-md ml-auto",
-                mode === "agent"
-                  ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
-                  : "bg-gradient-to-br from-primary to-teal-600 text-white"
-              )
+              "rounded-tr-md ml-auto",
+              mode === "agent"
+                ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
+                : "bg-gradient-to-br from-[var(--sahtee-blue-primary)] to-[var(--sahtee-blue-secondary)] text-white"
+            )
             : cn(
-                "rounded-tl-md bg-white border mr-auto",
-                mode === "agent"
-                  ? "border-l-[3px] border-l-violet-400 border-t-slate-100 border-r-slate-100 border-b-slate-100"
-                  : "border-l-[3px] border-l-primary border-t-slate-100 border-r-slate-100 border-b-slate-100"
-              ),
+              "rounded-tl-md bg-white border mr-auto",
+              mode === "agent"
+                ? "border-l-[3px] border-l-violet-400 border-t-slate-100 border-r-slate-100 border-b-slate-100"
+                : "border-l-[3px] border-l-primary border-t-slate-100 border-r-slate-100 border-b-slate-100"
+            ),
           isError && "bg-red-50 border-l-red-400 border-red-200"
         )}
       >
