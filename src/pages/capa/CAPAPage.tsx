@@ -79,7 +79,7 @@ export default function CAPAPage() {
   const [prefillData, setPrefillData] = useState<CAPAPrefill | null>(null);
 
   // AI State
-  const [aiTab, setAiTab] = useState<"welcome" | "dashboard" | "suggestions" | "history">("welcome");
+  const [aiTab, setAiTab] = useState<"dashboard" | "suggestions" | "history">("dashboard");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedCapa[]>([]);
@@ -464,7 +464,7 @@ export default function CAPAPage() {
 
         <TabsContent value="ai" className="space-y-4">
           {/* Loading Overlay */}
-          {(isAnalyzing || isGenerating) && aiTab !== "welcome" && (
+          {(isAnalyzing || isGenerating) && (
             <div className="rounded-lg border bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 p-8">
               <div className="flex flex-col items-center text-center">
                 <Loader2 className="h-12 w-12 animate-spin text-violet-600 mb-4" />
@@ -483,85 +483,35 @@ export default function CAPAPage() {
 
           {/* AI Navigation - Always visible */}
           {!isAnalyzing && !isGenerating && (
-            <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg">
-              <Button
-                variant={aiTab === "welcome" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setAiTab("welcome")}
-                className="gap-2"
-              >
-                <Sparkles className="h-4 w-4" />
-                Accueil
-              </Button>
-              <Button
-                variant={aiTab === "dashboard" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setAiTab("dashboard")}
-                className="gap-2"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Tableau de bord
-              </Button>
-              <Button
-                variant={aiTab === "suggestions" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setAiTab("suggestions")}
-                className="gap-2"
-              >
-                <Brain className="h-4 w-4" />
-                Suggestions ({suggestions.length})
-              </Button>
-              <Button
-                variant={aiTab === "history" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setAiTab("history")}
-                className="gap-2"
-              >
-                <History className="h-4 w-4" />
-                Historique
-              </Button>
-            </div>
-          )}
-
-          {/* Welcome Panel */}
-          {aiTab === "welcome" && (
-            <div className="rounded-lg border bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 p-8">
-              <div className="flex flex-col items-center text-center max-w-md mx-auto">
-                <div className="rounded-full bg-violet-100 dark:bg-violet-900/50 p-4 mb-4">
-                  <Sparkles className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-                </div>
-                <h3 className="text-xl font-semibold">CAPA-AI</h3>
-                <p className="text-muted-foreground mt-2">
-                  L'assistant IA analyse vos incidents et propose des actions
-                  correctives intelligentes basées sur les meilleures pratiques.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={handleAnalyzeIncidents}
-                    disabled={isAnalyzing}
-                  >
-                    {isAnalyzing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                    {isAnalyzing ? "Analyse en cours..." : "Analyser les incidents"}
-                  </Button>
-                  <Button
-                    className="gap-2 bg-violet-600 hover:bg-violet-700 text-white"
-                    onClick={handleGenerateSuggestions}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                    {isGenerating ? "Génération..." : "Générer des suggestions"}
-                  </Button>
-                </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg">
+                <Button
+                  variant={aiTab === "dashboard" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setAiTab("dashboard")}
+                  className="gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Tableau de bord
+                </Button>
+                <Button
+                  variant={aiTab === "suggestions" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setAiTab("suggestions")}
+                  className="gap-2"
+                >
+                  <Brain className="h-4 w-4" />
+                  Suggestions ({suggestions.length})
+                </Button>
+                <Button
+                  variant={aiTab === "history" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setAiTab("history")}
+                  className="gap-2"
+                >
+                  <History className="h-4 w-4" />
+                  Historique
+                </Button>
               </div>
             </div>
           )}

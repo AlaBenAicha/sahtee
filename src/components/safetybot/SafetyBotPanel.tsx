@@ -108,7 +108,7 @@ export function SafetyBotPanel({
       <div
         className={cn(
           "fixed right-0 top-0 bottom-0 z-50",
-          "w-[100vw] sm:w-[420px] lg:w-[440px] max-w-full",
+          "w-full sm:w-[400px] lg:w-[420px]",
           "bg-white",
           "shadow-2xl border-l border-slate-200",
           "flex flex-col",
@@ -164,8 +164,8 @@ export function SafetyBotPanel({
                   {currentSession
                     ? currentSession.title
                     : mode === "agent"
-                    ? "Mode agent actif"
-                    : "Nouvelle conversation"}
+                      ? "Mode agent actif"
+                      : "Nouvelle conversation"}
                 </p>
               </div>
             </div>

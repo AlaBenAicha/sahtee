@@ -20,6 +20,8 @@ import {
 } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import type { SuggestedCapa, PredictionResult, RootCauseAnalysisResult, PatternCluster } from "./types";
+import type { PortfolioHealth } from "./capaHealthMonitor";
+import type { RiskIntelligenceReport } from "./riskIntelligenceHub";
 
 // Collection name
 const CAPA_AI_HISTORY_COLLECTION = "capaAIHistory";
@@ -49,6 +51,8 @@ export interface CAPAAIHistoryEntry {
   predictions?: PredictionResult[];
   patterns?: PatternCluster[];
   rootCauseAnalysis?: RootCauseAnalysisResult;
+  portfolioHealth?: PortfolioHealth;
+  riskReport?: RiskIntelligenceReport;
   
   // Metadata
   incidentsAnalyzed?: number;

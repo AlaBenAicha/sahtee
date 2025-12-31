@@ -26,6 +26,7 @@ import {
   updateRecommendationStatus,
   acceptRecommendation,
 } from "@/services/dashboardService";
+import { subscribeToAggregatedAlerts } from "@/services/alertAggregationService";
 import { calculateAllKPIs, getKPIsByCategory } from "@/services/kpiService";
 import type {
   DashboardMetrics,
@@ -212,7 +213,11 @@ export function useAlerts(options: AlertFetchOptions = {}) {
 
 /**
  * Hook for real-time alert updates
- * Uses real Firestore data - no mock fallback
+ * Uses aggregated alerts from multiple sources:
+ * - Incidents (critical/severe, or needing action)
+ * - CAPAs (high/critical priority, overdue, or due soon)
+ * - Health alerts (active exposure thresholds, overdue visits)
+ * - AI recommendations (critical/high priority)
  */
 export function useRealtimeAlerts(options: AlertFetchOptions = {}) {
   const { userProfile, user } = useAuth();
@@ -224,7 +229,7 @@ export function useRealtimeAlerts(options: AlertFetchOptions = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!orgId || !userId) {
+    if (!orgId) {
       setIsLoading(false);
       setAlerts([]);
       return;
@@ -234,13 +239,19 @@ export function useRealtimeAlerts(options: AlertFetchOptions = {}) {
     setError(null);
 
     try {
-      const unsubscribe = subscribeToAlerts(orgId, userId, (newAlerts) => {
-        setAlerts(newAlerts);
-        setIsLoading(false);
-        
-        // Update React Query cache
-        queryClient.setQueryData([...dashboardKeys.alerts(orgId), options], newAlerts);
-      }, options);
+      // Use the aggregated alerts subscription that combines data from
+      // incidents, CAPAs, health alerts, and AI recommendations
+      const unsubscribe = subscribeToAggregatedAlerts(
+        orgId,
+        (aggregatedAlerts) => {
+          setAlerts(aggregatedAlerts);
+          setIsLoading(false);
+          
+          // Update React Query cache
+          queryClient.setQueryData([...dashboardKeys.alerts(orgId), options], aggregatedAlerts);
+        },
+        { limit: options.limit || 50 }
+      );
 
       return () => unsubscribe();
     } catch (err) {
@@ -248,7 +259,7 @@ export function useRealtimeAlerts(options: AlertFetchOptions = {}) {
       setIsLoading(false);
       setAlerts([]);
     }
-  }, [orgId, userId, queryClient, JSON.stringify(options)]);
+  }, [orgId, queryClient, JSON.stringify(options)]);
 
   // Calculate unread count
   const unreadCount = alerts.filter(
